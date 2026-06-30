@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE: int = 104857600  # 100MB
     FRONTEND_URL: str = "http://localhost:5173"
+    
+    LOG_LEVEL: str = 'DEBUG'
+    LOG_FORMAT: str = 'console'
+    LOGTAIL_TOKEN: Optional[str] = None
 
     class Config:
         env_file = ".env"

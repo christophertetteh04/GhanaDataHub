@@ -5,6 +5,7 @@ import { PrivateRoute, PublicRoute } from "./components/RouteGuard";
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import LandingPage from "./pages/LandingPage";
 import DashboardPage from "./pages/DashboardPage";
 import DatasetsPage from "./pages/DatasetsPage";
 import DatasetDetailPage from "./pages/DatasetDetailPage";
@@ -24,11 +25,12 @@ export default function App() {
         <Toaster position="top-right" toastOptions={{ duration: 3500 }} />
         <Routes>
           {/* Public auth routes */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
           {/* Protected app routes */}
-          <Route path="/" element={<PrivateRoute><Layout><DashboardPage /></Layout></PrivateRoute>} />
+          <Route path="/dashboard" element={<PrivateRoute><Layout><DashboardPage /></Layout></PrivateRoute>} />
           <Route path="/datasets" element={<PrivateRoute><Layout><DatasetsPage /></Layout></PrivateRoute>} />
           <Route path="/datasets/:id" element={<PrivateRoute><Layout><DatasetDetailPage /></Layout></PrivateRoute>} />
           <Route path="/search" element={<PrivateRoute><Layout><SearchPage /></Layout></PrivateRoute>} />
@@ -51,7 +53,7 @@ export default function App() {
           {/* Fallback */}
           <Route path="*" element={<PrivateRoute><Layout><div style={{ padding: 48, textAlign: "center" }}>
             <h2 style={{ fontFamily: "Sora", marginBottom: 8 }}>404 — Page not found</h2>
-            <a href="/" style={{ color: "var(--green)" }}>Go to Dashboard</a>
+            <a href="/dashboard" style={{ color: "var(--green)" }}>Go to Dashboard</a>
           </div></Layout></PrivateRoute>} />
         </Routes>
       </AuthProvider>
