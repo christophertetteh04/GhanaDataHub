@@ -1,4 +1,5 @@
 import axios from "axios";
+import { logError } from "./logger";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
@@ -20,7 +21,9 @@ api.interceptors.response.use(
       const refresh = localStorage.getItem("refresh_token");
       if (refresh) {
         try {
-          const { data } = await axios.post(`${API_BASE}/auth/refresh`, { refresh_token: refresh });
+          const { data } = await axios.post(`${API_BASE}/auth/refresh`, {
+            refresh_token: refresh,
+          });
           localStorage.setItem("access_token", data.access_token);
           localStorage.setItem("refresh_token", data.refresh_token);
           err.config.headers.Authorization = `Bearer ${data.access_token}`;
@@ -31,8 +34,15 @@ api.interceptors.response.use(
         }
       }
     }
+
+    if (err.response?.status >= 500) {
+      const status = err.response?.status;
+      const url = err.config?.url;
+      logError("api_server_error", err, { status, url });
+    }
+
     return Promise.reject(err);
-  }
+  },
 );
 
 export default api;
@@ -50,8 +60,14 @@ export const authApi = {
 export const datasetsApi = {
   list: (params) => api.get("/datasets/", { params }),
   get: (id) => api.get(`/datasets/${id}`),
-  create: (formData) => api.post("/datasets/", formData, { headers: { "Content-Type": "multipart/form-data" } }),
-  update: (id, formData) => api.put(`/datasets/${id}`, formData, { headers: { "Content-Type": "multipart/form-data" } }),
+  create: (formData) =>
+    api.post("/datasets/", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+  update: (id, formData) =>
+    api.put(`/datasets/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
   delete: (id) => api.delete(`/datasets/${id}`),
   versions: (id) => api.get(`/datasets/${id}/versions`),
 };
@@ -73,7 +89,8 @@ export const orgsApi = {
   get: (id) => api.get(`/organizations/${id}`),
   members: (id) => api.get(`/organizations/${id}/members`),
   invite: (id, d) => api.post(`/organizations/${id}/invite`, d),
-  removeMember: (orgId, userId) => api.delete(`/organizations/${orgId}/members/${userId}`),
+  removeMember: (orgId, userId) =>
+    api.delete(`/organizations/${orgId}/members/${userId}`),
 };
 
 // Users

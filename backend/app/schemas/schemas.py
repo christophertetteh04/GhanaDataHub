@@ -238,3 +238,8 @@ class DashboardStats(BaseModel):
     monthly_uploads: List[dict]
     datasets_by_category: List[dict]
     datasets_by_visibility: List[dict]
+    my_datasets_count: int
+    my_organization_name: Optional[str]
+    unread_notifications_count: int
+    recent_activity: List[dict]
+    my_recent_uploads: List[DatasetOut]

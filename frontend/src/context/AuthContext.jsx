@@ -1,5 +1,10 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { authApi } from "../services/api";
+import {
+  logInfo,
+  clearUser,
+  setUser as setLoggedUser,
+} from "../services/logger";
 
 const AuthContext = createContext(null);
 
@@ -10,9 +15,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     if (token) {
-      authApi.me()
+      authApi
+        .me()
         .then((r) => setUser(r.data))
-        .catch(() => { localStorage.clear(); })
+        .catch(() => {
+          localStorage.clear();
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
@@ -25,11 +33,17 @@ export function AuthProvider({ children }) {
     localStorage.setItem("refresh_token", data.refresh_token);
     const me = await authApi.me();
     setUser(me.data);
+    setLoggedUser(me.data.id, me.data.email);
+    logInfo("user_logged_in", { userId: me.data.id, role: me.data.role });
     return me.data;
   };
 
   const logout = async () => {
-    try { await authApi.logout(); } catch {}
+    try {
+      await authApi.logout();
+    } catch {}
+    logInfo("user_logged_out");
+    clearUser();
     localStorage.clear();
     setUser(null);
   };

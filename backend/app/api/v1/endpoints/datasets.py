@@ -1,30 +1,42 @@
 import os
 import uuid
-import shutil
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from sqlalchemy.orm import Session, joinedload
 
-from app.core.database import get_db
+from app.api.v1.deps import get_current_user, get_optional_user, require_roles
 from app.core.config import settings
+from app.core.database import get_db
+from app.core.middleware import get_bound_logger
 from app.models.models import (
-    Dataset, DatasetVersion, Tag, Category, User, ActivityLog,
-    ActivityAction, UserRole, VisibilityEnum, Notification
+    ActivityAction,
+    ActivityLog,
+    Category,
+    Dataset,
+    DatasetVersion,
+    Notification,
+    Tag,
+    User,
+    UserRole,
+    VisibilityEnum,
 )
-from app.schemas.schemas import DatasetOut, DatasetUpdate, DatasetVersionOut
-from app.api.v1.deps import get_current_user, require_roles, get_optional_user
+from app.schemas.schemas import DatasetOut, DatasetVersionOut
 
 router = APIRouter()
 
 ALLOWED_TYPES = {
-    "text/csv", "application/json",
+    "text/csv",
+    "application/json",
     "application/vnd.ms-excel",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/pdf",
-    "image/png", "image/jpeg", "image/gif", "image/webp",
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
 }
 
 
@@ -37,15 +49,19 @@ def get_or_create_tag(db: Session, name: str) -> Tag:
     return tag
 
 
-def log_activity(db, user_id, action, resource_type=None, resource_id=None, ip=None):
-    db.add(ActivityLog(
-        user_id=user_id, action=action,
-        resource_type=resource_type, resource_id=str(resource_id) if resource_id else None,
-        ip_address=ip,
-    ))
+def log_activity(db: Session, user_id, action, resource_type=None, resource_id=None, ip=None):
+    db.add(
+        ActivityLog(
+            user_id=user_id,
+            action=action,
+            resource_type=resource_type,
+            resource_id=str(resource_id) if resource_id else None,
+            ip_address=ip,
+        )
+    )
 
 
-def notify(db, user_id, title, message, ntype):
+def notify(db: Session, user_id, title, message, ntype):
     db.add(Notification(user_id=user_id, title=title, message=message, notification_type=ntype))
 
 
@@ -57,31 +73,46 @@ async def create_dataset(
     license: Optional[str] = Form(None),
     visibility: VisibilityEnum = Form(VisibilityEnum.private),
     category_id: Optional[UUID] = Form(None),
-    tags: Optional[str] = Form(None),  # comma-separated
+    tags: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(
-        UserRole.super_admin, UserRole.org_admin, UserRole.data_manager
-    )),
+    current_user: User = Depends(
+        require_roles(UserRole.super_admin, UserRole.org_admin, UserRole.data_manager)
+    ),
 ):
+    logger = get_bound_logger(__name__)
+
     file_path = None
     file_name = None
     file_size = 0
     file_type = None
+    content = None
 
     if file:
         if file.content_type not in ALLOWED_TYPES:
-            raise HTTPException(status_code=400, detail=f"File type not allowed: {file.content_type}")
+            logger.error(
+                "upload_rejected",
+                user_id=current_user.id,
+                reason="bad_file_type",
+                attempted_type=file.content_type,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=f"File type not allowed: {file.content_type}",
+            )
+
         content = await file.read()
         file_size = len(content)
         if file_size > settings.MAX_UPLOAD_SIZE:
             raise HTTPException(status_code=413, detail="File too large (max 100MB)")
+
         os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
         ext = os.path.splitext(file.filename)[1]
         stored_name = f"{uuid.uuid4()}{ext}"
         file_path = os.path.join(settings.UPLOAD_DIR, stored_name)
         with open(file_path, "wb") as f:
             f.write(content)
+
         file_name = file.filename
         file_type = file.content_type
 
@@ -102,14 +133,12 @@ async def create_dataset(
     db.add(dataset)
     db.flush()
 
-    # Tags
     if tags:
         for tag_name in tags.split(","):
             tag_name = tag_name.strip()
             if tag_name:
                 dataset.tags.append(get_or_create_tag(db, tag_name))
 
-    # First version record
     version = DatasetVersion(
         dataset_id=dataset.id,
         version_number=1,
@@ -124,6 +153,15 @@ async def create_dataset(
     notify(db, current_user.id, "Dataset Uploaded", f'Your dataset "{title}" was uploaded.', "upload")
     db.commit()
     db.refresh(dataset)
+
+    logger.info(
+        "dataset_created",
+        dataset_id=dataset.id,
+        user_id=current_user.id,
+        file_size_bytes=file_size,
+        title=title,
+    )
+
     return dataset
 
 
@@ -135,29 +173,31 @@ def list_datasets(
     category_id: Optional[UUID] = None,
     visibility: Optional[VisibilityEnum] = None,
     owner_id: Optional[UUID] = None,
-    sort_by: str = Query("created_at", regex="^(created_at|title|download_count|file_size)$"),
+    sort_by: str = Query(
+        "created_at", regex="^(created_at|title|download_count|file_size)$"
+    ),
     sort_dir: str = Query("desc", regex="^(asc|desc)$"),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user),
 ):
     q = db.query(Dataset).options(
-        joinedload(Dataset.owner),
-        joinedload(Dataset.category),
-        joinedload(Dataset.tags),
+        joinedload(Dataset.owner), joinedload(Dataset.category), joinedload(Dataset.tags)
     )
 
-    # Visibility filter
     if not current_user:
         q = q.filter(Dataset.visibility == VisibilityEnum.public)
     elif current_user.role not in (UserRole.super_admin,):
         q = q.filter(
-            (Dataset.visibility == VisibilityEnum.public) |
-            (Dataset.owner_id == current_user.id) |
-            (Dataset.organization_id == current_user.organization_id)
+            (Dataset.visibility == VisibilityEnum.public)
+            | (Dataset.owner_id == current_user.id)
+            | (Dataset.organization_id == current_user.organization_id)
         )
 
     if search:
-        q = q.filter(Dataset.title.ilike(f"%{search}%") | Dataset.description.ilike(f"%{search}%"))
+        q = q.filter(
+            Dataset.title.ilike(f"%{search}%")
+            | Dataset.description.ilike(f"%{search}%")
+        )
     if category_id:
         q = q.filter(Dataset.category_id == category_id)
     if visibility:
@@ -165,7 +205,6 @@ def list_datasets(
     if owner_id:
         q = q.filter(Dataset.owner_id == owner_id)
 
-    # Sorting
     sort_col = getattr(Dataset, sort_by)
     q = q.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
 
@@ -186,15 +225,26 @@ def get_dataset(
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user),
 ):
-    dataset = db.query(Dataset).options(
-        joinedload(Dataset.owner), joinedload(Dataset.category), joinedload(Dataset.tags)
-    ).filter(Dataset.id == dataset_id).first()
+    dataset = (
+        db.query(Dataset)
+        .options(
+            joinedload(Dataset.owner),
+            joinedload(Dataset.category),
+            joinedload(Dataset.tags),
+        )
+        .filter(Dataset.id == dataset_id)
+        .first()
+    )
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
-    # Access check
+
     if dataset.visibility == VisibilityEnum.private:
-        if not current_user or (str(dataset.owner_id) != str(current_user.id) and current_user.role != UserRole.super_admin):
+        if not current_user or (
+            str(dataset.owner_id) != str(current_user.id)
+            and current_user.role != UserRole.super_admin
+        ):
             raise HTTPException(status_code=403, detail="Access denied")
+
     return dataset
 
 
@@ -213,17 +263,29 @@ async def update_dataset(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    logger = get_bound_logger(__name__)
+
     dataset = db.query(Dataset).filter(Dataset.id == dataset_id).first()
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
-    if str(dataset.owner_id) != str(current_user.id) and current_user.role not in (UserRole.super_admin, UserRole.org_admin):
+
+    if str(dataset.owner_id) != str(current_user.id) and current_user.role not in (
+        UserRole.super_admin,
+        UserRole.org_admin,
+    ):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    if title: dataset.title = title
-    if description: dataset.description = description
-    if license: dataset.license = license
-    if visibility: dataset.visibility = visibility
-    if category_id: dataset.category_id = category_id
+    if title:
+        dataset.title = title
+    if description:
+        dataset.description = description
+    if license:
+        dataset.license = license
+    if visibility:
+        dataset.visibility = visibility
+    if category_id:
+        dataset.category_id = category_id
+
     if tags is not None:
         dataset.tags = []
         for tag_name in tags.split(","):
@@ -231,19 +293,24 @@ async def update_dataset(
             if t:
                 dataset.tags.append(get_or_create_tag(db, t))
 
-    new_file_path, new_file_name, new_file_size = dataset.file_path, dataset.file_name, dataset.file_size
+    new_file_path = dataset.file_path
+    new_file_name = dataset.file_name
+    new_file_size = dataset.file_size
+
     if file:
         if file.content_type not in ALLOWED_TYPES:
             raise HTTPException(status_code=400, detail="File type not allowed")
         content = await file.read()
         if len(content) > settings.MAX_UPLOAD_SIZE:
             raise HTTPException(status_code=413, detail="File too large")
+
         os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
         ext = os.path.splitext(file.filename)[1]
         stored_name = f"{uuid.uuid4()}{ext}"
         new_file_path = os.path.join(settings.UPLOAD_DIR, stored_name)
         with open(new_file_path, "wb") as f:
             f.write(content)
+
         new_file_name = file.filename
         new_file_size = len(content)
         dataset.file_path = new_file_path
@@ -264,9 +331,18 @@ async def update_dataset(
         author_id=current_user.id,
     )
     db.add(version)
+
     log_activity(db, current_user.id, ActivityAction.update, "dataset", dataset.id, request.client.host)
     db.commit()
     db.refresh(dataset)
+
+    logger.info(
+        "dataset_updated",
+        dataset_id=dataset.id,
+        user_id=current_user.id,
+        new_version=dataset.version,
+    )
+
     return dataset
 
 
@@ -277,16 +353,30 @@ def delete_dataset(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    logger = get_bound_logger(__name__)
+
     dataset = db.query(Dataset).filter(Dataset.id == dataset_id).first()
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
-    if str(dataset.owner_id) != str(current_user.id) and current_user.role not in (UserRole.super_admin,):
+
+    if str(dataset.owner_id) != str(current_user.id) and current_user.role not in (
+        UserRole.super_admin,
+    ):
         raise HTTPException(status_code=403, detail="Access denied")
+
     if dataset.file_path and os.path.exists(dataset.file_path):
         os.remove(dataset.file_path)
+
     log_activity(db, current_user.id, ActivityAction.delete, "dataset", dataset.id, request.client.host)
     db.delete(dataset)
     db.commit()
+
+    logger.info(
+        "dataset_deleted",
+        dataset_id=dataset_id,
+        user_id=current_user.id,
+        title=dataset.title,
+    )
 
 
 @router.get("/{dataset_id}/versions", response_model=list[DatasetVersionOut])
@@ -298,4 +388,10 @@ def get_versions(
     dataset = db.query(Dataset).filter(Dataset.id == dataset_id).first()
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
-    return db.query(DatasetVersion).filter(DatasetVersion.dataset_id == dataset_id).order_by(DatasetVersion.version_number.desc()).all()
+    return (
+        db.query(DatasetVersion)
+        .filter(DatasetVersion.dataset_id == dataset_id)
+        .order_by(DatasetVersion.version_number.desc())
+        .all()
+    )
+

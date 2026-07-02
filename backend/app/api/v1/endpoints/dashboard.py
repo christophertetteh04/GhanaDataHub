@@ -4,7 +4,16 @@ from sqlalchemy import func, extract
 from datetime import datetime, timedelta
 
 from app.core.database import get_db
-from app.models.models import Dataset, User, Organization, VisibilityEnum, UserRole
+from app.models.models import (
+    Dataset,
+    User,
+    Organization,
+    Category,
+    Notification,
+    ActivityLog,
+    VisibilityEnum,
+    UserRole,
+)
 from app.schemas.schemas import DatasetOut
 from app.api.v1.deps import get_current_user
 
@@ -56,6 +65,69 @@ def get_dashboard(
         count = base_q.filter(Dataset.visibility == vis).count()
         visibility_stats.append({"visibility": vis.value, "count": count})
 
+    my_datasets_count = db.query(func.count(Dataset.id)).filter(
+        Dataset.owner_id == current_user.id
+    ).scalar() or 0
+
+    my_organization_name = (
+        current_user.organization.name if current_user.organization else None
+    )
+
+    unread_notifications_count = (
+        db.query(func.count(Notification.id))
+        .filter(
+            Notification.user_id == current_user.id,
+            Notification.is_read.is_(False),
+        )
+        .scalar()
+        or 0
+    )
+
+    datasets_by_category = (
+        base_q.join(Category, Dataset.category)
+        .with_entities(Category.name.label("category"), func.count(Dataset.id).label("count"))
+        .group_by(Category.name)
+        .order_by(func.count(Dataset.id).desc())
+        .limit(5)
+        .all()
+    )
+    datasets_by_category = [
+        {"category": category, "count": count}
+        for category, count in datasets_by_category
+    ]
+
+    activity_q = db.query(
+        ActivityLog.action,
+        ActivityLog.resource_type,
+        ActivityLog.resource_id,
+        ActivityLog.created_at,
+        User.email.label("user_email"),
+        User.full_name.label("user_full_name"),
+    ).outerjoin(User, ActivityLog.user)
+
+    if current_user.role != UserRole.super_admin:
+        activity_q = activity_q.filter(ActivityLog.user_id == current_user.id)
+
+    recent_activity = [
+        {
+            "action": row.action,
+            "resource_type": row.resource_type,
+            "resource_id": row.resource_id,
+            "created_at": row.created_at,
+            "user_email": row.user_email,
+            "user_full_name": row.user_full_name,
+        }
+        for row in activity_q.order_by(ActivityLog.created_at.desc()).limit(5).all()
+    ]
+
+    my_recent_uploads = (
+        db.query(Dataset)
+        .filter(Dataset.owner_id == current_user.id)
+        .order_by(Dataset.created_at.desc())
+        .limit(5)
+        .all()
+    )
+
     return {
         "total_datasets": total_datasets,
         "total_users": total_users,
@@ -65,4 +137,10 @@ def get_dashboard(
         "recent_uploads": [DatasetOut.model_validate(d) for d in recent_uploads],
         "monthly_uploads": monthly_uploads,
         "datasets_by_visibility": visibility_stats,
+        "my_datasets_count": my_datasets_count,
+        "my_organization_name": my_organization_name,
+        "unread_notifications_count": unread_notifications_count,
+        "datasets_by_category": datasets_by_category,
+        "recent_activity": recent_activity,
+        "my_recent_uploads": [DatasetOut.model_validate(d) for d in my_recent_uploads],
     }

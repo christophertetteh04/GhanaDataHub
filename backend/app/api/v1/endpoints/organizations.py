@@ -7,6 +7,8 @@ from app.core.database import get_db
 from app.models.models import User, Organization, UserRole, Notification
 from app.schemas.schemas import OrgCreate, OrgOut, OrgInvite, UserOut
 from app.api.v1.deps import get_current_user, require_roles
+from app.core.middleware import get_bound_logger
+
 
 router = APIRouter()
 
@@ -35,7 +37,11 @@ def create_org(
         current_user.role = UserRole.org_admin
     db.commit()
     db.refresh(org)
+
+    logger = get_bound_logger(__name__)
+    logger.info('org_created', org_id=org.id, org_name=org.name, created_by_user_id=current_user.id)
     return org
+
 
 
 @router.get("/", response_model=list[OrgOut])
@@ -82,7 +88,17 @@ def invite_member(
     )
     db.add(notif)
     db.commit()
+
+    logger = get_bound_logger(__name__)
+    logger.info(
+        'member_invited',
+        org_id=org_id,
+        invited_email=user.email,
+        invited_by_user_id=current_user.id,
+    )
+
     return {"message": f"User {user.email} added to organization"}
+
 
 
 @router.delete("/{org_id}/members/{user_id}")
@@ -97,4 +113,8 @@ def remove_member(
         raise HTTPException(status_code=404, detail="Member not found")
     user.organization_id = None
     db.commit()
+
+    logger = get_bound_logger(__name__)
+    # no spec'd log for remove_member
     return {"message": "Member removed"}
+
