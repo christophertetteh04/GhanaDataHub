@@ -56,3 +56,51 @@ def auth_headers(client, registered_user):
     })
     token = resp.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(autouse=True)
+def silence_logging():
+    '''Suppress log output during tests so results are readable.'''
+    import logging
+    logging.disable(logging.CRITICAL)
+    yield
+    logging.disable(logging.NOTSET)
+
+
+@pytest.fixture
+def second_user(client):
+    '''A second registered user - becomes viewer (not super_admin).'''
+    resp = client.post('/api/v1/auth/register', json={
+        'email': 'viewer@example.com', 'username': 'vieweruser',
+        'full_name': 'Viewer User', 'password': 'Password123',
+    })
+    assert resp.status_code == 201
+    return resp.json()
+
+
+@pytest.fixture
+def viewer_headers(client, second_user):
+    '''Auth headers for the viewer user.'''
+    resp = client.post('/api/v1/auth/login', json={
+        'email': 'viewer@example.com', 'password': 'Password123'
+    })
+    return {'Authorization': f'Bearer {resp.json()["access_token"]}'}
+
+
+@pytest.fixture
+def csv_bytes():
+    '''Minimal CSV content as bytes for upload tests.'''
+    import io
+    data = b'region,population,gdp_usd\nGreater Accra,5400000,12000000000\nAshanti,5310000,9000000000'
+    return ('ghana_regions.csv', io.BytesIO(data), 'text/csv')
+
+
+@pytest.fixture
+def uploaded_dataset(client, auth_headers, csv_bytes):
+    '''A pre-uploaded public dataset for tests needing an existing dataset.'''
+    resp = client.post('/api/v1/datasets/', headers=auth_headers,
+        data={'title': 'Ghana Regions Data', 'visibility': 'public', 'tags': 'ghana,regions'},
+        files={'file': csv_bytes})
+    assert resp.status_code == 201, resp.json()
+    return resp.json()
+
