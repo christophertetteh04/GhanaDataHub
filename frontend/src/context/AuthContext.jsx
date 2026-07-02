@@ -35,6 +35,8 @@ export function AuthProvider({ children }) {
     setUser(me.data);
     setLoggedUser(me.data.id, me.data.email);
     logInfo("user_logged_in", { userId: me.data.id, role: me.data.role });
+    // Post-login destination: always go to the protected dashboard.
+    // (Return is kept for callers that may do additional logic.)
     return me.data;
   };
 

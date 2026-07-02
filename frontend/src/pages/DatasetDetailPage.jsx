@@ -3,9 +3,31 @@ import { useParams, useNavigate } from "react-router-dom";
 import { datasetsApi, shareApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
-import { ArrowLeft, Download, Share2, Clock, User, Tag, FileText, History, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  Share2,
+  User,
+  Tag,
+  History,
+  X,
+  Copy,
+  Link2,
+  ChevronRight,
+  Eye,
+  Clock,
+  FileText,
+  Shield,
+  Code2,
+  Dot,
+} from "lucide-react";
 
-const VIS_LABELS = { public: "Public", private: "Private", organization: "Organization", shared_link: "Shared Link" };
+const VIS_LABELS = {
+  public: "Public",
+  private: "Private",
+  organization: "Organization",
+  shared_link: "Shared Link",
+};
 
 function ShareModal({ datasetId, onClose }) {
   const [hours, setHours] = useState("");
@@ -26,34 +48,85 @@ function ShareModal({ datasetId, onClose }) {
     }
   };
 
-  const link = result ? `${window.location.origin}/shared/${result.token}` : null;
+  const link = result
+    ? `${window.location.origin}/shared/${result.token}`
+    : null;
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="modal" style={{ maxWidth: 420 }}>
         <div className="modal-header">
           <div className="modal-title">Share Dataset</div>
-          <button onClick={onClose} style={{ background: "none", border: "none" }}><X size={18} /></button>
+          <button
+            onClick={onClose}
+            style={{ background: "none", border: "none" }}
+          >
+            <X size={18} />
+          </button>
         </div>
         {!result ? (
           <>
             <div className="form-group">
-              <label className="form-label">Expires in (hours) — leave blank for never</label>
-              <input className="form-input" type="number" min="1" value={hours} onChange={e => setHours(e.target.value)} placeholder="e.g. 24" />
+              <label className="form-label">
+                Expires in (hours) — leave blank for never
+              </label>
+              <input
+                className="form-input"
+                type="number"
+                min="1"
+                value={hours}
+                onChange={(e) => setHours(e.target.value)}
+                placeholder="e.g. 24"
+              />
             </div>
-            <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={create} disabled={loading}>
+            <button
+              className="btn btn-primary"
+              style={{ width: "100%", justifyContent: "center" }}
+              onClick={create}
+              disabled={loading}
+            >
               {loading ? <span className="spinner" /> : "Generate Link"}
             </button>
           </>
         ) : (
           <div>
-            <p style={{ fontSize: 13, color: "var(--gray-600)", marginBottom: 10 }}>Share this link:</p>
-            <div style={{ background: "var(--gray-100)", borderRadius: 7, padding: "10px 12px", fontSize: 12, wordBreak: "break-all", marginBottom: 12 }}>
+            <p
+              style={{
+                fontSize: 13,
+                color: "var(--gray-600)",
+                marginBottom: 10,
+              }}
+            >
+              Share this link:
+            </p>
+            <div
+              style={{
+                background: "var(--gray-100)",
+                borderRadius: 7,
+                padding: "10px 12px",
+                fontSize: 12,
+                wordBreak: "break-all",
+                marginBottom: 12,
+              }}
+            >
               {link}
             </div>
-            {result.expires_at && <p style={{ fontSize: 12, color: "var(--gray-500)" }}>Expires: {new Date(result.expires_at).toLocaleString()}</p>}
-            <button className="btn btn-secondary" style={{ marginTop: 12, width: "100%", justifyContent: "center" }}
-              onClick={() => { navigator.clipboard.writeText(link); toast.success("Copied!"); }}>
+            {result.expires_at && (
+              <p style={{ fontSize: 12, color: "var(--gray-500)" }}>
+                Expires: {new Date(result.expires_at).toLocaleString()}
+              </p>
+            )}
+            <button
+              className="btn btn-secondary"
+              style={{ marginTop: 12, width: "100%", justifyContent: "center" }}
+              onClick={() => {
+                navigator.clipboard.writeText(link);
+                toast.success("Copied!");
+              }}
+            >
               Copy Link
             </button>
           </div>
@@ -73,11 +146,22 @@ export default function DatasetDetailPage() {
   const [tab, setTab] = useState("info");
 
   useEffect(() => {
-    datasetsApi.get(id).then(r => setDataset(r.data)).catch(() => navigate("/datasets"));
-    datasetsApi.versions(id).then(r => setVersions(r.data)).catch(() => {});
+    datasetsApi
+      .get(id)
+      .then((r) => setDataset(r.data))
+      .catch(() => navigate("/datasets"));
+    datasetsApi
+      .versions(id)
+      .then((r) => setVersions(r.data))
+      .catch(() => {});
   }, [id]);
 
-  if (!dataset) return <div style={{ padding: 48, textAlign: "center" }}><span className="spinner" style={{ width: 28, height: 28 }} /></div>;
+  if (!dataset)
+    return (
+      <div style={{ padding: 48, textAlign: "center" }}>
+        <span className="spinner" style={{ width: 28, height: 28 }} />
+      </div>
+    );
 
   const isOwner = user?.id === dataset.owner_id;
   const canShare = isOwner || user?.role === "super_admin";
@@ -88,106 +172,427 @@ export default function DatasetDetailPage() {
     return `${(b / 1024 ** 2).toFixed(1)} MB`;
   };
 
+  const formatShortDate = (value) => {
+    if (!value) return "—";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    });
+  };
+
+  const formatPrettyDate = (value) => {
+    if (!value) return "—";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    });
+  };
+
   return (
     <div>
-      <button className="btn btn-secondary btn-sm" style={{ marginBottom: 16 }} onClick={() => navigate("/datasets")}>
-        <ArrowLeft size={13} /> Back to Datasets
-      </button>
-
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ fontFamily: "Sora, sans-serif", fontSize: 20, fontWeight: 700, marginBottom: 8 }}>{dataset.title}</h2>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-              <span className={`badge vis-${dataset.visibility}`}>{VIS_LABELS[dataset.visibility]}</span>
-              {dataset.file_type && <span className="badge badge-gray">{dataset.file_type}</span>}
-              {dataset.category && <span className="badge badge-blue">{dataset.category.name}</span>}
-              <span className="badge badge-green">v{dataset.version}</span>
-            </div>
-            {dataset.tags?.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-                {dataset.tags.map(t => <span key={t.id} className="tag-chip"><Tag size={10} />{t.name}</span>)}
-              </div>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            {canShare && (
-              <button className="btn btn-secondary" onClick={() => setShowShare(true)}>
-                <Share2 size={14} /> Share
-              </button>
-            )}
-            {dataset.file_path && (
-              <a href={`http://localhost:8000/uploads/${dataset.file_path.split("/").pop()}`} download
-                className="btn btn-primary">
-                <Download size={14} /> Download
-              </a>
-            )}
-          </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 18,
+        }}
+      >
+        <div>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => navigate("/datasets")}
+          >
+            <ArrowLeft size={13} /> Back to Datasets
+          </button>
         </div>
-
-        <div style={{ display: "flex", gap: 24, fontSize: 13, color: "var(--gray-500)", flexWrap: "wrap" }}>
-          {dataset.owner && (
-            <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <User size={13} /> {dataset.owner.full_name}
-            </span>
-          )}
-          <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <Clock size={13} /> {new Date(dataset.created_at).toLocaleDateString()}
-          </span>
-          <span><Download size={13} style={{ display: "inline", marginRight: 4 }} />{dataset.download_count} downloads</span>
-          <span><FileText size={13} style={{ display: "inline", marginRight: 4 }} />{formatSize(dataset.file_size)}</span>
-          {dataset.license && <span>License: {dataset.license}</span>}
+        <div style={{ fontSize: 13, color: "var(--gray-600)" }}>
+          {dataset.download_count} downloads ·{" "}
+          {new Date(dataset.created_at).toLocaleDateString()}
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-        {["info", "versions"].map(t => (
-          <button key={t} className={`btn ${tab === t ? "btn-primary" : "btn-secondary"} btn-sm`}
-            onClick={() => setTab(t)}>
-            {t === "info" ? "Information" : <><History size={13} /> Version History</>}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 320px",
+          gap: 18,
+          alignItems: "start",
+        }}
+      >
+        {/* Main column */}
+        <div>
+          <div className="card" style={{ marginBottom: 18 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <h2
+                  style={{
+                    fontFamily: "Sora, sans-serif",
+                    fontSize: 22,
+                    fontWeight: 700,
+                    marginBottom: 8,
+                  }}
+                >
+                  {dataset.title}
+                </h2>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    marginBottom: 8,
+                  }}
+                >
+                  <span className={`badge vis-${dataset.visibility}`}>
+                    {VIS_LABELS[dataset.visibility]}
+                  </span>
+                  {dataset.file_type && (
+                    <span className="badge badge-gray">
+                      {dataset.file_type}
+                    </span>
+                  )}
+                  {dataset.category && (
+                    <span className="badge badge-blue">
+                      {dataset.category.name}
+                    </span>
+                  )}
+                  <span className="badge badge-green">v{dataset.version}</span>
+                </div>
+                <div style={{ color: "var(--gray-600)", marginBottom: 12 }}>
+                  {dataset.description ? (
+                    dataset.description.substring(0, 400)
+                  ) : (
+                    <em style={{ color: "var(--gray-400)" }}>
+                      No description provided.
+                    </em>
+                  )}
+                </div>
+                {dataset.tags?.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {dataset.tags.map((t) => (
+                      <span key={t.id} className="tag-chip">
+                        <Tag size={12} />
+                        {t.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <h4
+              style={{ fontFamily: "Sora", fontWeight: 600, marginBottom: 12 }}
+            >
+              Dataset Info
+            </h4>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, 1fr)",
+                gap: 12,
+                fontSize: 13,
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 12, color: "var(--gray-500)" }}>
+                  Size
+                </div>
+                <div style={{ fontWeight: 600 }}>
+                  {formatSize(dataset.file_size)}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: "var(--gray-500)" }}>
+                  Downloads
+                </div>
+                <div style={{ fontWeight: 600 }}>{dataset.download_count}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: "var(--gray-500)" }}>
+                  Uploaded
+                </div>
+                <div style={{ fontWeight: 600 }}>
+                  {new Date(dataset.created_at).toLocaleDateString()}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: "var(--gray-500)" }}>
+                  License
+                </div>
+                <div style={{ fontWeight: 600 }}>{dataset.license || "—"}</div>
+              </div>
+            </div>
+
+            {dataset.file_name && (
+              <div
+                style={{
+                  marginTop: 18,
+                  padding: 12,
+                  background: "var(--gray-100)",
+                  borderRadius: 8,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--gray-500)",
+                    marginBottom: 4,
+                  }}
+                >
+                  File
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>
+                      {dataset.file_name}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--gray-400)" }}>
+                      {formatSize(dataset.file_size)}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {dataset.file_path && (
+                      <a
+                        href={`http://localhost:8000/uploads/${dataset.file_path.split("/").pop()}`}
+                        download
+                        className="btn btn-outline"
+                      >
+                        <Download size={12} /> Download
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Version history as full width below main info when tab is versions */}
+          {tab === "versions" && (
+            <div className="card" style={{ marginTop: 16 }}>
+              <h4
+                style={{
+                  fontFamily: "Sora",
+                  fontWeight: 600,
+                  marginBottom: 10,
+                }}
+              >
+                Version History
+              </h4>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Version</th>
+                      <th>File</th>
+                      <th>Change Summary</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {versions.map((v) => (
+                      <tr key={v.id}>
+                        <td>
+                          <span className="badge badge-green">
+                            v{v.version_number}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: 12 }}>{v.file_name || "—"}</td>
+                        <td style={{ color: "var(--gray-600)" }}>
+                          {v.change_summary || "—"}
+                        </td>
+                        <td style={{ fontSize: 12 }}>
+                          {new Date(v.created_at).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right action column */}
+        <div>
+          <div
+            className="card"
+            style={{ display: "flex", flexDirection: "column", gap: 10 }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>Actions</div>
+              <div style={{ color: "var(--gray-500)", fontSize: 12 }}>
+                v{dataset.version}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {dataset.file_path && (
+                <a
+                  href={`http://localhost:8000/uploads/${dataset.file_path.split("/").pop()}`}
+                  download
+                  className="btn btn-primary"
+                  style={{ justifyContent: "center" }}
+                >
+                  <Download size={14} /> Download Dataset
+                </a>
+              )}
+
+              {canShare && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowShare(true)}
+                >
+                  <Share2 size={14} /> Share
+                </button>
+              )}
+
+              <button
+                className="btn btn-outline"
+                onClick={() => {
+                  navigator.clipboard.writeText(
+                    `${window.location.origin}/api/datasets/${dataset.id}`,
+                  );
+                  toast.success("Copied API endpoint");
+                }}
+              >
+                <Copy size={13} /> Copy API
+              </button>
+
+              <div
+                style={{ fontSize: 12, color: "var(--gray-500)", marginTop: 6 }}
+              >
+                <div style={{ marginBottom: 6 }}>
+                  <strong style={{ fontWeight: 600 }}>
+                    {dataset.owner?.full_name || "—"}
+                  </strong>
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <User size={12} />{" "}
+                  <div style={{ fontSize: 13 }}>
+                    {dataset.owner?.email || "—"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card" style={{ marginTop: 12 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>Version History</div>
+              <button
+                className="btn btn-sm btn-secondary"
+                onClick={() => setTab("versions")}
+              >
+                View all
+              </button>
+            </div>
+            <div style={{ marginTop: 8 }}>
+              {versions.slice(0, 4).map((v) => (
+                <div
+                  key={v.id}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    padding: "8px 0",
+                    borderBottom: "1px solid var(--gray-100)",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>
+                      v{v.version_number}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--gray-500)" }}>
+                      {v.file_name || "—"}
+                    </div>
+                  </div>
+                  <div
+                    style={{ display: "flex", gap: 8, alignItems: "center" }}
+                  >
+                    <a
+                      href={`http://localhost:8000/uploads/${v.file_path?.split("/").pop()}`}
+                      className="btn btn-sm btn-outline"
+                      download
+                    >
+                      <Download size={12} />
+                    </a>
+                    <button
+                      className="btn btn-sm btn-outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          `${window.location.origin}/api/datasets/${dataset.id}/versions/${v.id}`,
+                        );
+                        toast.success("Copied version link");
+                      }}
+                    >
+                      <Link2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer tab controls for small screens */}
+      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+        {["info", "versions"].map((t) => (
+          <button
+            key={t}
+            className={`btn ${tab === t ? "btn-primary" : "btn-secondary"} btn-sm`}
+            onClick={() => setTab(t)}
+          >
+            {t === "info" ? (
+              "Information"
+            ) : (
+              <>
+                <History size={13} /> Version History
+              </>
+            )}
           </button>
         ))}
       </div>
 
-      {tab === "info" && (
-        <div className="card">
-          <h4 style={{ fontFamily: "Sora", fontWeight: 600, marginBottom: 10 }}>Description</h4>
-          <p style={{ fontSize: 14, color: "var(--gray-600)", lineHeight: 1.7 }}>
-            {dataset.description || <em style={{ color: "var(--gray-400)" }}>No description provided.</em>}
-          </p>
-          {dataset.file_name && (
-            <div style={{ marginTop: 20, padding: 14, background: "var(--gray-100)", borderRadius: 8 }}>
-              <div style={{ fontSize: 12, color: "var(--gray-500)", marginBottom: 4 }}>File</div>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>{dataset.file_name}</div>
-              <div style={{ fontSize: 12, color: "var(--gray-400)" }}>{formatSize(dataset.file_size)}</div>
-            </div>
-          )}
-        </div>
+      {showShare && (
+        <ShareModal
+          datasetId={dataset.id}
+          onClose={() => setShowShare(false)}
+        />
       )}
-
-      {tab === "versions" && (
-        <div className="card">
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr><th>Version</th><th>File</th><th>Change Summary</th><th>Date</th></tr>
-              </thead>
-              <tbody>
-                {versions.map(v => (
-                  <tr key={v.id}>
-                    <td><span className="badge badge-green">v{v.version_number}</span></td>
-                    <td style={{ fontSize: 12 }}>{v.file_name || "—"}</td>
-                    <td style={{ color: "var(--gray-600)" }}>{v.change_summary || "—"}</td>
-                    <td style={{ fontSize: 12 }}>{new Date(v.created_at).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {showShare && <ShareModal datasetId={dataset.id} onClose={() => setShowShare(false)} />}
     </div>
   );
 }

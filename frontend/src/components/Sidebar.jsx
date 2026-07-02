@@ -1,8 +1,15 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
-  LayoutDashboard, Database, Search, Building2,
-  Users, Bell, FileText, LogOut, Tag
+  LayoutDashboard,
+  Database,
+  Search,
+  Building2,
+  Users,
+  Bell,
+  FileText,
+  LogOut,
+  Tag,
 } from "lucide-react";
 
 const NAV = [
@@ -50,43 +57,74 @@ export default function Sidebar() {
   const navigate = useNavigate();
 
   const isAdmin = user?.role === "super_admin" || user?.role === "org_admin";
-  const initials = user?.full_name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+  const initials = user?.full_name
+    ?.split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  const displayRole = user?.role ? user.role.replace("_", " ") : "";
 
   return (
-    <aside className="sidebar">
+    <aside className="sidebar sidebar-premium">
       <style>{`
-        .sidebar {
-          background: linear-gradient(180deg, var(--green) 0%, #075236 100%);
-          padding: 14px;
+        .sidebar-premium {
+          background: var(--white);
+          color: var(--gray-900);
+          border-right: 1px solid var(--gray-300);
+          padding: 14px 0;
+          width: 240px;
         }
 
         .sidebar-logo {
-          padding: 8px 6px 18px;
-          border-bottom: 1px solid rgba(255,255,255,0.12);
-          margin-bottom: 8px;
+          padding: 18px 18px 12px;
+          margin-bottom: 6px;
         }
 
         .brand {
+          display: flex;
+          align-items: center;
+          gap: 10px;
           min-height: 48px;
         }
 
         .logo-mark {
-          box-shadow: 0 10px 22px rgba(0,0,0,0.16);
+          width: 34px;
+          height: 34px;
+          border-radius: 10px;
+          background: rgba(0,107,63,0.08);
+          color: var(--green);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: 'Sora', sans-serif;
+          font-weight: 800;
+          box-shadow: 0 10px 22px rgba(0,0,0,0.06);
+          flex-shrink: 0;
         }
 
         .brand-name {
-          letter-spacing: 0;
+          font-family: 'Sora', sans-serif;
+          font-size: 15px;
+          font-weight: 800;
+          line-height: 1.1;
+          color: var(--green);
         }
 
         .brand-sub {
-          opacity: 0.62;
+          font-size: 10px;
+          opacity: 0.65;
+          font-weight: 500;
+          margin-top: 2px;
+          color: var(--gray-700);
         }
 
         .sidebar-nav {
-          padding: 8px 0;
+          padding: 8px 10px;
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 22px;
         }
 
         .sidebar-group {
@@ -94,37 +132,37 @@ export default function Sidebar() {
           gap: 10px;
         }
 
-        .sidebar-nav-list {
-          display: grid;
-          gap: 12px;
-        }
-
         .nav-section-label {
           padding: 0 10px;
-          color: rgba(255,255,255,0.46);
-          opacity: 1;
-          font-size: 10px;
+          font-size: 11px;
           text-transform: uppercase;
           letter-spacing: 0.12em;
-          font-weight: 800;
+          font-weight: 900;
+          color: var(--gray-500);
+        }
+
+        .sidebar-nav-list {
+          display: grid;
+          gap: 10px;
         }
 
         .nav-item {
-          min-height: 42px;
+          min-height: 44px;
           width: 100%;
           border-radius: 12px;
-          color: rgba(255,255,255,0.74);
+          color: var(--gray-700);
           margin: 0;
           padding: 0 12px;
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          gap: 10px;
+          justify-content: flex-start;
+          gap: 11px;
           background: transparent;
           border: 0;
           font-size: 13.5px;
           font-weight: 650;
-          transition: all 0.2s ease;
+          transition: background-color 0.15s ease, transform 0.15s ease, color 0.15s ease;
+          position: relative;
         }
 
         .nav-item-main {
@@ -134,81 +172,193 @@ export default function Sidebar() {
           min-width: 0;
         }
 
+        .nav-item svg {
+          color: #9CA3AF;
+          transition: color 0.15s ease;
+        }
+
+        .nav-item span {
+          color: #9CA3AF;
+        }
+
         .nav-item:hover {
-          background: rgba(255,255,255,0.1);
-          color: var(--white);
+          background: var(--green-pale);
           transform: translateX(2px);
         }
 
+        .nav-item:hover svg,
+        .nav-item:hover span {
+          color: var(--green);
+        }
+
         .nav-item.active {
-          background: var(--white);
+          background: var(--green-pale);
           color: var(--green);
           font-weight: 800;
-          box-shadow: 0 12px 28px rgba(0,0,0,0.14);
+        }
+
+        .nav-item.active svg,
+        .nav-item.active span {
+          color: var(--green);
+        }
+
+        .nav-item.active::before {
+          content: "";
+          position: absolute;
+          left: 0;
+          top: 8px;
+          bottom: 8px;
+          width: 3px;
+          background: var(--green);
+          border-radius: 999px;
         }
 
         .sidebar-footer {
-          padding: 0;
+          padding: 12px 10px 0;
           border-top: 0;
+          margin-top: auto;
         }
 
-        .sidebar-user-card {
-          border: 1px solid rgba(255,255,255,0.14);
+        .upgrade-card {
           border-radius: 16px;
-          background: rgba(255,255,255,0.1);
-          box-shadow: 0 14px 32px rgba(0,0,0,0.12);
-          padding: 14px;
+          padding: 14px 14px;
+          background: linear-gradient(135deg, var(--green-pale), var(--white));
+          border: 1px solid rgba(0,107,63,0.12);
+          box-shadow: 0 18px 40px rgba(0,0,0,0.06);
+          margin-bottom: 14px;
+          position: relative;
+          overflow: hidden;
         }
 
-        .user-card {
-          padding: 0;
-          border-radius: 0;
+        .upgrade-card::after {
+          content: "";
+          position: absolute;
+          inset: -40px -40px auto auto;
+          width: 180px;
+          height: 180px;
+          border-radius: 50%;
+          background: rgba(0,107,63,0.08);
+          transform: rotate(12deg);
+        }
+
+        .upgrade-title {
+          font-family: 'Sora', sans-serif;
+          font-weight: 900;
+          color: var(--green);
+          font-size: 14px;
+          margin-bottom: 6px;
+          position: relative;
+          z-index: 1;
+        }
+
+        .upgrade-sub {
+          font-size: 12.5px;
+          color: var(--gray-700);
+          font-weight: 600;
+          opacity: 0.9;
+          position: relative;
+          z-index: 1;
+          margin-bottom: 12px;
+          line-height: 1.35;
+        }
+
+        .upgrade-btn {
+          background: var(--green);
+          color: var(--white);
+          border: 0;
+          border-radius: 12px;
+          padding: 10px 12px;
+          font-weight: 900;
+          font-size: 13px;
+          transition: transform 0.15s ease, background-color 0.15s ease;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          position: relative;
+          z-index: 1;
+        }
+
+        .upgrade-btn:hover {
+          transform: translateY(-1px);
+          background: #005a35;
+        }
+
+        .user-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
           gap: 10px;
-          margin-bottom: 13px;
+          border-radius: 16px;
+          padding: 12px 12px;
+          background: var(--green-pale);
+          border: 1px solid rgba(0,107,63,0.12);
+        }
+
+        .user-left {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
         }
 
         .avatar {
           width: 36px;
           height: 36px;
           border-radius: 12px;
-          background: var(--white);
+          background: rgba(0,107,63,0.08);
           color: var(--green);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 900;
+          font-size: 12px;
+          flex-shrink: 0;
+        }
+
+        .user-info {
+          min-width: 0;
         }
 
         .user-name {
-          color: var(--white);
           font-size: 13px;
-          font-weight: 800;
+          font-weight: 900;
+          color: var(--gray-900);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 120px;
         }
 
         .user-role {
-          color: rgba(255,255,255,0.6);
-          font-weight: 600;
-        }
-
-        .sidebar-card-title {
-          color: var(--white);
-          font-family: 'Sora', sans-serif;
-          font-size: 13px;
+          font-size: 11px;
           font-weight: 700;
-          line-height: 1.35;
-          margin-bottom: 12px;
+          color: var(--gray-500);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          text-transform: capitalize;
         }
 
-        .sidebar-logout {
-          min-height: 36px;
+        .logout-btn {
+          min-width: 36px;
+          height: 36px;
+          border-radius: 12px;
+          border: 0;
+          background: rgba(255,255,255,0.7);
+          color: var(--green);
+          display: inline-flex;
+          align-items: center;
           justify-content: center;
-          background: var(--white);
-          color: var(--green);
-          font-weight: 800;
-          box-shadow: none;
+          transition: background-color 0.15s ease, transform 0.15s ease;
         }
 
-        .sidebar-logout:hover {
-          background: var(--green-pale);
-          color: var(--green);
+        .logout-btn:hover {
+          background: rgba(232,245,239,1);
           transform: translateY(-1px);
         }
+
+        /* Mobile: keep existing index.css behavior (slide out). */
       `}</style>
 
       <div className="sidebar-logo">
@@ -222,29 +372,48 @@ export default function Sidebar() {
       </div>
 
       <nav className="sidebar-nav">
-        <NavGroup label="Main Menu" items={NAV} />
-        <NavGroup label="Features" items={FEATURE_NAV} />
-        {isAdmin && <NavGroup label="Admin" items={ADMIN_NAV} />}
+        <NavGroup label="MAIN" items={NAV} />
+        <NavGroup label="MANAGE" items={FEATURE_NAV} />
+        {isAdmin && <NavGroup label="SYSTEM" items={ADMIN_NAV} />}
       </nav>
 
       <div className="sidebar-footer">
-        <div className="sidebar-user-card">
-          <div className="user-card">
+        <div className="upgrade-card">
+          <div className="upgrade-title">Upgrade to Pro</div>
+          <div className="upgrade-sub">
+            Unlock advanced analytics, faster processing, and priority support.
+          </div>
+          {/* If /pricing exists it will work; otherwise it will simply navigate without visual break. */}
+          <a
+            className="upgrade-btn"
+            href="/pricing"
+            onClick={(e) => {
+              e.preventDefault();
+              navigate("/pricing");
+            }}
+          >
+            Get Premium
+          </a>
+        </div>
+
+        <div className="user-row">
+          <div className="user-left">
             <div className="avatar">{initials}</div>
             <div className="user-info">
               <div className="user-name">{user?.full_name}</div>
-              <div className="user-role">{user?.role?.replace("_", " ")}</div>
+              <div className="user-role">{displayRole}</div>
             </div>
           </div>
-          <div className="sidebar-card-title">Workspace access secured</div>
+
           <button
-            className="nav-item sidebar-logout"
-            onClick={() => { logout(); navigate("/login"); }}
+            className="logout-btn"
+            aria-label="Log out"
+            onClick={() => {
+              logout();
+              navigate("/login");
+            }}
           >
-            <span className="nav-item-main">
-              <LogOut size={15} />
-              <span>Sign out</span>
-            </span>
+            <LogOut size={16} />
           </button>
         </div>
       </div>

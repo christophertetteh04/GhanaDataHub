@@ -20,7 +20,7 @@ export default function LoginPage() {
     try {
       await login(form.email, form.password);
       toast.success("Welcome back!");
-      navigate("/");
+      navigate("/dashboard");
     } catch (err) {
       const message = err.response?.data?.detail || "Login failed";
       setAuthError(message);
@@ -31,7 +31,11 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthLayout icon={Database} title="Welcome back" subtitle="Sign in to access your datasets">
+    <AuthLayout
+      icon={Database}
+      title="Welcome back"
+      subtitle="Sign in to access your datasets"
+    >
       <form className="authx-form" onSubmit={handle}>
         <div className="authx-field">
           <label className="authx-label">Email address</label>
