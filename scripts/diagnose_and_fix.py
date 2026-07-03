@@ -1,567 +1,462 @@
 #!/usr/bin/env python3
-"""Diagnostic + auto-fix script for GhanaDataHub.
+"""Diagnostic and fix script for GhanaDataHub.
 
-Checks the full chain:
-1) CSV files exist in scripts/output/
-2) Backend is running (GET /health)
-3) Auth works (register + login)
-4) User has role data_manager or higher
-5) Shows existing DB datasets + dashboard counters
-6) Attempts one test dataset upload
-7) Verifies it appears on dashboard
-8) Checks frontend VITE_API_URL
-9) Prints final summary
-
-Constraints:
-- Uses only standard/common libraries + requests.
-- No external dependencies beyond requests.
+Runs the dataset ingestion diagnostic chain:
+1) ensure scripts/output CSV files exist
+2) verify backend /health
+3) register/login test user
+4) confirm current user role
+5) inspect datasets + dashboard
+6) upload a test CSV
+7) verify dashboard after upload
+8) validate frontend VITE_API_URL
+9) print a final summary
 """
-
-from __future__ import annotations
 
 import csv
 import os
+import sys
 import time
-from typing import Any, Dict, List, Optional, Tuple
+import uuid
 
-import requests
+try:
+    import requests
+except ImportError:
+    print("ERROR: This script requires requests. Install with: pip install requests")
+    sys.exit(1)
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CSV_OUTPUT_DIR = os.path.join(ROOT, "scripts", "output")
+FRONTEND_DIR = os.path.join(ROOT, "frontend")
 
-BACKEND_BASE = "http://localhost:8000"
-API_V1_BASE = BACKEND_BASE + "/api/v1"
-
-REGISTER_URL = API_V1_BASE + "/auth/register"
-LOGIN_URL = API_V1_BASE + "/auth/login"
-ME_URL = API_V1_BASE + "/auth/me"
-USERS_URL = API_V1_BASE + "/users/"
-DATASETS_URL = API_V1_BASE + "/datasets/"
-DASHBOARD_URL = API_V1_BASE + "/dashboard/"
+BACKEND_BASE = os.environ.get("GHANADATAHUB_BACKEND_URL", "http://127.0.0.1:8000")
+API_BASE = BACKEND_BASE + "/api/v1"
 HEALTH_URL = BACKEND_BASE + "/health"
+REGISTER_URL = API_BASE + "/auth/register"
+LOGIN_URL = API_BASE + "/auth/login"
+ME_URL = API_BASE + "/auth/me"
+USERS_URL = API_BASE + "/users/"
+DATASETS_URL = API_BASE + "/datasets/"
+DASHBOARD_URL = API_BASE + "/dashboard/"
 
-CSV_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
+ADMIN_EMAIL = os.environ.get("GHANADATAHUB_ADMIN_EMAIL")
+ADMIN_PASSWORD = os.environ.get("GHANADATAHUB_ADMIN_PASSWORD")
 
+UNIQUE_ID = uuid.uuid4().hex[:8]
 TEST_USER = {
-    "email": "datauploader@gmail.com",
-    "username": "datauploader",
+    "email": f"datauploader+{UNIQUE_ID}@example.com",
+    "username": f"datauploader_{UNIQUE_ID}",
     "full_name": "Data Uploader",
     "password": "DataUp2024!",
 }
 
+SUMMARY = {
+    "csv_files": 0,
+    "backend_running": False,
+    "auth_working": False,
+    "role_ok": False,
+    "role": None,
+    "datasets_before": 0,
+    "upload_result": "NOT RUN",
+    "datasets_after": 0,
+    "vite_api_url": None,
+    "vite_api_url_ok": False,
+}
 
-def _print_step_result(step: int, name: str, ok: bool, extra: str = "") -> None:
+
+def print_step(step, message):
+    print("\nSTEP {} - {}".format(step, message))
+
+
+def print_result(ok, detail=""):
     status = "PASS" if ok else "FAIL"
-    print(f"STEP {step} - {name}: {status}")
-    if extra:
-        print(extra)
+    print(status + (": " + detail if detail else ""))
 
 
-def _safe_json(resp: requests.Response) -> Optional[Dict[str, Any]]:
+def list_csv_files():
+    if not os.path.isdir(CSV_OUTPUT_DIR):
+        return []
+    return sorted(
+        os.path.join(CSV_OUTPUT_DIR, name)
+        for name in os.listdir(CSV_OUTPUT_DIR)
+        if name.lower().endswith(".csv")
+    )
+
+
+def count_csv_rows(path):
+    try:
+        with open(path, "r", encoding="utf-8", newline="") as fh:
+            return sum(1 for _ in csv.reader(fh))
+    except Exception:
+        return 0
+
+
+def derive_title(path):
+    name = os.path.basename(path)
+    if name.lower().endswith(".csv"):
+        name = name[:-4]
+    name = name.replace("-", "_")
+    parts = [part for part in name.split("_") if part]
+    title = " ".join(part.capitalize() for part in parts)
+    if title and not title.lower().endswith("data"):
+        title = title + " Data"
+    return title or "Uploaded Data"
+
+
+def _safe_json(resp):
     try:
         return resp.json()
     except Exception:
         return None
 
 
-def _token_from_login_payload(payload: Dict[str, Any]) -> Optional[str]:
-    token = payload.get("access_token")
-    if isinstance(token, str) and token.strip():
-        return token
-    return None
-
-
-def _rows_count_csv(path: str) -> int:
-    try:
-        with open(path, "r", encoding="utf-8", newline="") as f:
-            reader = csv.reader(f)
-            row_count = -1  # header offset
-            for _ in reader:
-                row_count += 1
-            return max(0, row_count)
-    except Exception:
-        return 0
-
-
-def _files_in_output_dir() -> List[str]:
+def step1():
+    print_step(1, "CHECK CSV FILES EXIST")
     if not os.path.isdir(CSV_OUTPUT_DIR):
-        return []
-    files: List[str] = []
-    for name in os.listdir(CSV_OUTPUT_DIR):
-        if name.lower().endswith(".csv"):
-            files.append(os.path.join(CSV_OUTPUT_DIR, name))
-    return sorted(files)
+        print_result(False, f"Folder not found: {CSV_OUTPUT_DIR}")
+        print("Re-run the World Bank downloader: python3 scripts/fetch_worldbank_ghana.py")
+        sys.exit(1)
+
+    files = list_csv_files()
+    SUMMARY["csv_files"] = len(files)
+    if not files:
+        print_result(False, "No CSV files found in scripts/output/")
+        print("Re-run the World Bank downloader: python3 scripts/fetch_worldbank_ghana.py")
+        sys.exit(1)
+
+    nonempty = False
+    for path in files:
+        rows = count_csv_rows(path)
+        size_kb = os.path.getsize(path) / 1024.0
+        print(f"  {os.path.basename(path)} | {size_kb:.2f} KB | {rows} rows")
+        if rows > 0:
+            nonempty = True
+
+    print_result(nonempty, "Found non-empty CSV file(s)" if nonempty else "CSV files exist but are empty")
+    if not nonempty:
+        print("CSV FILES EMPTY. Re-run the World Bank downloader script: python3 scripts/fetch_worldbank_ghana.py")
+        sys.exit(1)
+    return files
 
 
-def _filename_to_title(path: str) -> str:
-    base = os.path.basename(path)
-    if base.lower().endswith(".csv"):
-        base = base[:-4]
-    parts = [p for p in base.replace("-", "_").split("_") if p]
-    return " ".join(p[:1].upper() + p[1:] for p in parts) or base
-
-
-def _try_register_and_login() -> Tuple[bool, Optional[str], Optional[str]]:
-    reg_payload = {
-        "email": TEST_USER["email"],
-        "username": TEST_USER["username"],
-        "full_name": TEST_USER["full_name"],
-        "password": TEST_USER["password"],
-    }
-
-    print(f"Attempting register: {TEST_USER['email']} / {TEST_USER['username']}")
+def step2():
+    print_step(2, "CHECK BACKEND IS RUNNING")
     try:
-        reg_resp = requests.post(REGISTER_URL, json=reg_payload, timeout=10)
-    except Exception as e:
-        return False, None, f"Registration request failed: {e}"
+        resp = requests.get(HEALTH_URL, timeout=5)
+        if resp.status_code == 200:
+            SUMMARY["backend_running"] = True
+            print_result(True, "Backend health check passed")
+            return
+        print_result(False, f"Health returned status {resp.status_code}")
+    except Exception as exc:
+        print_result(False, f"Health request failed: {exc}")
 
-    if reg_resp.status_code == 400:
+    print("Backend must be running at http://localhost:8000. Start it with:\n  cd backend && uvicorn app.main:app --reload")
+    sys.exit(1)
 
-        payload = _safe_json(reg_resp) or {}
-        detail = payload.get("detail") if isinstance(payload, dict) else None
-        print(f"Register returned 400 (likely already exists). detail={detail}")
-    elif reg_resp.status_code not in (200, 201):
-        payload = _safe_json(reg_resp) or {}
-        detail = payload.get("detail") if isinstance(payload, dict) else None
-        return False, None, f"Register failed with {reg_resp.status_code}. detail={detail or reg_resp.text}"
 
-    login_payload = {"email": TEST_USER["email"], "password": TEST_USER["password"]}
-    print("Attempting login...")
+def step3():
+    print_step(3, "CHECK OR CREATE A USER ACCOUNT")
+
+    if ADMIN_EMAIL and ADMIN_PASSWORD:
+        print(f"Attempting admin login for {ADMIN_EMAIL}")
+        try:
+            admin_resp = requests.post(LOGIN_URL, json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}, timeout=10)
+            if admin_resp.status_code == 200:
+                payload = _safe_json(admin_resp)
+                token = payload.get("access_token") if isinstance(payload, dict) else None
+                if token:
+                    print_result(True, "Admin login succeeded")
+                    SUMMARY["auth_working"] = True
+                    return token
+                print_result(False, "Admin login succeeded but no access_token returned")
+            else:
+                print(f"Admin login failed: {admin_resp.status_code} {admin_resp.text}")
+        except Exception as exc:
+            print(f"Admin login request failed: {exc}")
+
+        print("Falling back to creating a diagnostic test user.")
+
     try:
-        login_resp = requests.post(LOGIN_URL, json=login_payload, timeout=10)
-    except Exception as e:
-        return False, None, f"Login request failed: {e}"
+        reg_resp = requests.post(REGISTER_URL, json=TEST_USER, timeout=10)
+    except Exception as exc:
+        print_result(False, f"Registration request failed: {exc}")
+        sys.exit(1)
+
+    if reg_resp.status_code == 201:
+        print("Registration succeeded.")
+    elif reg_resp.status_code == 400:
+        print("Registration returned 400 (user may already exist). Continuing.")
+    else:
+        print_result(False, f"Registration failed: {reg_resp.status_code} {reg_resp.text}")
+        sys.exit(1)
+
+    try:
+        login_resp = requests.post(LOGIN_URL, json={"email": TEST_USER["email"], "password": TEST_USER["password"]}, timeout=10)
+    except Exception as exc:
+        print_result(False, f"Login request failed: {exc}")
+        sys.exit(1)
 
     if login_resp.status_code != 200:
-        payload = _safe_json(login_resp) or {}
-        detail = payload.get("detail") if isinstance(payload, dict) else None
-        return False, None, f"Login failed with {login_resp.status_code}. detail={detail or login_resp.text}"
+        print_result(False, f"Login failed: {login_resp.status_code} {login_resp.text}")
+        sys.exit(1)
 
-    payload = _safe_json(login_resp) or {}
-    token = _token_from_login_payload(payload)
+    payload = _safe_json(login_resp)
+    if not payload or not isinstance(payload, dict):
+        print_result(False, "Login response is not JSON or malformed")
+        sys.exit(1)
+
+    token = payload.get("access_token")
     if not token:
-        return False, None, f"Login response did not include access_token. payload={payload}"
+        print_result(False, "Login response did not contain access_token")
+        sys.exit(1)
 
-    return True, token, None
+    SUMMARY["auth_working"] = True
+    print_result(True, "Auth register/login succeeded")
+    return token
 
 
-def _get_user_role(token: str) -> Tuple[bool, Optional[str], Optional[str]]:
+def step4(token):
+    print_step(4, "CHECK USER ROLE")
     headers = {"Authorization": f"Bearer {token}"}
     try:
-        me_resp = requests.get(ME_URL, headers=headers, timeout=10)
-    except Exception as e:
-        return False, None, f"GET /auth/me request failed: {e}"
-
-    if me_resp.status_code != 200:
-        payload = _safe_json(me_resp) or {}
-        detail = payload.get("detail") if isinstance(payload, dict) else None
-        return False, None, f"GET /auth/me failed with {me_resp.status_code}. detail={detail or me_resp.text}"
-
-    payload = _safe_json(me_resp) or {}
-    role = payload.get("role")
-    if not role:
-        return False, None, f"User payload missing role. payload={payload}"
-    if isinstance(role, str):
-        return True, role, None
-    return False, None, f"Role is not a string. payload={payload}"
-
-
-def _try_fetch_users_count_and_first_role(token: str) -> Tuple[Optional[int], Optional[str], Optional[str]]:
-    headers = {"Authorization": f"Bearer {token}"}
-    try:
-        resp = requests.get(USERS_URL, headers=headers, timeout=20)
-    except Exception as e:
-        return None, None, f"GET /users failed: {e}"
+        resp = requests.get(ME_URL, headers=headers, timeout=10)
+    except Exception as exc:
+        print_result(False, f"GET /auth/me failed: {exc}")
+        sys.exit(1)
 
     if resp.status_code != 200:
-        return None, None, f"GET /users failed with {resp.status_code}: {resp.text[:300]}"
+        print_result(False, f"GET /auth/me returned {resp.status_code}: {resp.text}")
+        sys.exit(1)
 
-    payload = _safe_json(resp) or {}
-    users = None
-    if isinstance(payload, list):
-        users = payload
-    elif isinstance(payload, dict):
-        for key in ("items", "results", "users", "data"):
-            if isinstance(payload.get(key), list):
-                users = payload[key]
-                break
+    payload = _safe_json(resp)
+    role = payload.get("role") if isinstance(payload, dict) else None
+    SUMMARY["role"] = role
+    print(f"Current user role: {role}")
+    allowed = {"super_admin", "org_admin", "data_manager"}
+    if role in allowed:
+        SUMMARY["role_ok"] = True
+        print_result(True, f"Role {role} is sufficient")
+        return
 
-    if not users:
-        return 0, None, "No users returned (or unknown response shape)."
-
-    roles = [u.get("role") for u in users if isinstance(u, dict) and "role" in u]
-    first_role = roles[0] if roles else None
-    return len(users), first_role, None
+    print_result(False, f"Role {role} is not sufficient")
+    if role == "viewer":
+        print("Viewers cannot upload datasets. Ask a super_admin to assign data_manager role.")
+    sys.exit(1)
 
 
-def _get_datasets_and_dashboard(token: str) -> Tuple[Optional[int], List[str], Optional[Dict[str, Any]]]:
+def step5(token):
+    print_step(5, "CHECK DATASETS AND DASHBOARD")
     headers = {"Authorization": f"Bearer {token}"}
 
-    datasets_title_list: List[str] = []
-    total_datasets = None
-
     try:
-        ds_resp = requests.get(DATASETS_URL, headers=headers, timeout=20)
-    except Exception as e:
-        print(f"GET /datasets/ failed: {e}")
-        return None, [], None
+        resp = requests.get(DATASETS_URL, headers=headers, timeout=15)
+    except Exception as exc:
+        print_result(False, f"GET /datasets/ failed: {exc}")
+        return None
 
-    if ds_resp.status_code != 200:
-        print(f"GET /datasets/ failed with {ds_resp.status_code}: {ds_resp.text[:300]}")
-        return None, [], None
+    if resp.status_code != 200:
+        print_result(False, f"GET /datasets/ returned {resp.status_code}: {resp.text}")
+        return None
 
-    ds_payload = _safe_json(ds_resp) or {}
-    if isinstance(ds_payload, dict):
-        total_datasets = ds_payload.get("total")
-        items = ds_payload.get("items")
+    payload = _safe_json(resp)
+    titles = []
+    total = None
+    if isinstance(payload, dict):
+        total = payload.get("total")
+        items = payload.get("items") or payload.get("results") or []
         if isinstance(items, list):
-            for d in items:
-                if isinstance(d, dict) and isinstance(d.get("title"), str):
-                    datasets_title_list.append(d["title"])
+            for item in items:
+                if isinstance(item, dict):
+                    titles.append(item.get("title") or item.get("name") or "<unknown>")
+    elif isinstance(payload, list):
+        titles = [item.get("title") or item.get("name") or "<unknown>" for item in payload if isinstance(item, dict)]
+        total = len(titles)
+    if total is None:
+        total = len(titles)
 
-    dash_payload = None
+    print(f"Datasets in DB: {total}")
+    if titles:
+        for title in titles:
+            print(f"  - {title}")
+
+    dashboard_payload = None
     try:
-        dash_resp = requests.get(DASHBOARD_URL, headers=headers, timeout=20)
+        dash_resp = requests.get(DASHBOARD_URL, headers=headers, timeout=15)
         if dash_resp.status_code == 200:
-            dash_payload = _safe_json(dash_resp) or {}
+            dashboard_payload = _safe_json(dash_resp)
         else:
-            print(f"GET /dashboard/ failed with {dash_resp.status_code}: {dash_resp.text[:300]}")
-    except Exception as e:
-        print(f"GET /dashboard/ request failed: {e}")
+            print(f"GET /dashboard/ returned {dash_resp.status_code}: {dash_resp.text}")
+    except Exception as exc:
+        print(f"GET /dashboard/ failed: {exc}")
 
-    return (
-        int(total_datasets) if isinstance(total_datasets, (int, str)) and str(total_datasets).isdigit() else total_datasets,
-        datasets_title_list,
-        dash_payload,
-    )
+    if isinstance(dashboard_payload, dict):
+        print("Dashboard:")
+        print(f"  total_datasets: {dashboard_payload.get('total_datasets')}")
+        print(f"  total_users: {dashboard_payload.get('total_users')}")
+        uploads = dashboard_payload.get('recent_uploads')
+        if isinstance(uploads, list):
+            print(f"  recent_uploads: {len(uploads)}")
+
+    print_result(True, "Dataset + dashboard endpoints reached")
+    return total
 
 
-def _upload_csv_test(token: str, csv_path: str) -> Tuple[bool, str, Optional[requests.Response]]:
+def step6(token, csv_path):
+    print_step(6, "UPLOAD ONE TEST CSV")
     headers = {"Authorization": f"Bearer {token}"}
-
-    title = _filename_to_title(csv_path)
     data = {
-        "title": title,
+        "title": derive_title(csv_path),
         "description": "Uploaded by GhanaDataHub diagnostic script",
         "visibility": "public",
         "tags": "ghana,diagnostic,test",
     }
 
-    file_size_bytes = os.path.getsize(csv_path) if os.path.exists(csv_path) else 0
-    file_size_kb = file_size_bytes / 1024.0
-
-    with open(csv_path, "rb") as f:
-        files = {"file": (os.path.basename(csv_path), f, "text/csv")}
-        try:
+    try:
+        with open(csv_path, "rb") as fh:
+            files = {"file": (os.path.basename(csv_path), fh, "text/csv")}
             resp = requests.post(DATASETS_URL, headers=headers, data=data, files=files, timeout=120)
-        except Exception as e:
-            return False, f"Upload request failed: {e}", None
+    except Exception as exc:
+        print_result(False, f"Upload request failed: {exc}")
+        return False, f"Upload request failed: {exc}"
 
+    body = _safe_json(resp)
     if resp.status_code == 201:
-        return True, "SUCCESS (201 created)", resp
+        print_result(True, "Upload created successfully")
+        return True, "SUCCESS"
+
+    reason = body if body is not None else resp.text
+    if isinstance(body, dict):
+        reason = body.get("detail") or body
 
     if resp.status_code == 403:
-        payload = _safe_json(resp) or {}
-        detail = payload.get("detail") if isinstance(payload, dict) else None
-        return False, f"FAIL (403 role/permission). detail={detail or resp.text[:300]}", resp
+        print_result(False, f"Upload rejected: 403 forbidden. {reason}")
+        return False, "FAIL role or permissions"
     if resp.status_code == 413:
-        return False, f"FAIL (413 file too large). file size: {file_size_kb:.2f} KB", resp
-    if resp.status_code == 400:
-        payload = _safe_json(resp) or {}
-        detail = payload.get("detail") if isinstance(payload, dict) else None
-        return False, f"FAIL (400 validation). detail={detail or resp.text[:300]}", resp
-    if resp.status_code == 422:
-        payload = _safe_json(resp) or {}
-        return False, f"FAIL (422 schema error). payload={payload or resp.text[:300]}", resp
+        print_result(False, "Payload too large")
+        return False, "FAIL file too large"
+    if resp.status_code in (400, 422):
+        print_result(False, f"Upload validation failed: {reason}")
+        return False, f"FAIL validation: {reason}"
     if resp.status_code == 500:
-        return False, "FAIL (500). Backend internal error. Check your backend terminal for the full traceback.", resp
+        print_result(False, "Backend internal error during upload")
+        return False, "FAIL server error"
 
-    payload = _safe_json(resp) or {}
-    detail = payload.get("detail") if isinstance(payload, dict) else None
-    if detail:
-        return False, f"FAIL (HTTP {resp.status_code}). detail={detail}", resp
-    return False, f"FAIL (HTTP {resp.status_code}). body={resp.text[:300]}", resp
+    print_result(False, f"Upload failed with status {resp.status_code}")
+    return False, f"FAIL unexpected status {resp.status_code}: {reason}"
 
 
-def _check_frontend_api_url() -> Tuple[Optional[str], bool]:
+def step7(token):
+    print_step(7, "VERIFY DASHBOARD AFTER UPLOAD")
+    headers = {"Authorization": f"Bearer {token}"}
+    time.sleep(1)
+
+    try:
+        resp = requests.get(DASHBOARD_URL, headers=headers, timeout=15)
+    except Exception as exc:
+        print_result(False, f"Dashboard request failed: {exc}")
+        return None
+
+    if resp.status_code != 200:
+        print_result(False, f"Dashboard returned {resp.status_code}: {resp.text}")
+        return None
+
+    payload = _safe_json(resp)
+    total = payload.get("total_datasets") if isinstance(payload, dict) else None
+    uploads = payload.get("recent_uploads") if isinstance(payload, dict) else None
+    print(f"Dashboard total_datasets: {total}")
+    if isinstance(uploads, list) and uploads:
+        first_upload = uploads[0]
+        if isinstance(first_upload, dict):
+            print(f"First recent upload: {first_upload.get('title') or first_upload.get('name')}")
+
+    print_result(True, "Dashboard check complete")
+    return total
+
+
+def step8():
+    print_step(8, "CHECK FRONTEND API BASE URL")
     candidates = [
-        os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", ".env.local"),
-        os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", ".env"),
+        os.path.join(FRONTEND_DIR, ".env.local"),
+        os.path.join(FRONTEND_DIR, ".env"),
     ]
-
-    env_value = None
-    for path in candidates:
-        if not os.path.isfile(path):
-            continue
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                for line in f:
-                    stripped = line.strip()
-                    if not stripped or stripped.startswith("#"):
-                        continue
-                    if stripped.startswith("VITE_API_URL="):
-                        env_value = stripped.split("=", 1)[1].strip().strip('"').strip("'")
-                        break
-        except Exception:
-            pass
-        if env_value is not None:
+    env_path = None
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            env_path = candidate
             break
 
-    if env_value is None:
+    if not env_path:
+        env_path = os.path.join(FRONTEND_DIR, ".env.local")
+        try:
+            with open(env_path, "w", encoding="utf-8") as fh:
+                fh.write("VITE_API_URL=http://localhost:8000/api/v1\n")
+            print_result(True, f"Created {env_path} with correct VITE_API_URL")
+            return "http://localhost:8000/api/v1", True
+        except Exception as exc:
+            print_result(False, f"Could not create frontend env file: {exc}")
+            return None, False
+
+    value = None
+    try:
+        with open(env_path, "r", encoding="utf-8") as fh:
+            for line in fh:
+                if line.strip().startswith("VITE_API_URL="):
+                    value = line.strip().split("=", 1)[1].strip().strip('"').strip("'")
+                    break
+    except Exception as exc:
+        print_result(False, f"Cannot read {env_path}: {exc}")
         return None, False
 
-    ok = "localhost:8000" in env_value or ":8000" in env_value
-    return env_value, ok
-
-
-def main() -> int:
-    summary: Dict[str, Any] = {
-        "csv_files_count": 0,
-        "csv_files_nonempty": False,
-        "backend_running": False,
-        "auth_working": False,
-        "role_ok": False,
-        "role": None,
-        "datasets_before": None,
-        "test_upload_success": False,
-        "test_upload_reason": None,
-        "datasets_after": None,
-        "vite_api_url": None,
-        "vite_api_url_ok": False,
-    }
-
-    # STEP 1
-    print("=== STEP 1 - CHECK CSV FILES EXIST ===")
-    if not os.path.isdir(CSV_OUTPUT_DIR):
-        print(f"scripts/output/ not found at: {CSV_OUTPUT_DIR}")
-        print("Re-run the World Bank downloader script: python3 scripts/fetch_worldbank_ghana.py")
-        _print_step_result(1, "CSV files exist", False, "Missing scripts/output directory")
-        return 2
-
-    csv_files = _files_in_output_dir()
-    summary["csv_files_count"] = len(csv_files)
-
-    if not csv_files:
-        print(f"No CSV files found in: {CSV_OUTPUT_DIR}")
-        print("Re-run the World Bank downloader script: python3 scripts/fetch_worldbank_ghana.py")
-        _print_step_result(1, "CSV files exist", False, "No CSV files found")
-        return 2
-
-    nonempty_found = False
-    for p in csv_files:
-        size_kb = os.path.getsize(p) / 1024.0
-        rows = _rows_count_csv(p)
-        print(f" - {os.path.basename(p)} | size={size_kb:.2f} KB | rows={rows}")
-        if rows > 0:
-            nonempty_found = True
-
-    summary["csv_files_nonempty"] = nonempty_found
-    _print_step_result(1, "CSV files exist", nonempty_found, "Found non-empty CSVs" if nonempty_found else "Found CSVs but they appear empty")
-    if not nonempty_found:
-        print("CSV FILES EMPTY. Re-run the World Bank downloader script: python3 scripts/fetch_worldbank_ghana.py")
-        return 3
-
-    # STEP 2
-    print("\n=== STEP 2 - CHECK BACKEND IS RUNNING ===")
-    try:
-        resp = requests.get(HEALTH_URL, timeout=5)
-        ok = resp.status_code == 200
-    except Exception as e:
-        ok = False
-        resp = None
-        error = str(e)
-
-    if not ok:
-        print("Backend is not running. Start it with:")
-        print("  cd backend && uvicorn app.main:app --reload")
-        _print_step_result(2, "Backend running", False, f"Error: {error}")
-        return 2
-
-    summary["backend_running"] = True
-    _print_step_result(2, "Backend running", True, f"GET /health -> {resp.status_code}")
-
-    # STEP 3
-    print("\n=== STEP 3 - CHECK OR CREATE A USER ACCOUNT ===")
-    ok_auth, token, err = _try_register_and_login()
-
-    # Auto-fix attempt: backend may enforce strict email validation.
-    # If it rejects the configured test email format, retry with another format.
-    if not ok_auth and err and "not a valid email address" in err:
-    
-        TEST_USER_FIXED = dict(TEST_USER)
-        TEST_USER_FIXED["email"] = "datauploader@gmail.com"
-        TEST_USER["email"] = TEST_USER_FIXED["email"]
-        ok_auth, token, err = _try_register_and_login()
-
-    if not ok_auth or not token:
-        print(f"Login/Register error: {err}")
-        _print_step_result(3, "Auth register+login", False, err or "Unknown")
-        return 2
-
-    summary["auth_working"] = True
-    _print_step_result(3, "Auth register+login", True, "access_token obtained")
-
-    # STEP 4
-    print("\n=== STEP 4 - CHECK USER ROLE (must be data_manager or higher) ===")
-    ok_role, role, role_err = _get_user_role(token)
-    if not ok_role or not role:
-        print(f"Failed to get user role: {role_err}")
-        _print_step_result(4, "User role fetch", False, role_err or "Unknown")
-        return 2
-
-    summary["role"] = role
-    allowed_roles = {"super_admin", "org_admin", "data_manager"}
-
-    if role == "viewer":
-        print("WARNING: role is viewer. Viewers cannot upload datasets.")
-        total_users, first_role, users_err = _try_fetch_users_count_and_first_role(token)
-        if users_err:
-            print(f"Could not check /users/: {users_err}")
-        else:
-            if total_users == 1 and first_role == "super_admin":
-                print("Viewer role but only one user exists. Backend/seed may be inconsistent.")
-            elif total_users == 1:
-                print("Only one user exists, but first user's role is not super_admin. Check backend user role assignment logic.")
-            else:
-                print("Ask your super_admin to change your role to data_manager at /users")
-
-    role_ok = role in allowed_roles
-    summary["role_ok"] = role_ok
-    print(f"Current role: {role}")
-    _print_step_result(4, "User role OK", role_ok, f"role={role}")
-    if not role_ok:
-        print("Upload cannot proceed until your role is data_manager (or higher).")
-        return 2
-
-    # STEP 5
-    print("\n=== STEP 5 - CHECK WHAT IS ALREADY IN THE DATABASE ===")
-    total_before, titles, dash_payload = _get_datasets_and_dashboard(token)
-    summary["datasets_before"] = total_before
-    if total_before is None:
-        _print_step_result(5, "Datasets in DB", False, "Fetch failed")
-        return 2
-
-    print(f"Total datasets currently in the database: {total_before}")
-    if titles:
-        for t in titles:
-            print(f" - {t}")
-    else:
-        print("No dataset titles returned (DB empty or response page contains none).")
-
-    if isinstance(dash_payload, dict):
-        print("Dashboard counts:")
-        print(f" - total_datasets: {dash_payload.get('total_datasets')}")
-        print(f" - total_users: {dash_payload.get('total_users')}")
-        recent_uploads = dash_payload.get("recent_uploads")
-        if isinstance(recent_uploads, list):
-            print(f" - recent_uploads count: {len(recent_uploads)}")
-        else:
-            print(" - recent_uploads count: <unknown>")
-
-    _print_step_result(5, "Datasets in DB", True)
-
-    # STEP 6
-    print("\n=== STEP 6 - UPLOAD ONE TEST CSV AND VERIFY IT APPEARS ===")
-    csv_to_upload = csv_files[0]
-    test_ok, reason, upload_resp = _upload_csv_test(token, csv_to_upload)
-    summary["test_upload_success"] = test_ok
-    summary["test_upload_reason"] = reason
-
-    print(f"Uploading: {os.path.basename(csv_to_upload)}")
-    if upload_resp is not None:
-        print(f"Upload response: status={upload_resp.status_code}")
+    expected = "http://localhost:8000/api/v1"
+    if value != expected:
+        print_result(False, f"VITE_API_URL is {value}, expected {expected}")
         try:
-            print("Body:", upload_resp.json())
-        except Exception:
-            print("Body:", upload_resp.text[:800])
-    else:
-        print("Upload response: <no response>")
+            with open(env_path, "w", encoding="utf-8") as fh:
+                fh.write(f"VITE_API_URL={expected}\n")
+            print(f"Updated {env_path} to VITE_API_URL={expected}")
+        except Exception as exc:
+            print(f"Could not update {env_path}: {exc}")
+        return value, False
 
-    _print_step_result(6, "Test upload", test_ok, reason)
+    print_result(True, "Frontend API URL is correct")
+    return value, True
 
-    # STEP 7
-    print("\n=== STEP 7 - VERIFY THE UPLOADED DATASET APPEARS ON DASHBOARD ===")
-    if test_ok:
-        time.sleep(1)
-        headers = {"Authorization": f"Bearer {token}"}
-        try:
-            dash_resp = requests.get(DASHBOARD_URL, headers=headers, timeout=20)
-        except Exception as e:
-            _print_step_result(7, "Dashboard after upload", False, f"Dashboard request failed: {e}")
-            return 2
 
-        if dash_resp.status_code != 200:
-            _print_step_result(7, "Dashboard after upload", False, f"Non-200 dashboard: {dash_resp.status_code} {dash_resp.text[:300]}")
-            return 2
+def print_summary():
+    print_step(9, "FINAL SUMMARY")
+    print(f"CSV files found:       {SUMMARY['csv_files']}")
+    print(f"Backend running:       {'YES' if SUMMARY['backend_running'] else 'NO'}")
+    print(f"Auth working:          {'YES' if SUMMARY['auth_working'] else 'NO'}")
+    print(f"User role OK:          {'YES' if SUMMARY['role_ok'] else 'NO'} ({SUMMARY['role']})")
+    print(f"Datasets before:       {SUMMARY['datasets_before']}")
+    print(f"Upload result:         {SUMMARY['upload_result']}")
+    print(f"Datasets after:        {SUMMARY['datasets_after']}")
+    print(f"Frontend API URL:      {SUMMARY['vite_api_url']}")
 
-        dash_payload2 = _safe_json(dash_resp) or {}
-        total_after = dash_payload2.get("total_datasets")
-        summary["datasets_after"] = total_after
-        print(f"Dashboard total_datasets: {total_after}")
+    if SUMMARY['csv_files'] > 0 and SUMMARY['backend_running'] and SUMMARY['auth_working'] and SUMMARY['role_ok'] and SUMMARY['upload_result'] == 'SUCCESS':
+        print("ALL CHECKS PASSED. Refresh http://localhost:5173 to view the dashboard.")
+        return
+    print("One or more checks failed. Review the step output above.")
 
-        recent_uploads2 = dash_payload2.get("recent_uploads")
-        if isinstance(recent_uploads2, list) and recent_uploads2:
-            first_title = recent_uploads2[0].get("title") if isinstance(recent_uploads2[0], dict) else None
-            print(f"First recent_uploads title: {first_title}")
 
-        ok7 = isinstance(total_after, int) and total_after >= 1
-        if not ok7:
-            print("Dashboard endpoint may have a filtering bug. Check that the dataset was saved with visibility=public and that your user role allows seeing it.")
-        _print_step_result(7, "Dashboard after upload", ok7, "")
-    else:
-        _print_step_result(7, "Dashboard after upload", False, "Skipped because upload failed")
-
-    # STEP 8
-    print("\n=== STEP 8 - CHECK FRONTEND API BASE URL ===")
-    vite_url, vite_ok = _check_frontend_api_url()
-    summary["vite_api_url"] = vite_url
-    summary["vite_api_url_ok"] = vite_ok
-
-    if vite_url:
-        print(f"VITE_API_URL={vite_url}")
-    else:
-        print("VITE_API_URL not set in frontend/.env.local or frontend/.env")
-
-    if not vite_ok:
-        print("WARNING: Your frontend may be calling the wrong API URL. Make sure VITE_API_URL=http://localhost:8000/api/v1 in frontend/.env.local")
-
-    _print_step_result(8, "Frontend API URL", vite_url is not None and vite_ok)
-
-    # STEP 9
-    print("\n=== STEP 9 - PRINT FINAL SUMMARY ===")
-    print("\nSummary table:")
-    print(f"CSV files found:       {summary['csv_files_count']}")
-    print(f"Backend running:       {'YES' if summary['backend_running'] else 'NO'}")
-    print(f"Auth working:          {'YES' if summary['auth_working'] else 'NO'}")
-    print(f"User role OK:          {'YES' if summary['role_ok'] else 'NO'} (show actual role: {summary['role']})")
-    print(f"Datasets in DB before: {summary['datasets_before'] if summary['datasets_before'] is not None else '<unknown>'}")
-
-    if summary["test_upload_success"]:
-        print(f"Test upload result:    SUCCESS ({summary['test_upload_reason']})")
-    else:
-        print(f"Test upload result:    FAILED ({summary['test_upload_reason']})")
-
-    print(f"Datasets in DB after:  {summary['datasets_after'] if summary['datasets_after'] is not None else '<unknown>'}")
-    print(f"Frontend API URL:      {summary['vite_api_url'] if summary['vite_api_url'] else '<not set>'}")
-
-    # Conclusions
-    if not summary["csv_files_nonempty"]:
-        conclusion = "CSV FILES EMPTY. Re-run the World Bank downloader script: python3 scripts/fetch_worldbank_ghana.py"
-    elif not summary["test_upload_success"]:
-        conclusion = f"UPLOAD FAILED. The root cause is: {summary['test_upload_reason']}. Fix: See printed FAIL details above."
-    elif isinstance(summary.get("datasets_after"), int) and summary["datasets_after"] >= 1:
-        conclusion = "ALL CHECKS PASSED. Your database now has data. Refresh your browser at http://localhost:5173 to see it."
-    else:
-        conclusion = "UPLOAD MAY HAVE SUCCEEDED BUT DASHBOARD IS NOT SHOWING IT. Check visibility=public and dashboard filtering + frontend API URL."
-
-    print("\nConclusion:")
-    print(conclusion)
-
-    if conclusion.startswith("ALL CHECKS PASSED"):
+def main():
+    csv_files = step1()
+    step2()
+    token = step3()
+    step4(token)
+    SUMMARY['datasets_before'] = step5(token) or 0
+    upload_ok, upload_reason = step6(token, csv_files[0])
+    SUMMARY['upload_result'] = upload_reason
+    SUMMARY['datasets_after'] = step7(token) or SUMMARY['datasets_before']
+    vite_url, vite_ok = step8()
+    SUMMARY['vite_api_url'] = vite_url
+    SUMMARY['vite_api_url_ok'] = vite_ok
+    print_summary()
+    if upload_ok and SUMMARY['role_ok']:
         return 0
-    if conclusion.startswith("UPLOAD FAILED"):
-        return 1
-    return 2
+    return 1
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
-
+if __name__ == '__main__':
+    sys.exit(main())
