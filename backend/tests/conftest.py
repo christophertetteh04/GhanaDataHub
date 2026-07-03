@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -5,10 +7,17 @@ from sqlalchemy.orm import sessionmaker
 from app.core.database import Base, get_db
 from app.main import app
 
-SQLALCHEMY_TEST_URL = "sqlite:///./test.db"
+#SQLALCHEMY_TEST_URL = "sqlite:///./test.db"
+TEST_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL",
+    "postgresql+psycopg2://postgres:password@localhost:5434/ghanadatahub_test"
+)
 
-engine = create_engine(SQLALCHEMY_TEST_URL, connect_args={"check_same_thread": False})
+engine = create_engine(TEST_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# engine = create_engine(SQLALCHEMY_TEST_URL, connect_args={"check_same_thread": False})
+#TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 @pytest.fixture(scope="function")
@@ -79,11 +88,12 @@ def second_user(client):
 
 
 @pytest.fixture
-def viewer_headers(client, second_user):
+def viewer_headers(client, registered_user, second_user):
     '''Auth headers for the viewer user.'''
     resp = client.post('/api/v1/auth/login', json={
         'email': 'viewer@example.com', 'password': 'Password123'
     })
+    assert resp.status_code == 200
     return {'Authorization': f'Bearer {resp.json()["access_token"]}'}
 
 

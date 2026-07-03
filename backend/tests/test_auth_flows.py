@@ -24,11 +24,11 @@ def _assert_access_token_shape(token: str) -> None:
     )
 
 
-def _get_user_id(payload: dict) -> int:
-    """Extract user id from different response shapes."""
+def _get_user_id(payload: dict) -> str:
+    """Extract user id from different response shapes. Returns as string (UUID)."""
     for key in ("id", "user_id"):
         if key in payload:
-            return int(payload[key])
+            return payload[key]
     if "user" in payload and isinstance(payload["user"], dict):
         return _get_user_id(payload["user"])
     raise AssertionError(f"Unable to find user id in payload keys={list(payload.keys())}")
@@ -202,7 +202,7 @@ class TestLoginFlows:
         # Assert
         assert resp.status_code == 422
 
-    def test_login_suspended_user_returns_403(self, client, second_user):
+    def test_login_suspended_user_returns_403(self, client, auth_headers, second_user):
         """Suspended second_user should not be able to login (403)."""
         # Arrange
         user_id = _get_user_id(second_user)
@@ -210,6 +210,7 @@ class TestLoginFlows:
         # Act
         suspend_resp = client.patch(
             f"/api/v1/users/{user_id}/suspend",
+            headers=auth_headers,
             json={"is_suspended": True},
         )
         assert suspend_resp.status_code in (200, 204)

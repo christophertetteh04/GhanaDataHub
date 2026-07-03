@@ -5,7 +5,7 @@ from uuid import UUID
 from app.core.database import get_db
 from app.models.models import User, UserRole
 from app.schemas.schemas import UserOut, UserUpdate, UserRoleUpdate
-from app.api.v1.deps import get_current_user, require_roles
+from app.api.v1.deps import get_current_user, require_role as require_roles
 
 router = APIRouter()
 
@@ -45,7 +45,7 @@ def update_me(payload: UserUpdate, db: Session = Depends(get_db), current_user: 
     return current_user
 
 
-@router.put("/{user_id}/role", response_model=UserOut)
+@router.patch("/{user_id}/role", response_model=UserOut)
 def update_role(
     user_id: UUID,
     payload: UserRoleUpdate,

@@ -185,6 +185,8 @@ def list_datasets(
     )
 
     if not current_user:
+        if visibility is not None and visibility != VisibilityEnum.public:
+            raise HTTPException(status_code=403, detail="Authentication required to access non-public datasets")
         q = q.filter(Dataset.visibility == VisibilityEnum.public)
     elif current_user.role not in (UserRole.super_admin,):
         q = q.filter(

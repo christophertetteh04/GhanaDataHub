@@ -12,4 +12,4 @@ api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboar
 api_router.include_router(share.router, prefix="/share", tags=["Share"])
 api_router.include_router(misc.categories_router, prefix="/categories", tags=["Categories"])
 api_router.include_router(misc.notifications_router, prefix="/notifications", tags=["Notifications"])
-api_router.include_router(audit.router, prefix="/audit-logs", tags=["Audit"])
+api_router.include_router(audit.router, prefix="/audit", tags=["Audit"])
