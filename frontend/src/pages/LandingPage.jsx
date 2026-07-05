@@ -85,27 +85,7 @@ const features = [
   },
 ];
 
-const plans = [
-  {
-    name: "Free",
-    price: "GHS 0",
-    period: "/month",
-    features: ["Up to 3 users", "Public dataset catalogue", "Core upload tools"],
-  },
-  {
-    name: "Starter",
-    price: "$29",
-    period: "/month",
-    recommended: true,
-    features: ["Team workspace", "Private datasets", "Activity history"],
-  },
-  {
-    name: "Pro",
-    price: "$99",
-    period: "/month",
-    features: ["Advanced permissions", "API integrations", "Priority support"],
-  },
-];
+
 
 const orgs = [
   "Ghana Statistical Service",
@@ -396,8 +376,54 @@ export default function LandingPage() {
         .landing-hero {
           position: relative;
           overflow: hidden;
-          background: linear-gradient(180deg, var(--white) 0%, var(--gray-100) 100%);
+          background: linear-gradient(135deg, rgba(0,107,63,0.04) 0%, rgba(255,255,255,1) 40%, rgba(252,209,22,0.04) 100%);
           padding: 92px 0 108px;
+        }
+
+        .landing-hero-blob {
+          position: absolute;
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        .landing-float-card {
+          position: absolute;
+          background: rgba(255,255,255,0.7);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255,255,255,0.8);
+          border-radius: 14px;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+          padding: 12px 18px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-weight: 700;
+          font-size: 13px;
+          color: var(--gray-900);
+          white-space: nowrap;
+          z-index: 2;
+        }
+
+        .landing-float-card-1 {
+          top: 20px;
+          right: -20px;
+          animation: floatCard1 3s ease-in-out infinite alternate;
+        }
+
+        .landing-float-card-2 {
+          bottom: 60px;
+          left: -30px;
+          animation: floatCard1 3s ease-in-out 1.5s infinite alternate;
+        }
+
+        @keyframes floatCard1 {
+          from { transform: translateY(-6px); }
+          to   { transform: translateY(6px); }
+        }
+
+        @media (max-width: 768px) {
+          .landing-float-card { display: none; }
         }
 
         .landing-hero::before {
@@ -476,9 +502,6 @@ export default function LandingPage() {
         .landing-product-preview {
           position: relative;
           z-index: 1;
-          max-width: 980px;
-          margin: 58px auto 0;
-          border: 1px solid rgba(209, 213, 219, 0.9);
           border-radius: 16px;
           background: var(--white);
           overflow: hidden;
@@ -1243,66 +1266,110 @@ export default function LandingPage() {
 
       <main>
         <section className="landing-hero" aria-labelledby="landing-hero-title">
-          <div className="landing-shell">
-            <div className="landing-hero-content">
-              <div className="landing-kicker">
-                <KeyRound size={15} />
-                Trusted institutional data infrastructure
-              </div>
-              <h1 id="landing-hero-title">Ghana's Data Management Platform</h1>
-              <p className="landing-hero-text">
-                Upload, organise, search, and securely share datasets across your organisation. Built for government
-                agencies, NGOs, universities, and researchers across Ghana.
-              </p>
-              <div className="landing-hero-actions">
-                <Link className="landing-btn landing-btn-primary" to="/register">
-                  Get Started Free
-                  <ChevronRight size={17} />
-                </Link>
-                <Link className="landing-btn landing-btn-secondary" to="/datasets">
-                  Browse Datasets
-                </Link>
-              </div>
-              <p className="landing-trust-note">No credit card required - Free forever plan available</p>
-            </div>
+          {/* ── Decorative blobs (purely visual) ── */}
+          {/* ADD THIS: Blob 1 — top-left green blob */}
+          <div
+            className="landing-hero-blob"
+            aria-hidden="true"
+            style={{
+              width: 480,
+              height: 480,
+              background: "radial-gradient(circle, rgba(0,107,63,0.08) 0%, transparent 70%)",
+              top: -120,
+              left: -80,
+              filter: "blur(40px)",
+            }}
+          />
+          {/* ADD THIS: Blob 2 — bottom-right gold blob */}
+          <div
+            className="landing-hero-blob"
+            aria-hidden="true"
+            style={{
+              width: 400,
+              height: 400,
+              background: "radial-gradient(circle, rgba(252,209,22,0.10) 0%, transparent 70%)",
+              bottom: -80,
+              right: -60,
+              filter: "blur(48px)",
+            }}
+          />
 
-            <div className="landing-product-preview" aria-label="GhanaDataHub dashboard preview">
-              <div className="landing-browser-bar" aria-hidden="true">
-                <span className="landing-browser-dot" />
-                <span className="landing-browser-dot" />
-                <span className="landing-browser-dot" />
-              </div>
-              <div className="landing-preview-body">
-                <div className="landing-preview-sidebar">
-                  <div className="landing-preview-stat">
-                    <strong>{formatCompactNumber(stats.total_datasets)}</strong>
-                    <span>Datasets managed</span>
-                  </div>
-                  <div className="landing-preview-stat">
-                    <strong>{formatCompactNumber(stats.total_organizations)}</strong>
-                    <span>Organisations</span>
-                  </div>
-                  <div className="landing-preview-stat">
-                    <strong>{formatStorage(stats.total_storage_bytes)}</strong>
-                    <span>Storage tracked</span>
-                  </div>
+          <div className="landing-shell">
+            {/* ADD THIS: position:relative wrapper so float cards + blobs are bounded */}
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <div className="landing-hero-content">
+                <div className="landing-kicker">
+                  <KeyRound size={15} />
+                  Trusted institutional data infrastructure
                 </div>
-                <div className="landing-preview-chart">
-                  <div className="landing-chart-top">
-                    <div>
-                      <div className="landing-chart-label">Dashboard</div>
-                      <div className="landing-chart-title">Catalogue activity</div>
-                    </div>
-                    <div className="landing-data-pill">Live</div>
+                <h1 id="landing-hero-title">Ghana's Data Management Platform</h1>
+                <p className="landing-hero-text">
+                  Upload, organise, search, and securely share datasets across your organisation. Built for government
+                  agencies, NGOs, universities, and researchers across Ghana.
+                </p>
+                {/* ADD THIS: Floating glass stat card 1 — Datasets */}
+                <div className="landing-float-card landing-float-card-1" aria-hidden="true">
+                  <Database size={16} color="var(--green)" />
+                  <span>{formatCompactNumber(stats.total_datasets)} Datasets</span>
+                </div>
+                {/* ADD THIS: Floating glass stat card 2 — Researchers */}
+                <div className="landing-float-card landing-float-card-2" aria-hidden="true">
+                  <Users size={16} color="var(--green)" />
+                  <span>{formatCompactNumber(stats.total_users)} Researchers</span>
+                </div>
+                <div className="landing-hero-actions">
+                  <Link className="landing-btn landing-btn-primary" to="/register">
+                    Get Started Free
+                    <ChevronRight size={17} />
+                  </Link>
+                  <Link className="landing-btn landing-btn-secondary" to="/datasets">
+                    Browse Datasets
+                  </Link>
+                </div>
+                <p className="landing-trust-note">No credit card required - Free forever plan available</p>
+              </div>
+
+              {/* ADD THIS: animated-border-wrapper around the preview card */}
+              <div className="animated-border-wrapper" style={{ maxWidth: 980, margin: "58px auto 0" }}>
+                <div className="landing-product-preview" aria-label="GhanaDataHub dashboard preview">
+                  <div className="landing-browser-bar" aria-hidden="true">
+                    <span className="landing-browser-dot" />
+                    <span className="landing-browser-dot" />
+                    <span className="landing-browser-dot" />
                   </div>
-                  <div className="landing-bars" aria-hidden="true">
-                    <div className="landing-bar" style={{ height: "48%" }} />
-                    <div className="landing-bar" style={{ height: "72%" }} />
-                    <div className="landing-bar" style={{ height: "58%" }} />
-                    <div className="landing-bar" style={{ height: "86%" }} />
-                    <div className="landing-bar" style={{ height: "64%" }} />
-                    <div className="landing-bar" style={{ height: "94%" }} />
-                    <div className="landing-bar" style={{ height: "76%" }} />
+                  <div className="landing-preview-body">
+                    <div className="landing-preview-sidebar">
+                      <div className="landing-preview-stat">
+                        <strong>{formatCompactNumber(stats.total_datasets)}</strong>
+                        <span>Datasets managed</span>
+                      </div>
+                      <div className="landing-preview-stat">
+                        <strong>{formatCompactNumber(stats.total_organizations)}</strong>
+                        <span>Organisations</span>
+                      </div>
+                      <div className="landing-preview-stat">
+                        <strong>{formatStorage(stats.total_storage_bytes)}</strong>
+                        <span>Storage tracked</span>
+                      </div>
+                    </div>
+                    <div className="landing-preview-chart">
+                      <div className="landing-chart-top">
+                        <div>
+                          <div className="landing-chart-label">Dashboard</div>
+                          <div className="landing-chart-title">Catalogue activity</div>
+                        </div>
+                        <div className="landing-data-pill">Live</div>
+                      </div>
+                      <div className="landing-bars" aria-hidden="true">
+                        <div className="landing-bar" style={{ height: "48%" }} />
+                        <div className="landing-bar" style={{ height: "72%" }} />
+                        <div className="landing-bar" style={{ height: "58%" }} />
+                        <div className="landing-bar" style={{ height: "86%" }} />
+                        <div className="landing-bar" style={{ height: "64%" }} />
+                        <div className="landing-bar" style={{ height: "94%" }} />
+                        <div className="landing-bar" style={{ height: "76%" }} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1391,39 +1458,6 @@ export default function LandingPage() {
           </div>
         </RevealSection>
 
-        <RevealSection className="landing-section" id="pricing" aria-labelledby="pricing-title">
-          <div className="landing-shell">
-            <div className="landing-section-heading centered">
-              <div className="landing-eyebrow">Pricing</div>
-              <h2 id="pricing-title">Start small, scale with your organisation</h2>
-              <p>Simple plans for teams moving from spreadsheet folders to structured data operations.</p>
-            </div>
-            <div className="landing-pricing-grid">
-              {plans.map((plan) => (
-                <article className={`landing-plan-card${plan.recommended ? " is-recommended" : ""}`} key={plan.name}>
-                  {plan.recommended ? <div className="landing-plan-badge">Most Popular</div> : null}
-                  <h3>{plan.name}</h3>
-                  <div className="landing-price">
-                    {plan.price}
-                    <span>{plan.period}</span>
-                  </div>
-                  <ul>
-                    {plan.features.map((feature) => (
-                      <li key={feature}>
-                        <Check size={16} />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Link className="landing-pricing-link" to="/register">
-                    See full pricing
-                    <ChevronRight size={16} />
-                  </Link>
-                </article>
-              ))}
-            </div>
-          </div>
-        </RevealSection>
 
         <RevealSection className="landing-section landing-section-alt" aria-labelledby="faq-title">
           <div className="landing-shell">

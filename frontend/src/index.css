@@ -861,3 +861,42 @@ tr:hover td {
     background-position: calc(200px + 100%) 0;
   }
 }
+
+/* ===== Animated gradient border — Product preview card ===== */
+
+/* Register the custom property so conic-gradient can animate its angle */
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.animated-border-wrapper {
+  position: relative;
+  padding: 3px;
+  border-radius: 20px;
+  background: conic-gradient(
+    from var(--angle),
+    #006B3F,
+    #00A35C,
+    #FCD116,
+    #E6AA00,
+    #006B3F
+  );
+  animation: rotateBorder 4s linear infinite;
+  filter: drop-shadow(0 0 16px rgba(0, 107, 63, 0.25));
+}
+
+@keyframes rotateBorder {
+  to { --angle: 360deg; }
+}
+
+/* Firefox fallback — @property not supported, show static green border */
+@supports not (background: conic-gradient(from 1deg, red, red)) {
+  .animated-border-wrapper {
+    background: none;
+    border: 2px solid var(--green);
+    filter: none;
+    animation: none;
+  }
+}
