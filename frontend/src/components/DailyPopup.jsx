@@ -1,7 +1,17 @@
 import { useMemo } from "react";
 import { Lightbulb, X } from "lucide-react";
 
+// ---------------------------------------------------------------------------
+// 30-day rotating content. Index = date.getDate() - 1 (0-based).
+// Days 1-5:   Data Privacy fundamentals
+// Days 6-10:  Data Piracy and intellectual property
+// Days 11-15: Open data licences (CC BY, CC0, ODbL)
+// Days 16-20: Data security and safe sharing practices
+// Days 21-25: Ghana Data Protection Act 2012 key provisions
+// Days 26-30: Responsible data use and citation etiquette
+// ---------------------------------------------------------------------------
 const CONTENT_ITEMS = [
+  // Days 1-5: Data Privacy Fundamentals
   {
     title: "Your Data Has Rights",
     category: "Data Privacy",
@@ -10,207 +20,212 @@ const CONTENT_ITEMS = [
     tip: "Always read the privacy policy before sharing personal information on any platform.",
   },
   {
-    title: "Consent Matters",
+    title: "Consent Is the Cornerstone",
     category: "Data Privacy",
     content:
-      "Consent is a core privacy principle: organisations should ask before using your data. If you do not agree, you have the right to refuse or withdraw consent.",
-    tip: "Check whether a service explains how your personal information will be used before you agree.",
+      "Data controllers must obtain your informed, freely given consent before processing your personal data. Pre-ticked boxes or bundled permissions do not count as valid consent — you should always be able to say no without losing access to a core service.",
+    tip: "Review and revoke app permissions regularly in your device settings.",
   },
   {
-    title: "Minimal Data Collection",
+    title: "The Right to Access Your Data",
     category: "Data Privacy",
     content:
-      "Only the data needed for a service should be collected, not everything. This reduces risk and gives you better control over what is held about you.",
-    tip: "Share only what is necessary for the goal you want to achieve.",
+      "You have the right to request a copy of all personal data an organisation holds about you. Most frameworks — including Ghana's DPA 2012 — require responses within 30 days. This empowers you to spot errors and challenge unlawful processing.",
+    tip: "Submit a Subject Access Request to any organisation you suspect holds your data without clear justification.",
   },
   {
-    title: "Secure Storage is Essential",
+    title: "Data Minimisation Matters",
     category: "Data Privacy",
     content:
-      "Trusted services protect your data with security measures like encryption and access controls. If a service cannot explain how they secure data, be cautious.",
-    tip: "Use services that explicitly describe how they keep your information safe.",
+      "Organisations should collect only the data that is strictly necessary for a stated purpose — nothing more. Excess data collection increases breach risk and erodes trust. When designing surveys or forms, question every field you add.",
+    tip: "If a sign-up form asks for your date of birth and you cannot see why they need it, consider whether to proceed.",
   },
   {
-    title: "Privacy Is a Daily Choice",
+    title: "Purpose Limitation Principle",
     category: "Data Privacy",
     content:
-      "Your data rights are not a one-time decision — they apply every time you share information. Being aware of how your data is used helps you stay in control.",
-    tip: "Review privacy settings often and update them when needed.",
+      "Data collected for one purpose must not be silently repurposed for something else. If a hospital collects your address for appointment reminders, it cannot later sell that address to advertisers without fresh consent.",
+    tip: "Check terms of service updates — organisations sometimes expand data uses through policy changes.",
   },
+  // Days 6-10: Data Piracy & Intellectual Property
   {
-    title: "Piracy Harms Innovation",
-    category: "Data Piracy",
+    title: "What Is Data Piracy?",
+    category: "Data Piracy & IP",
     content:
-      "Using protected data without permission is data piracy, and it undermines creators and researchers. Always respect ownership and attribution when you reuse someone else's work.",
-    tip: "Never copy or redistribute data unless the licence clearly allows it.",
+      "Data piracy refers to the unauthorised copying, distribution, or use of datasets, databases, and digital content protected by intellectual property law. Just as music piracy harms artists, data piracy harms the researchers and organisations who invested in data collection.",
+    tip: "Always check the licence or terms of use of a dataset before downloading or republishing it.",
   },
   {
-    title: "Respect Intellectual Property",
-    category: "Data Piracy",
+    title: "Databases Have Legal Protection",
+    category: "Data Piracy & IP",
     content:
-      "Intellectual property covers data, charts, reports, and analysis. When data is owned by someone else, using it without permission can be unlawful and unfair.",
-    tip: "Always verify the source and licence before republishing data.",
+      "In many jurisdictions, database creators hold a 'sui generis' database right that prevents extraction or re-use of substantial parts without permission, even if the underlying facts are not individually copyrightable. Ghana's Copyright Act 2005 provides similar protections.",
+    tip: "Look for an explicit licence statement on any dataset page — absence of a licence does not mean free use.",
   },
   {
-    title: "Licensed Data Is Reusable",
-    category: "Data Piracy",
+    title: "Scraping Is Not Always Legal",
+    category: "Data Piracy & IP",
     content:
-      "Some data is shared under licences that permit reuse if you follow the rules. A respectful user checks licence terms and gives credit where required.",
-    tip: "Look for licence details before you reuse any official dataset.",
+      "Automated scraping of a website can infringe database rights or breach terms of service, even if the pages are publicly visible. Courts in several countries have ruled against scrapers who re-sold or republished the harvested data commercially.",
+    tip: "If you need data from a website at scale, contact the owner and ask for an official data feed or API access.",
   },
   {
-    title: "Ask Before You Share",
-    category: "Data Piracy",
+    title: "Attribution vs. Plagiarism",
+    category: "Data Piracy & IP",
     content:
-      "Sharing someone else's compiled dataset can expose private or copyrighted information. When in doubt, ask the provider for permission first.",
-    tip: "If a dataset looks proprietary, check with the owner before distributing it.",
+      "Using someone else's dataset without credit is a form of academic and professional dishonesty. Proper attribution not only respects the creator's work but also allows readers to verify the source and understand data provenance.",
+    tip: "Cite datasets in your reports the same way you would cite a journal article — author, title, year, DOI or URL.",
   },
   {
-    title: "Cite the Data Creator",
-    category: "Data Piracy",
+    title: "Commercial vs. Non-Commercial Use",
+    category: "Data Piracy & IP",
     content:
-      "Credit matters: citing the original data creator respects their labour and helps others trace the source. Good citation builds trust in your own work.",
-    tip: "Always include the original dataset source when you publish analysis.",
+      "Many datasets are licensed for non-commercial use only. Using such data in a product you sell — even indirectly — can expose you to legal liability. Always verify whether your intended use falls within the licence's commercial clause.",
+    tip: "If your use case is commercial, seek datasets under permissive licences like CC BY or public domain (CC0).",
   },
+  // Days 11-15: Open Data Licences
   {
-    title: "CC BY Means Attribution",
+    title: "Creative Commons at a Glance",
     category: "Open Data Licences",
     content:
-      "A CC BY licence lets you share and adapt work as long as you credit the original creator. This is a simple and open way to reuse data responsibly.",
-    tip: "When using CC BY data, clearly credit the source in your work.",
+      "Creative Commons (CC) licences let creators specify how their work may be reused. The spectrum runs from CC0 (no rights reserved) to CC BY-NC-ND (attribution required, no commercial use, no derivatives). Understanding the abbreviations helps you choose the right dataset for your project.",
+    tip: "Bookmark creativecommons.org/licenses for a plain-English breakdown of every CC licence variant.",
   },
   {
-    title: "CC0 Means Public Domain",
+    title: "CC0 — Public Domain Dedication",
     category: "Open Data Licences",
     content:
-      "CC0 releases data into the public domain, allowing anyone to reuse it without asking. Even then, it is good practice to mention the origin of the data.",
-    tip: "Treat CC0 data with respect by noting where it came from.",
+      "CC0 is the most permissive option: the creator waives all copyright and related rights worldwide. You can copy, modify, distribute, and use CC0 data for any purpose — commercial or otherwise — without asking permission or providing attribution.",
+    tip: "CC0 is ideal when you want your research outputs to have maximum reuse potential globally.",
   },
   {
-    title: "ODbL Requires Share-Alike",
+    title: "CC BY — Attribution Required",
     category: "Open Data Licences",
     content:
-      "The Open Database License (ODbL) allows reuse as long as you credit the source and share any adapted database under the same licence. It ensures shared resources stay open.",
-    tip: "If you change ODbL data, share your improved version under the same licence.",
+      "CC BY allows any reuse — including commercial — as long as you give appropriate credit to the original creator. It is the standard licence for many open-access journals and government open-data portals, encouraging reuse while ensuring recognition.",
+    tip: "When using CC BY data, include the creator's name, dataset title, source URL, and the licence type in your output.",
   },
   {
-    title: "Licence Terms Protect Everyone",
+    title: "ODbL — The Open Database Licence",
     category: "Open Data Licences",
     content:
-      "Different licences set different rules for reuse, redistribution and attribution. Learning the basics helps you avoid accidental misuse of open data.",
-    tip: "Read the licence summary before using open data in reports or dashboards.",
+      "The Open Database Licence (ODbL) is designed specifically for databases. It requires attribution and mandates that any public database you produce using ODbL data must itself be released under ODbL ('share-alike'). OpenStreetMap uses ODbL.",
+    tip: "If you build a product using ODbL data, check whether your derived database must also be published openly.",
   },
   {
-    title: "Open Data Can Still Have Rules",
+    title: "Choosing the Right Licence for Your Data",
     category: "Open Data Licences",
     content:
-      "Open data is not always licence-free; many datasets require attribution or share-alike treatment. Respecting those rules keeps the open data ecosystem healthy.",
-    tip: "Check whether a dataset is CC BY, CC0, ODbL, or another licence before reuse.",
+      "Publishing data without a licence leaves users uncertain about what is permitted, which can reduce uptake significantly. Choosing the most permissive licence that still meets your requirements encourages wider use, more citations, and greater research impact.",
+    tip: "Use the choosealicense.com or CC licence chooser tool to select a licence that matches your sharing goals.",
   },
+  // Days 16-20: Data Security & Safe Sharing
   {
-    title: "Protect Data in Transit",
+    title: "Encrypt Before You Share",
     category: "Data Security",
     content:
-      "Sending data over the internet should use encrypted connections such as HTTPS. Unsecured data can be intercepted and misused before it reaches its destination.",
-    tip: "Always use services that show a secure lock icon in your browser address bar.",
+      "When transmitting sensitive datasets, encryption ensures only the intended recipient can read them. Use industry-standard protocols such as TLS for web transfers and GPG or AES-256 for file-level encryption before attaching data to emails.",
+    tip: "Never send personal or sensitive data as a plain-text email attachment — use an encrypted file or a secure link.",
   },
   {
-    title: "Use Strong Account Controls",
+    title: "Access Controls Protect Data",
     category: "Data Security",
     content:
-      "Strong passwords and two-factor authentication reduce the risk of account takeover. If your account is protected, sensitive data stays safer.",
-    tip: "Enable two-factor authentication whenever the platform offers it.",
+      "Principle of least privilege means users and systems should access only the data they genuinely need. Overly broad permissions are a leading cause of accidental exposure and insider threats. Review permissions regularly and remove stale accounts.",
+    tip: "Audit who has access to each shared dataset at least once a quarter.",
   },
   {
-    title: "Limit Who Sees Sensitive Data",
+    title: "Anonymisation vs. Pseudonymisation",
     category: "Data Security",
     content:
-      "Not every colleague or system needs access to every dataset. Access controls help keep sensitive information restricted to the right people.",
-    tip: "Share data only with people who need it to do their work.",
+      "Anonymised data has had all identifiers permanently removed so that re-identification is not reasonably possible. Pseudonymised data replaces identifiers with codes — safer for analysis but still personal data under most laws. Know the difference before sharing.",
+    tip: "Use k-anonymity or differential privacy techniques to quantify the re-identification risk of any dataset you publish.",
   },
   {
-    title: "Back Up Important Work Safely",
+    title: "Secure Data Storage Basics",
     category: "Data Security",
     content:
-      "Regular backups protect your datasets from loss or corruption. Keep backup copies in a secure location with controlled access.",
-    tip: "Make a secure backup of key data before making major changes.",
+      "Storing sensitive data on unencrypted USB drives, personal email accounts, or public cloud folders without access controls is a major security risk. Use dedicated, access-controlled repositories — like GhanaDataHub — that enforce authentication and logging.",
+    tip: "Enable two-factor authentication on every platform where you store or access research data.",
   },
   {
-    title: "Review Access Logs",
+    title: "Incident Response for Data Breaches",
     category: "Data Security",
     content:
-      "Knowing who accessed a dataset helps spot misuse and improve security. Audit trails are a powerful tool for responsible data stewardship.",
-    tip: "Check access logs when you suspect data has been seen by the wrong people.",
+      "If you suspect a data breach, time matters. Notify your data protection officer or IT security team immediately. Ghana's DPA 2012 requires data controllers to report breaches to the Data Protection Commission promptly to limit harm to data subjects.",
+    tip: "Keep an up-to-date contact list for your organisation's data protection officer so you can report incidents fast.",
+  },
+  // Days 21-25: Ghana Data Protection Act 2012
+  {
+    title: "Ghana's DPA 2012 — An Overview",
+    category: "Ghana DPA 2012",
+    content:
+      "Ghana's Data Protection Act 843 (2012) established the Data Protection Commission and set out rights for individuals and obligations for organisations that collect and process personal data. It is one of the pioneering data protection laws in Africa.",
+    tip: "Visit dataprotection.org.gh to read the full Act and access guidance from the Data Protection Commission.",
   },
   {
-    title: "Know Your Rights Under Ghana Law",
-    category: "GDPR Act 2012",
+    title: "Eight Principles of the Ghana DPA",
+    category: "Ghana DPA 2012",
     content:
-      "The Data Protection Act 2012 gives individuals rights over their personal data, including access and correction. Organisations must be transparent about how they collect and use data.",
-    tip: "Ask for a copy of your personal data if you are unsure what a service holds about you.",
+      "The Act requires that personal data be collected for a specific purpose, accurate, adequate, not excessive, not kept longer than necessary, secured, and transferred only to countries with adequate protection. These eight principles mirror international best practice.",
+    tip: "Use the eight principles as a checklist every time you design a new data collection process.",
   },
   {
-    title: "Consent and Purpose",
-    category: "GDPR Act 2012",
+    title: "Registering as a Data Controller",
+    category: "Ghana DPA 2012",
     content:
-      "The Act requires that personal data is collected only for legitimate purposes. Consent should be specific, informed and freely given.",
-    tip: "If a service cannot explain why it needs your data, do not share it.",
+      "Any individual or organisation that determines the purpose and means of processing personal data in Ghana must register with the Data Protection Commission. Operating without registration can result in fines and prosecution under the Act.",
+    tip: "Check whether your organisation or research project qualifies as a data controller and register if required.",
   },
   {
-    title: "Data Accuracy Is a Right",
-    category: "GDPR Act 2012",
+    title: "Individual Rights Under the DPA",
+    category: "Ghana DPA 2012",
     content:
-      "You have the right to ask for incorrect personal data to be corrected. Accurate data helps protect you from harm caused by wrong information.",
-    tip: "Review any personal details you provide and request corrections promptly.",
+      "Ghanaian data subjects have the right to know what data is held about them, request corrections, and object to processing in certain circumstances. Organisations must respond to these requests within 21 days and cannot charge excessive fees.",
+    tip: "If a Ghanaian organisation ignores your data request, escalate to the Data Protection Commission at info@dataprotection.org.gh.",
   },
   {
-    title: "Secure Disposal Matters",
-    category: "GDPR Act 2012",
+    title: "Cross-Border Data Transfers",
+    category: "Ghana DPA 2012",
     content:
-      "Organisations must delete personal data when it is no longer needed for its purpose. Safe disposal reduces the risk of old data being exposed.",
-    tip: "Ask how long your data will be kept and whether it will be deleted afterward.",
+      "The Ghana DPA restricts transfers of personal data to countries that do not provide adequate data protection, unless specific safeguards are in place. This mirrors the EU's adequacy framework and protects Ghanaian citizens' data internationally.",
+    tip: "Before sending personal data offshore, confirm the destination country's data protection status with your legal team.",
+  },
+  // Days 26-30: Responsible Data Use & Citation
+  {
+    title: "Cite Your Data Sources",
+    category: "Responsible Data Use",
+    content:
+      "Citing datasets properly enables other researchers to verify your findings, build on your work, and give credit to the data creators. A standard data citation includes the creator, title, repository name, year, and a persistent identifier such as a DOI.",
+    tip: "Use a reference manager like Zotero, which now supports dataset citation types automatically.",
   },
   {
-    title: "Accountability Builds Trust",
-    category: "GDPR Act 2012",
+    title: "Data Sharing Builds Science",
+    category: "Responsible Data Use",
     content:
-      "Data controllers are responsible for how personal data is handled. If a service is accountable, it is more likely to manage data responsibly.",
-    tip: "Choose platforms that clearly explain their data protection practices.",
+      "Open data sharing accelerates discovery by allowing others to replicate, validate, and extend your research. Studies show that papers with openly shared datasets receive significantly more citations than those without public data.",
+    tip: "Deposit your research data in a recognised repository like GhanaDataHub, Zenodo, or the Harvard Dataverse.",
   },
   {
-    title: "Cite Data Sources Clearly",
-    category: "Responsible Use",
+    title: "Do No Harm With Data",
+    category: "Responsible Data Use",
     content:
-      "When you publish insights, always cite the origin of the data. Clear citation helps others verify your findings and gives credit to the original source.",
-    tip: "Include the dataset name and provider in your analysis notes.",
+      "Before publishing or sharing data, consider whether it could harm the communities or individuals it describes — particularly for sensitive topics like health, ethnicity, or economic status. Responsible data practice includes a harm assessment at every stage.",
+    tip: "Conduct a data ethics review with stakeholders from the community represented in your dataset before publishing.",
   },
   {
-    title: "Respect Privacy in Reports",
-    category: "Responsible Use",
+    title: "Data Provenance and Lineage",
+    category: "Responsible Data Use",
     content:
-      "Aggregated statistics are usually safer than personal records. If your analysis uses sensitive data, keep individual identities confidential.",
-    tip: "Avoid publishing names or identifying details unless you have explicit permission.",
+      "Provenance records where data came from, who collected it, how it was transformed, and when. Without clear lineage, errors can propagate invisibly through analyses and policy decisions. Documenting provenance is an act of scientific integrity.",
+    tip: "Include a data readme file with every dataset you publish, describing collection methods and any transformations applied.",
   },
   {
-    title: "Be Transparent About Methods",
-    category: "Responsible Use",
+    title: "Sustaining Open Data Ecosystems",
+    category: "Responsible Data Use",
     content:
-      "Good data practice means explaining how you collected and analysed information. Transparency makes your work easier to trust and reuse.",
-    tip: "Write a short note about your data sources and any limitations.",
-  },
-  {
-    title: "Use Data for Positive Impact",
-    category: "Responsible Use",
-    content:
-      "Responsible data use means choosing projects that benefit communities and respect rights. Data can support development when people are treated fairly.",
-    tip: "Focus your analysis on solutions rather than simply exposing problems.",
-  },
-  {
-    title: "Share Insights, Not Raw Data",
-    category: "Responsible Use",
-    content:
-      "Summarising findings rather than sharing raw personal data reduces risk. Good reporting protects individuals while still sharing useful knowledge.",
-    tip: "Share charts and summaries instead of original records when possible.",
+      "Open data only remains valuable if communities contribute as well as consume. Uploading your datasets, reporting data errors, and contributing to metadata enrichment helps sustain the ecosystem for everyone — including future researchers across Africa.",
+    tip: "Pledge to upload at least one dataset or data improvement to GhanaDataHub each quarter.",
   },
 ];
 
@@ -229,8 +244,10 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
         month: "long",
         day: "numeric",
       }),
-    [today],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
+  // Map day 0-29 → dot 0-4  (every 6 days = new dot)
   const progressIndex = Math.min(4, Math.floor(dayIndex / 6));
 
   if (!isVisible) {
@@ -245,6 +262,7 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
           inset: 0;
           background: rgba(0, 0, 0, 0.6);
           backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -257,6 +275,7 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
           width: min(520px, 92vw);
           background: rgba(255, 255, 255, 0.96);
           backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
           border: 1px solid rgba(255, 255, 255, 0.7);
           border-radius: 24px;
           box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);
@@ -266,12 +285,12 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
 
         @keyframes gdhBackdropFade {
           from { opacity: 0; }
-          to { opacity: 1; }
+          to   { opacity: 1; }
         }
 
         @keyframes gdhPopupIn {
           from { opacity: 0; transform: scale(0.92); }
-          to { opacity: 1; transform: scale(1); }
+          to   { opacity: 1; transform: scale(1); }
         }
 
         .gdh-popup-top-row {
@@ -296,13 +315,18 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
           justify-content: center;
           cursor: pointer;
           color: #111827;
+          flex-shrink: 0;
+          transition: background 0.15s;
+        }
+        .gdh-popup-close:hover {
+          background: rgba(0, 0, 0, 0.12);
         }
 
         .gdh-popup-badge-row {
           margin-top: 20px;
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 4px;
         }
 
         .gdh-category-pill {
@@ -314,6 +338,7 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
           font-weight: 600;
           padding: 3px 10px;
           border-radius: 99px;
+          align-self: flex-start;
         }
 
         .gdh-popup-label {
@@ -326,6 +351,8 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
           font-size: 22px;
           font-weight: 700;
           color: #111827;
+          font-family: "Sora", sans-serif;
+          line-height: 1.3;
         }
 
         .gdh-popup-content {
@@ -338,6 +365,7 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
         .gdh-tip-box {
           display: flex;
           gap: 10px;
+          align-items: flex-start;
           background: var(--green-pale);
           border-left: 3px solid var(--green);
           border-radius: 10px;
@@ -346,22 +374,29 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
         }
 
         .gdh-tip-icon {
-          min-width: 18px;
-          min-height: 18px;
+          min-width: 14px;
+          min-height: 14px;
           color: var(--green);
           margin-top: 2px;
+          flex-shrink: 0;
         }
 
         .gdh-tip-text {
           font-size: 13px;
           color: var(--green);
-          line-height: 1.5;
+          line-height: 1.55;
+        }
+
+        .gdh-progress-area {
+          margin-top: 18px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
         }
 
         .gdh-progress-row {
-          margin-top: 18px;
           display: flex;
-          justify-content: center;
           gap: 8px;
         }
 
@@ -377,8 +412,6 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
         }
 
         .gdh-progress-label {
-          margin-top: 8px;
-          text-align: center;
           font-size: 11px;
           color: #6b7280;
         }
@@ -397,7 +430,12 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
           background: var(--green);
           color: #ffffff;
           font-weight: 500;
+          font-size: 14px;
           cursor: pointer;
+          transition: background 0.15s;
+        }
+        .gdh-button-primary:hover {
+          background: var(--green-light);
         }
 
         .gdh-button-secondary {
@@ -409,6 +447,10 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
           color: var(--gray-500);
           font-size: 13px;
           cursor: pointer;
+          transition: background 0.15s;
+        }
+        .gdh-button-secondary:hover {
+          background: var(--gray-100);
         }
 
         .gdh-bottom-note {
@@ -418,10 +460,12 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
           text-align: center;
         }
       `}</style>
-      <div className="gdh-daily-popup-panel" role="dialog" aria-modal="true">
+      <div className="gdh-daily-popup-panel" role="dialog" aria-modal="true" aria-label="Daily Data Insight">
+        {/* Top Row */}
         <div className="gdh-popup-top-row">
           <div className="gdh-popup-date">{formattedDate}</div>
           <button
+            id="gdh-popup-close-btn"
             className="gdh-popup-close"
             type="button"
             onClick={dismiss}
@@ -430,27 +474,42 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
             <X size={16} />
           </button>
         </div>
+
+        {/* Category Badge */}
         <div className="gdh-popup-badge-row">
           <span className="gdh-category-pill">{content.category}</span>
           <div className="gdh-popup-label">Daily Data Insight</div>
         </div>
+
+        {/* Title */}
         <h2 className="gdh-popup-title">{content.title}</h2>
+
+        {/* Content */}
         <div className="gdh-popup-content">{content.content}</div>
+
+        {/* Tip Box */}
         <div className="gdh-tip-box">
           <Lightbulb className="gdh-tip-icon" size={14} />
           <div className="gdh-tip-text">{content.tip}</div>
         </div>
-        <div className="gdh-progress-row">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <span
-              key={index}
-              className={`gdh-progress-dot ${index === progressIndex ? "active" : ""}`}
-            />
-          ))}
+
+        {/* Progress Dots */}
+        <div className="gdh-progress-area">
+          <div className="gdh-progress-row">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <span
+                key={index}
+                className={`gdh-progress-dot ${index === progressIndex ? "active" : ""}`}
+              />
+            ))}
+          </div>
+          <div className="gdh-progress-label">Insight {dayIndex + 1} of 30</div>
         </div>
-        <div className="gdh-progress-label">Insight {dayIndex + 1} of 30</div>
+
+        {/* Dismiss Buttons */}
         <div className="gdh-button-row">
           <button
+            id="gdh-popup-got-it-btn"
             className="gdh-button-primary"
             type="button"
             onClick={dismiss}
@@ -458,6 +517,7 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
             Got it, close
           </button>
           <button
+            id="gdh-popup-never-btn"
             className="gdh-button-secondary"
             type="button"
             onClick={neverShow}
@@ -465,6 +525,8 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
             Don't show this again
           </button>
         </div>
+
+        {/* Bottom Note */}
         <div className="gdh-bottom-note">
           This insight updates daily. Source: GhanaDataHub Editorial.
         </div>

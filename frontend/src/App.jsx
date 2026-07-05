@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { PrivateRoute, PublicRoute } from "./components/RouteGuard";
+import DailyPopup from "./components/DailyPopup";
+import { useDailyPopup } from "./hooks/useDailyPopup";
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -18,12 +20,17 @@ import AuditPage from "./pages/AuditPage";
 
 const ADMIN_ROLES = ["super_admin", "org_admin"];
 
-export default function App() {
+function AppContent() {
+  const { user } = useAuth();
+  const { isVisible, dismiss, neverShow } = useDailyPopup();
+
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Toaster position="top-right" toastOptions={{ duration: 3500 }} />
-        <Routes>
+    <>
+      {/* Show the daily insight popup only for authenticated users */}
+      {user && (
+        <DailyPopup isVisible={isVisible} dismiss={dismiss} neverShow={neverShow} />
+      )}
+      <Routes>
           {/* Public auth routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
@@ -55,7 +62,17 @@ export default function App() {
             <h2 style={{ fontFamily: "Sora", marginBottom: 8 }}>404 — Page not found</h2>
             <a href="/dashboard" style={{ color: "var(--green)" }}>Go to Dashboard</a>
           </div></Layout></PrivateRoute>} />
-        </Routes>
+      </Routes>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Toaster position="top-right" toastOptions={{ duration: 3500 }} />
+        <AppContent />
       </AuthProvider>
     </BrowserRouter>
   );
