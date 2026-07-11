@@ -1,0 +1,54 @@
+Pipeline completed at: 2026-07-10T11:46:48.407380+00:00
+Duration: 65.18 seconds
+CSVs discovered:    6
+Already uploaded:   0 (skipped)
+Too small (skipped):4
+Newly uploaded:     0
+Upload failures:    6
+Platform total now: 0 datasets
+----------------------------------------
+Pipeline completed at: 2026-07-10T11:50:08.867265+00:00
+Duration: 92.35 seconds
+CSVs discovered:    6
+Already uploaded:   0 (skipped)
+Too small (skipped):4
+Newly uploaded:     0
+Upload failures:    6
+Platform total now: 0 datasets
+----------------------------------------
+Pipeline completed at: 2026-07-10T12:06:00.558160+00:00
+Duration: 8.92 seconds
+CSVs discovered:    6
+Already uploaded:   0 (skipped)
+Too small (skipped):4
+Newly uploaded:     0
+Upload failures:    6
+Platform total now: 0 datasets
+----------------------------------------
+Pipeline completed at: 2026-07-10T12:14:59.502118+00:00
+Duration: 125.28 seconds
+CSVs discovered:    6
+Already uploaded:   0 (skipped)
+Too small (skipped):4
+Newly uploaded:     0
+Upload failures:    6
+Platform total now: 0 datasets
+----------------------------------------
+Pipeline completed at: 2026-07-11T02:19:47.780895+00:00
+Duration: 19.40 seconds
+CSVs discovered:    6
+Already uploaded:   0 (skipped)
+Too small (skipped):4
+Newly uploaded:     6
+Upload failures:    0
+Platform total now: 6 datasets
+----------------------------------------
+Pipeline completed at: 2026-07-11T02:23:39.670391+00:00
+Duration: 17.16 seconds
+CSVs discovered:    6
+Already uploaded:   6 (skipped)
+Too small (skipped):4
+Newly uploaded:     0
+Upload failures:    0
+Platform total now: 6 datasets
+----------------------------------------

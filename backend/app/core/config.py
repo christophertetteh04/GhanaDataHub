@@ -11,13 +11,17 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE: int = 104857600  # 100MB
     FRONTEND_URL: str = "http://localhost:5173"
-    
-    LOG_LEVEL: str = 'DEBUG'
-    LOG_FORMAT: str = 'console'
+
+    LOG_LEVEL: str = "DEBUG"
+    LOG_FORMAT: str = "console"
     LOGTAIL_TOKEN: Optional[str] = None
 
-    class Config:
-        env_file = ".env"
+    # Pydantic v2 uses model_config (not Config class)
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",  # Ignores extra fields from .env
+    }
 
 
 settings = Settings()

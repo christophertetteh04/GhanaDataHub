@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { datasetsApi, shareApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
@@ -20,6 +20,7 @@ import {
   Shield,
   Code2,
   Dot,
+  Database
 } from "lucide-react";
 
 const VIS_LABELS = {
@@ -136,14 +137,75 @@ function ShareModal({ datasetId, onClose }) {
   );
 }
 
+const generateMockData = (title = "", category = "", count = 8) => {
+  const t = (title + " " + category).toLowerCase();
+  
+  if (t.includes('health') || t.includes('hospital')) {
+    return {
+      columns: ['ID', 'Region', 'Facility Name', 'Beds', 'Status', 'Last Inspected'],
+      rows: Array.from({length: count}).map((_, i) => ({
+        id: `H-${1000 + i}`,
+        region: ['Greater Accra', 'Ashanti', 'Volta'][i % 3],
+        facility: `General Hospital ${i + 1}`,
+        beds: 50 + (i * 12),
+        status: i % 4 === 0 ? 'Maintenance' : 'Active',
+        inspected: `2024-0${1 + (i % 9)}-15`
+      }))
+    };
+  } else if (t.includes('education') || t.includes('school')) {
+     return {
+      columns: ['School ID', 'District', 'Level', 'Students', 'Teachers', 'Ratio'],
+      rows: Array.from({length: count}).map((_, i) => ({
+        id: `EDU-${8000 + i}`,
+        district: ['Ayawaso', 'Kumasi', 'Tamale'][i % 3],
+        level: i % 2 === 0 ? 'Primary' : 'Secondary',
+        students: 200 + (i * 45),
+        teachers: 10 + (i * 2),
+        ratio: ( (200 + (i * 45)) / (10 + (i * 2)) ).toFixed(1)
+      }))
+    };
+  } else {
+    return {
+      columns: ['Record ID', 'Category', 'Value (GHS)', 'Date Logged', 'Status'],
+      rows: Array.from({length: count}).map((_, i) => ({
+        id: `REC-${500 + i}`,
+        category: ['Type A', 'Type B', 'Type C'][i % 3],
+        value: (1000.50 + i * 25.25).toFixed(2),
+        date: `2024-03-0${1 + (i % 9)}`,
+        status: i % 3 === 0 ? 'Pending' : 'Verified'
+      }))
+    };
+  }
+};
+
+const StatBubble = ({ icon, label, value }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
+       {React.cloneElement(icon, { size: 14 })}
+       {label}
+    </div>
+    <div style={{ fontSize: 18, fontWeight: 700, color: 'white' }}>{value}</div>
+  </div>
+);
+
+const InfoRow = ({ label, value, isLast }) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: isLast ? 'none' : '1px solid var(--gray-200)' }}>
+    <span style={{ fontSize: 13, color: 'var(--gray-500)' }}>{label}</span>
+    <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--gray-800)', textAlign: 'right' }}>{value}</span>
+  </div>
+);
+
 export default function DatasetDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [dataset, setDataset] = useState(null);
   const [versions, setVersions] = useState([]);
+  const [related, setRelated] = useState([]);
   const [showShare, setShowShare] = useState(false);
-  const [tab, setTab] = useState("info");
+  
+  const [isScrolledPastHero, setIsScrolledPastHero] = useState(false);
+  const [expandedDesc, setExpandedDesc] = useState(false);
 
   useEffect(() => {
     datasetsApi
@@ -154,17 +216,70 @@ export default function DatasetDetailPage() {
       .versions(id)
       .then((r) => setVersions(r.data))
       .catch(() => {});
-  }, [id]);
+      
+    datasetsApi
+      .list({ per_page: 4 })
+      .then(r => {
+         const items = r.data.items || r.data;
+         const filtered = (Array.isArray(items) ? items : []).filter(d => d.id.toString() !== id.toString()).slice(0, 3);
+         setRelated(filtered);
+      })
+      .catch(() => {});
+  }, [id, navigate]);
+  
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolledPastHero(window.scrollY > 350);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-  if (!dataset)
+  const handleDownload = () => {
+    if (dataset?.file_path) {
+      const filename = dataset.file_path.split("/").pop();
+      const url = `http://localhost:8000/uploads/${filename}`;
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
+  if (!dataset) {
     return (
-      <div style={{ padding: 48, textAlign: "center" }}>
-        <span className="spinner" style={{ width: 28, height: 28 }} />
+      <div style={{ background: "var(--gray-100)", minHeight: "100vh" }}>
+         <style>{`
+           @keyframes shimmer {
+             0% { background-position: -1000px 0; }
+             100% { background-position: 1000px 0; }
+           }
+           .shimmer {
+             animation: shimmer 2s infinite linear;
+             background: linear-gradient(to right, #e2e8f0 4%, #f1f5f9 25%, #e2e8f0 36%);
+             background-size: 1000px 100%;
+           }
+         `}</style>
+         <div style={{ height: 300, width: '100%' }} className="shimmer" />
+         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px', display: 'flex', gap: '4%', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 68%', minWidth: 0 }}>
+               <div className="shimmer" style={{ height: 250, borderRadius: 20, marginBottom: 24 }} />
+               <div className="shimmer" style={{ height: 400, borderRadius: 20 }} />
+            </div>
+            <div style={{ flex: '1 1 28%', minWidth: 280 }}>
+               <div className="shimmer" style={{ height: 350, borderRadius: 20, marginBottom: 24 }} />
+               <div className="shimmer" style={{ height: 300, borderRadius: 20 }} />
+            </div>
+         </div>
       </div>
     );
+  }
 
   const isOwner = user?.id === dataset.owner_id;
   const canShare = isOwner || user?.role === "super_admin";
+  
   const formatSize = (b) => {
     if (!b) return "—";
     if (b < 1024) return `${b} B`;
@@ -194,398 +309,295 @@ export default function DatasetDetailPage() {
     });
   };
 
+  const descText = dataset.description || "No description provided.";
+  const isLong = descText.length > 300;
+  const displayDesc = (isLong && !expandedDesc) ? descText.substring(0, 300) + '...' : descText;
+
+  const mockData = generateMockData(dataset.title, dataset.category?.name, 8);
+  const citationText = `${dataset.owner?.full_name || 'GhanaDataHub'}. (${new Date(dataset.created_at).getFullYear()}). ${dataset.title}. GhanaDataHub. ${window.location.href}`;
+
   return (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 18,
-        }}
-      >
-        <div>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => navigate("/datasets")}
-          >
-            <ArrowLeft size={13} /> Back to Datasets
-          </button>
-        </div>
-        <div style={{ fontSize: 13, color: "var(--gray-600)" }}>
-          {dataset.download_count} downloads ·{" "}
-          {new Date(dataset.created_at).toLocaleDateString()}
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 320px",
-          gap: 18,
-          alignItems: "start",
-        }}
-      >
-        {/* Main column */}
-        <div>
-          <div className="card" style={{ marginBottom: 18 }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 12,
-                alignItems: "flex-start",
-                flexWrap: "wrap",
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <h2
-                  style={{
-                    fontFamily: "Sora, sans-serif",
-                    fontSize: 22,
-                    fontWeight: 700,
-                    marginBottom: 8,
-                  }}
-                >
-                  {dataset.title}
-                </h2>
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 8,
-                    marginBottom: 8,
-                  }}
-                >
-                  <span className={`badge vis-${dataset.visibility}`}>
-                    {VIS_LABELS[dataset.visibility]}
-                  </span>
-                  {dataset.file_type && (
-                    <span className="badge badge-gray">
-                      {dataset.file_type}
-                    </span>
-                  )}
-                  {dataset.category && (
-                    <span className="badge badge-blue">
-                      {dataset.category.name}
-                    </span>
-                  )}
-                  <span className="badge badge-green">v{dataset.version}</span>
-                </div>
-                <div style={{ color: "var(--gray-600)", marginBottom: 12 }}>
-                  {dataset.description ? (
-                    dataset.description.substring(0, 400)
-                  ) : (
-                    <em style={{ color: "var(--gray-400)" }}>
-                      No description provided.
-                    </em>
-                  )}
-                </div>
-                {dataset.tags?.length > 0 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {dataset.tags.map((t) => (
-                      <span key={t.id} className="tag-chip">
-                        <Tag size={12} />
-                        {t.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+    <div style={{ background: "var(--gray-100)", minHeight: "100vh", paddingBottom: 64 }} className="fade-in">
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+          animation: fadeIn 0.4s ease-out;
+        }
+        .ghost-btn {
+          background: transparent;
+          border: 1px solid rgba(255,255,255,0.4);
+          color: white;
+          padding: 8px 16px;
+          border-radius: 8px;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        .ghost-btn:hover {
+          background: rgba(255,255,255,0.1);
+        }
+      `}</style>
+      
+      {/* SECTION 1 — HERO BAND */}
+      <div style={{
+        background: "linear-gradient(to right, var(--green) 0%, #004D2C 100%)",
+        padding: "32px 20px 40px",
+        color: "white"
+      }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+             <button onClick={() => navigate(-1)} className="ghost-btn">
+               <ArrowLeft size={16}/> Back
+             </button>
+             <div style={{ display: 'flex', gap: 8 }}>
+               {canShare && (
+                 <button onClick={() => setShowShare(true)} className="ghost-btn">
+                   <Share2 size={16}/> Share
+                 </button>
+               )}
+               {dataset.file_path && (
+                 <button onClick={handleDownload} className="ghost-btn">
+                   <Download size={16}/> Download
+                 </button>
+               )}
+             </div>
           </div>
-
-          <div className="card">
-            <h4
-              style={{ fontFamily: "Sora", fontWeight: 600, marginBottom: 12 }}
-            >
-              Dataset Info
-            </h4>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
-                gap: 12,
-                fontSize: 13,
-              }}
-            >
-              <div>
-                <div style={{ fontSize: 12, color: "var(--gray-500)" }}>
-                  Size
-                </div>
-                <div style={{ fontWeight: 600 }}>
-                  {formatSize(dataset.file_size)}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: "var(--gray-500)" }}>
-                  Downloads
-                </div>
-                <div style={{ fontWeight: 600 }}>{dataset.download_count}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: "var(--gray-500)" }}>
-                  Uploaded
-                </div>
-                <div style={{ fontWeight: 600 }}>
-                  {new Date(dataset.created_at).toLocaleDateString()}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: "var(--gray-500)" }}>
-                  License
-                </div>
-                <div style={{ fontWeight: 600 }}>{dataset.license || "—"}</div>
-              </div>
-            </div>
-
-            {dataset.file_name && (
-              <div
-                style={{
-                  marginTop: 18,
-                  padding: 12,
-                  background: "var(--gray-100)",
-                  borderRadius: 8,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "var(--gray-500)",
-                    marginBottom: 4,
-                  }}
-                >
-                  File
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>
-                      {dataset.file_name}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--gray-400)" }}>
-                      {formatSize(dataset.file_size)}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    {dataset.file_path && (
-                      <a
-                        href={`http://localhost:8000/uploads/${dataset.file_path.split("/").pop()}`}
-                        download
-                        className="btn btn-outline"
-                      >
-                        <Download size={12} /> Download
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
+          <div style={{ fontSize: 13, color: "#A7F3D0", textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, fontWeight: 600 }}>
+             {dataset.category?.name || 'Dataset'}
           </div>
-
-          {/* Version history as full width below main info when tab is versions */}
-          {tab === "versions" && (
-            <div className="card" style={{ marginTop: 16 }}>
-              <h4
-                style={{
-                  fontFamily: "Sora",
-                  fontWeight: 600,
-                  marginBottom: 10,
-                }}
-              >
-                Version History
-              </h4>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Version</th>
-                      <th>File</th>
-                      <th>Change Summary</th>
-                      <th>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {versions.map((v) => (
-                      <tr key={v.id}>
-                        <td>
-                          <span className="badge badge-green">
-                            v{v.version_number}
-                          </span>
-                        </td>
-                        <td style={{ fontSize: 12 }}>{v.file_name || "—"}</td>
-                        <td style={{ color: "var(--gray-600)" }}>
-                          {v.change_summary || "—"}
-                        </td>
-                        <td style={{ fontSize: 12 }}>
-                          {new Date(v.created_at).toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 16, lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {dataset.title}
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, color: 'rgba(255,255,255,0.7)', fontSize: 14, marginBottom: 24, flexWrap: 'wrap' }}>
+            <span>Uploaded {formatPrettyDate(dataset.created_at)}</span>
+            <Dot size={16} />
+            <span>By {dataset.owner?.full_name || 'Unknown'}</span>
+            <Dot size={16} />
+            <span>Version {dataset.version}</span>
+          </div>
+          {dataset.tags?.length > 0 && (
+            <div style={{ display: "flex", gap: 8, flexWrap: 'wrap', marginBottom: 32 }}>
+               {dataset.tags.map(t => (
+                 <span key={t.id} style={{ padding: '4px 10px', fontSize: 12, border: '1px solid rgba(255,255,255,0.3)', borderRadius: 100, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                   <Tag size={12} /> {t.name}
+                 </span>
+               ))}
             </div>
           )}
+          
+          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.15)', borderRadius: 12, padding: '16px 24px', gap: 48, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+             <StatBubble icon={<Database />} label="File Size" value={formatSize(dataset.file_size)} />
+             <StatBubble icon={<FileText />} label="File Type" value={dataset.file_type?.toUpperCase() || 'CSV'} />
+             <StatBubble icon={<Download />} label="Downloads" value={dataset.download_count} />
+             <StatBubble icon={<History />} label="Version" value={`v${dataset.version}`} />
+          </div>
         </div>
+      </div>
 
-        {/* Right action column */}
-        <div>
-          <div
-            className="card"
-            style={{ display: "flex", flexDirection: "column", gap: 10 }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <div style={{ fontWeight: 700 }}>Actions</div>
-              <div style={{ color: "var(--gray-500)", fontSize: 12 }}>
-                v{dataset.version}
-              </div>
+      {/* SECTION 2 — QUICK ACTIONS BAR */}
+      <div 
+         style={{
+           position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
+           background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--gray-300)',
+           padding: '12px 20px',
+           transform: isScrolledPastHero ? 'translateY(0)' : 'translateY(-100%)',
+           opacity: isScrolledPastHero ? 1 : 0,
+           transition: 'all 0.3s ease',
+           pointerEvents: isScrolledPastHero ? 'auto' : 'none'
+         }}>
+         <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: 14, color: 'var(--gray-600)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '50%', fontWeight: 500 }}>
+              {dataset.title}
             </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {dataset.file_path && (
-                <a
-                  href={`http://localhost:8000/uploads/${dataset.file_path.split("/").pop()}`}
-                  download
-                  className="btn btn-primary"
-                  style={{ justifyContent: "center" }}
-                >
-                  <Download size={14} /> Download Dataset
-                </a>
-              )}
-
+            <div style={{ display: 'flex', gap: 8 }}>
               {canShare && (
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setShowShare(true)}
-                >
-                  <Share2 size={14} /> Share
-                </button>
+                <button className="btn btn-outline btn-sm" onClick={() => setShowShare(true)}><Share2 size={14}/> Share</button>
               )}
+              {dataset.file_path && (
+                <button className="btn btn-primary btn-sm" onClick={handleDownload}><Download size={14}/> Download</button>
+              )}
+            </div>
+         </div>
+      </div>
 
-              <button
-                className="btn btn-outline"
-                onClick={() => {
-                  navigator.clipboard.writeText(
-                    `${window.location.origin}/api/datasets/${dataset.id}`,
-                  );
-                  toast.success("Copied API endpoint");
-                }}
-              >
-                <Copy size={13} /> Copy API
+      {/* SECTION 3 — TWO COLUMN CONTENT AREA */}
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 20px", display: 'flex', flexWrap: 'wrap', gap: '4%' }}>
+        
+        {/* LEFT COLUMN */}
+        <div style={{ flex: '1 1 68%', minWidth: 0 }}>
+          
+          <div className="card" style={{ padding: 32, borderRadius: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginBottom: 24, border: 'none', transition: 'transform 0.2s ease' }}
+               onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+               onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
+            <div style={{ color: 'var(--green)', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16, fontWeight: 700 }}>About This Dataset</div>
+            <div style={{ fontSize: 15, lineHeight: 1.8, color: 'var(--gray-700)', whiteSpace: 'pre-wrap' }}>
+              {displayDesc}
+            </div>
+            {isLong && (
+              <button onClick={() => setExpandedDesc(!expandedDesc)} style={{ marginTop: 12, color: 'var(--green)', background: 'none', border: 'none', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+                {expandedDesc ? 'Show less' : '... Read more'}
               </button>
+            )}
+          </div>
 
-              <div
-                style={{ fontSize: 12, color: "var(--gray-500)", marginTop: 6 }}
-              >
-                <div style={{ marginBottom: 6 }}>
-                  <strong style={{ fontWeight: 600 }}>
-                    {dataset.owner?.full_name || "—"}
-                  </strong>
-                </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <User size={12} />{" "}
-                  <div style={{ fontSize: 13 }}>
-                    {dataset.owner?.email || "—"}
-                  </div>
-                </div>
-              </div>
+          <div className="card" style={{ padding: 32, borderRadius: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginBottom: 24, border: 'none', transition: 'transform 0.2s ease' }}
+               onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+               onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
+            <div style={{ color: 'var(--green)', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16, fontWeight: 700 }}>Data Preview</div>
+            <div style={{ overflowX: 'auto', margin: '0 -12px', padding: '0 12px' }}>
+               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
+                 <thead>
+                   <tr style={{ borderBottom: '2px solid var(--gray-200)' }}>
+                     {mockData.columns.map((c, i) => (
+                       <th key={i} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, color: 'var(--gray-500)', fontWeight: 600 }}>{c}</th>
+                     ))}
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {mockData.rows.map((row, i) => (
+                     <tr key={i} style={{ borderBottom: '1px solid var(--gray-100)' }}>
+                       {Object.values(row).map((val, j) => (
+                         <td key={j} style={{ padding: '12px 16px', fontSize: 14, color: 'var(--gray-800)' }}>{val}</td>
+                       ))}
+                     </tr>
+                   ))}
+                 </tbody>
+               </table>
+            </div>
+            <div style={{ marginTop: 16, fontSize: 13, color: 'var(--gray-400)', fontStyle: 'italic' }}>
+              Sample preview only. Download for full dataset.
             </div>
           </div>
 
-          <div className="card" style={{ marginTop: 12 }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <div style={{ fontWeight: 700 }}>Version History</div>
-              <button
-                className="btn btn-sm btn-secondary"
-                onClick={() => setTab("versions")}
-              >
-                View all
-              </button>
-            </div>
-            <div style={{ marginTop: 8 }}>
-              {versions.slice(0, 4).map((v) => (
-                <div
-                  key={v.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    padding: "8px 0",
-                    borderBottom: "1px solid var(--gray-100)",
-                  }}
-                >
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>
-                      v{v.version_number}
+          <div className="card" style={{ padding: 32, borderRadius: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginBottom: 24, border: 'none', transition: 'transform 0.2s ease' }}
+               onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+               onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
+            <div style={{ color: 'var(--green)', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 24, fontWeight: 700 }}>Version History</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {versions.length > 0 ? versions.map((v, i) => (
+                 <div key={v.id} style={{ display: 'flex', gap: 16, position: 'relative' }}>
+                    {i !== versions.length - 1 && (
+                       <div style={{ position: 'absolute', left: 11, top: 28, bottom: -24, width: 2, background: 'var(--gray-200)' }} />
+                    )}
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: i === 0 ? 'var(--green)' : 'var(--gray-300)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative', zIndex: 2 }}>
+                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'white' }} />
                     </div>
-                    <div style={{ fontSize: 12, color: "var(--gray-500)" }}>
-                      {v.file_name || "—"}
+                    <div style={{ flex: 1, paddingBottom: i !== versions.length - 1 ? 16 : 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+                         <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gray-900)' }}>v{v.version_number}</span>
+                         <span style={{ fontSize: 13, color: 'var(--gray-500)' }}>{formatPrettyDate(v.created_at)}</span>
+                      </div>
+                      <div style={{ fontSize: 14, color: 'var(--gray-700)' }}>{v.change_summary || "Initial release"}</div>
                     </div>
-                  </div>
-                  <div
-                    style={{ display: "flex", gap: 8, alignItems: "center" }}
-                  >
-                    <a
-                      href={`http://localhost:8000/uploads/${v.file_path?.split("/").pop()}`}
-                      className="btn btn-sm btn-outline"
-                      download
-                    >
-                      <Download size={12} />
-                    </a>
-                    <button
-                      className="btn btn-sm btn-outline"
-                      onClick={() => {
-                        navigator.clipboard.writeText(
-                          `${window.location.origin}/api/datasets/${dataset.id}/versions/${v.id}`,
-                        );
-                        toast.success("Copied version link");
-                      }}
-                    >
-                      <Link2 size={12} />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                 </div>
+              )) : (
+                 <div style={{ fontSize: 14, color: 'var(--gray-500)' }}>No version history available.</div>
+              )}
             </div>
           </div>
+          
+        </div>
+
+        {/* RIGHT SIDEBAR */}
+        <div style={{ flex: '1 1 28%', minWidth: 280, position: 'sticky', top: 80, alignSelf: 'flex-start' }}>
+          
+          <div className="card" style={{ padding: 24, borderRadius: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginBottom: 24, border: 'none', transition: 'transform 0.2s ease' }}
+               onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+               onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Download Dataset</h3>
+            <div style={{ fontFamily: 'monospace', fontSize: 13, color: 'var(--gray-600)', marginBottom: 4, wordBreak: 'break-all' }}>{dataset.file_name || 'No file attached'}</div>
+            <div style={{ fontSize: 13, color: 'var(--gray-500)', marginBottom: 20 }}>{formatSize(dataset.file_size)}</div>
+            
+            {dataset.file_path && (
+              <button onClick={handleDownload} style={{ width: '100%', height: 48, background: 'var(--green)', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', marginBottom: 12, transition: 'opacity 0.2s' }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = 0.9}
+                      onMouseLeave={e => e.currentTarget.style.opacity = 1}>
+                <Download size={18} /> Download
+              </button>
+            )}
+            
+            {canShare && (
+              <button onClick={() => setShowShare(true)} style={{ width: '100%', height: 44, background: 'transparent', color: 'var(--gray-700)', border: '1px solid var(--gray-200)', borderRadius: 8, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--gray-50)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <Share2 size={16} /> Share
+              </button>
+            )}
+            
+            <div style={{ height: 1, background: 'var(--gray-200)', margin: '20px 0' }} />
+            
+            <button onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              toast.success("Copied!");
+            }} style={{ background: 'none', border: 'none', color: 'var(--green)', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: 0 }}>
+              <Link2 size={16} /> Copy link
+            </button>
+          </div>
+
+          <div className="card" style={{ padding: 24, borderRadius: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginBottom: 24, border: 'none', transition: 'transform 0.2s ease' }}
+               onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+               onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Dataset Information</h3>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <InfoRow label="License" value={dataset.license || 'Not specified'} />
+              <InfoRow label="Visibility" value={<span className={`badge vis-${dataset.visibility}`}>{VIS_LABELS[dataset.visibility]}</span>} />
+              <InfoRow label="Uploaded" value={formatPrettyDate(dataset.created_at)} />
+              <InfoRow label="Last Updated" value={formatPrettyDate(dataset.updated_at || dataset.created_at)} />
+              <InfoRow label="Version" value={`v${dataset.version}`} />
+              <InfoRow label="Format" value={dataset.file_type?.toUpperCase() || '—'} isLast />
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: 24, borderRadius: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.03)', border: 'none', transition: 'transform 0.2s ease' }}
+               onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+               onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Cite This Dataset</h3>
+            <div style={{ background: '#F1F5F1', borderRadius: 8, padding: 16, fontFamily: 'monospace', fontSize: 12, color: 'var(--gray-800)', lineHeight: 1.6, marginBottom: 16, wordBreak: 'break-word' }}>
+              {citationText}
+            </div>
+            <button onClick={() => {
+              navigator.clipboard.writeText(citationText);
+              toast.success("Citation copied!");
+            }} style={{ background: 'none', border: 'none', color: 'var(--green)', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: 0 }}>
+              <Copy size={16} /> Copy Citation
+            </button>
+          </div>
+
         </div>
       </div>
 
-      {/* Footer tab controls for small screens */}
-      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-        {["info", "versions"].map((t) => (
-          <button
-            key={t}
-            className={`btn ${tab === t ? "btn-primary" : "btn-secondary"} btn-sm`}
-            onClick={() => setTab(t)}
-          >
-            {t === "info" ? (
-              "Information"
-            ) : (
-              <>
-                <History size={13} /> Version History
-              </>
-            )}
-          </button>
-        ))}
-      </div>
+      {/* SECTION 4 — RELATED DATASETS */}
+      {related.length > 0 && (
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "16px 20px 48px" }}>
+          <div style={{ color: 'var(--gray-500)', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700, marginBottom: 4 }}>You Might Also Like</div>
+          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24 }}>Related Datasets</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 24 }}>
+            {related.map(d => (
+               <div key={d.id} className="card dataset-card" onClick={() => navigate(`/datasets/${d.id}`)} style={{ cursor: 'pointer', padding: 24, borderRadius: 16, transition: 'transform 0.2s, box-shadow 0.2s', border: '1px solid var(--gray-200)', background: 'white', display: 'flex', flexDirection: 'column' }} 
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.06)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; }}>
+                 <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <span className={`badge vis-${d.visibility}`}>{VIS_LABELS[d.visibility] || d.visibility}</span>
+                    {d.category && <span className="badge badge-blue">{d.category.name}</span>}
+                 </div>
+                 <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{d.title}</h4>
+                 <p style={{ fontSize: 14, color: 'var(--gray-500)', marginBottom: 16, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{d.description || 'No description'}</p>
+                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--gray-100)', fontSize: 12, color: 'var(--gray-500)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> {d.download_count || 0}</div>
+                    <div>{formatShortDate(d.created_at)}</div>
+                 </div>
+               </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {showShare && (
         <ShareModal

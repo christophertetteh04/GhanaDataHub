@@ -19,7 +19,7 @@ export default function Layout({ children }) {
   return (
     <div className="layout">
       <Sidebar />
-      <div className="main">
+      <div className="main" style={{ marginLeft: "var(--sidebar-width, 240px)", transition: "margin-left 0.25s ease" }}>
         <div className="topbar">
           <span className="topbar-title">{title}</span>
         </div>
