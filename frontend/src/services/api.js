@@ -116,6 +116,17 @@ export const notifApi = {
   markAllRead: () => api.patch("/notifications/read-all"),
 };
 
+// Admin
+export const adminApi = {
+  overview: () => api.get("/admin/overview"),
+  users: (params) => api.get("/admin/users", { params }),
+  changeUserRole: (id, role) => api.post(`/admin/users/${id}/role`, { role }),
+  datasets: (params) => api.get("/admin/datasets", { params }),
+  deleteDataset: (id, reason) => api.delete(`/admin/datasets/${id}`, { params: { reason } }),
+  auditLogs: (params) => api.get("/admin/audit-logs", { params }),
+  storageBreakdown: () => api.get("/admin/storage-breakdown"),
+};
+
 // Share
 export const shareApi = {
   create: (d) => api.post("/share/", d),

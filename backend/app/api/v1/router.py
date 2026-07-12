@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, users, organizations, datasets, search, dashboard, share, misc, audit
+from app.api.v1.endpoints import auth, users, organizations, datasets, search, dashboard, share, misc, audit, admin
 
 api_router = APIRouter()
 
@@ -13,3 +13,4 @@ api_router.include_router(share.router, prefix="/share", tags=["Share"])
 api_router.include_router(misc.categories_router, prefix="/categories", tags=["Categories"])
 api_router.include_router(misc.notifications_router, prefix="/notifications", tags=["Notifications"])
 api_router.include_router(audit.router, prefix="/audit", tags=["Audit"])
+api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])

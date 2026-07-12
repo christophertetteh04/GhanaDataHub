@@ -21,6 +21,7 @@ import NewsFeedPage from "./pages/NewsFeedPage";
 import CataloguePage from "./pages/CataloguePage";
 import BlogPage from "./pages/BlogPage";
 import BlogPostPage from "./pages/BlogPostPage";
+import AdminPage from "./pages/AdminPage";
 
 const ADMIN_ROLES = ["super_admin", "org_admin"];
 
@@ -60,6 +61,9 @@ function AppContent() {
           } />
           <Route path="/categories" element={
             <PrivateRoute roles={ADMIN_ROLES}><Layout><CategoriesPage /></Layout></PrivateRoute>
+          } />
+          <Route path="/admin" element={
+            <PrivateRoute roles={ADMIN_ROLES}><Layout><AdminPage /></Layout></PrivateRoute>
           } />
           <Route path="/audit" element={
             <PrivateRoute roles={ADMIN_ROLES}><Layout><AuditPage /></Layout></PrivateRoute>

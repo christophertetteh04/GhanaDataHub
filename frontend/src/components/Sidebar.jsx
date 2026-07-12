@@ -14,6 +14,7 @@ import {
   FileText,
   LogOut,
   Tag,
+  ShieldCheck,
   PanelLeftClose,
   Pin,
   Menu,
@@ -38,6 +39,7 @@ const ADMIN_NAV = [
   { to: "/users", icon: Users, label: "Users" },
   { to: "/categories", icon: Tag, label: "Categories" },
   { to: "/audit", icon: FileText, label: "Audit Logs" },
+  { to: "/admin", icon: ShieldCheck, label: "Admin Panel" },
 ];
 
 function NavGroup({ label, items, isExpanded, hoveredItem, setHoveredItem }) {
