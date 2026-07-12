@@ -23,6 +23,7 @@ import {
 
 const NAV = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/profile", icon: Users, label: "My Profile" },
   { to: "/datasets", icon: Database, label: "Datasets" },
   { to: "/catalogue", icon: BookOpen, label: "Catalogue" },
   { to: "/blog", icon: BookText, label: "Data Stories" },

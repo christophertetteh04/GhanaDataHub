@@ -54,6 +54,7 @@ export const authApi = {
   logout: () => api.post("/auth/logout"),
   me: () => api.get("/auth/me"),
   refresh: (d) => api.post("/auth/refresh", d),
+  changePassword: (d) => api.post("/auth/change-password", d),
 };
 
 // Datasets
@@ -98,6 +99,13 @@ export const usersApi = {
   list: (params) => api.get("/users/", { params }),
   get: (id) => api.get(`/users/${id}`),
   updateMe: (d) => api.put("/users/me", d),
+  downloadHistory: () => api.get("/users/me/download-history"),
+  bookmarks: {
+    list: () => api.get("/users/me/bookmarks"),
+    add: (datasetId) => api.post("/users/me/bookmarks", { dataset_id: datasetId }),
+    remove: (datasetId) => api.delete(`/users/me/bookmarks/${datasetId}`),
+  },
+  publicProfile: (username) => api.get(`/users/${username}/public`),
   updateRole: (id, role) => api.put(`/users/${id}/role`, { role }),
   suspend: (id) => api.patch(`/users/${id}/suspend`),
   reactivate: (id) => api.patch(`/users/${id}/reactivate`),
@@ -125,6 +133,12 @@ export const adminApi = {
   deleteDataset: (id, reason) => api.delete(`/admin/datasets/${id}`, { params: { reason } }),
   auditLogs: (params) => api.get("/admin/audit-logs", { params }),
   storageBreakdown: () => api.get("/admin/storage-breakdown"),
+};
+
+export const apiKeysApi = {
+  list: () => api.get("/api-keys/"),
+  create: (payload) => api.post("/api-keys/", payload),
+  revoke: (id) => api.delete(`/api-keys/${id}`),
 };
 
 // Share

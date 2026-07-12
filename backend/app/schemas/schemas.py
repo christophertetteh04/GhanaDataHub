@@ -81,6 +81,32 @@ class UserRoleUpdate(BaseModel):
     role: UserRole
 
 
+class BookmarkCreate(BaseModel):
+    dataset_id: UUID
+
+
+class DownloadHistoryItem(BaseModel):
+    dataset_id: Optional[UUID]
+    created_at: datetime
+    resource_type: Optional[str]
+    title: Optional[str]
+    file_type: Optional[str]
+
+
+class PublicUserProfileOut(BaseModel):
+    id: UUID
+    username: str
+    full_name: str
+    role: UserRole
+    organization_id: Optional[UUID]
+    created_at: datetime
+    public_dataset_count: int
+    public_downloads_received: int
+
+    class Config:
+        from_attributes = True
+
+
 # ── Organization Schemas ──────────────────────────────────────────────────────
 class OrgCreate(BaseModel):
     name: str
