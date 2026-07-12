@@ -17,6 +17,10 @@ import UsersPage from "./pages/UsersPage";
 import CategoriesPage from "./pages/CategoriesPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import AuditPage from "./pages/AuditPage";
+import NewsFeedPage from "./pages/NewsFeedPage";
+import CataloguePage from "./pages/CataloguePage";
+import BlogPage from "./pages/BlogPage";
+import BlogPostPage from "./pages/BlogPostPage";
 
 const ADMIN_ROLES = ["super_admin", "org_admin"];
 
@@ -40,6 +44,10 @@ function AppContent() {
           <Route path="/dashboard" element={<PrivateRoute><Layout><DashboardPage /></Layout></PrivateRoute>} />
           <Route path="/datasets" element={<PrivateRoute><Layout><DatasetsPage /></Layout></PrivateRoute>} />
           <Route path="/datasets/:id" element={<PrivateRoute><Layout><DatasetDetailPage /></Layout></PrivateRoute>} />
+          <Route path="/catalogue" element={<PrivateRoute><Layout><CataloguePage /></Layout></PrivateRoute>} />
+          <Route path="/blog" element={<PrivateRoute><Layout><BlogPage /></Layout></PrivateRoute>} />
+          <Route path="/blog/:slug" element={<PrivateRoute><Layout><BlogPostPage /></Layout></PrivateRoute>} />
+          <Route path="/news" element={<PrivateRoute><Layout><NewsFeedPage /></Layout></PrivateRoute>} />
           <Route path="/search" element={<PrivateRoute><Layout><SearchPage /></Layout></PrivateRoute>} />
           <Route path="/notifications" element={<PrivateRoute><Layout><NotificationsPage /></Layout></PrivateRoute>} />
 

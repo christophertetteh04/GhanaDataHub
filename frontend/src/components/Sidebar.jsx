@@ -5,6 +5,9 @@ import {
   LayoutDashboard,
   Database,
   Search,
+  Newspaper,
+  BookText,
+  BookOpen,
   Building2,
   Users,
   Bell,
@@ -20,6 +23,9 @@ import {
 const NAV = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/datasets", icon: Database, label: "Datasets" },
+  { to: "/catalogue", icon: BookOpen, label: "Catalogue" },
+  { to: "/blog", icon: BookText, label: "Data Stories" },
+  { to: "/news", icon: Newspaper, label: "News Feed" },
   { to: "/search", icon: Search, label: "Search" },
 ];
 

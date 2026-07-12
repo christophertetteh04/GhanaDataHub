@@ -17,6 +17,9 @@ import {
   X,
   Tag,
   RefreshCw,
+  ArrowRight,
+  Share2,
+  Users,
 } from "lucide-react";
 
 const VIS_LABELS = {
@@ -287,6 +290,10 @@ export default function DatasetsPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
+  const [selectedDataset, setSelectedDataset] = useState(null);
+  const [showDescription, setShowDescription] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [exportLabel, setExportLabel] = useState("Export");
   const [filters, setFilters] = useState({
     search: "",
     category_id: "",
@@ -339,6 +346,89 @@ export default function DatasetsPage() {
     if (b < 1024 ** 2) return `${(b / 1024).toFixed(1)} KB`;
     return `${(b / 1024 ** 2).toFixed(1)} MB`;
   };
+
+  const formatDate = (value) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+    }).format(date);
+  };
+
+  const getSampleTable = (dataset) => {
+    const title = dataset.title.toLowerCase();
+    if (title.includes("gdp") || title.includes("economy") || title.includes("inflation")) {
+      return {
+        headers: ["Year", "Value (USD)", "Growth Rate %", "Region", "Source"],
+        rows: [
+          ["2022", "72,537,045,100", "3.2%", "National", "World Bank"],
+          ["2021", "77,594,256,000", "5.4%", "National", "World Bank"],
+          ["2020", "67,356,000,000", "0.5%", "National", "World Bank"],
+        ],
+      };
+    }
+    if (title.includes("population") || title.includes("demographic")) {
+      return {
+        headers: ["Year", "Total Population", "Urban %", "Rural %", "Growth %"],
+        rows: [
+          ["2021", "32,070,000", "57%", "43%", "2.4%"],
+          ["2016", "29,586,000", "55%", "45%", "2.2%"],
+          ["2011", "24,658,000", "51%", "49%", "2.4%"],
+        ],
+      };
+    }
+    if (title.includes("health") || title.includes("mortality") || title.includes("immunization")) {
+      return {
+        headers: ["Year", "Indicator", "Value", "Unit", "Source"],
+        rows: [
+          ["2023", "Maternal Mortality", "310", "per 100k", "GHS"],
+          ["2022", "Immunization Rate", "89%", "%", "WHO"],
+          ["2021", "Skilled Births", "82%", "%", "GHS"],
+        ],
+      };
+    }
+    return {
+      headers: ["Year", "Metric", "Value", "Category", "Country"],
+      rows: [
+        ["2023", "Rows", "3,200", "Preview", "Ghana"],
+        ["2022", "Coverage", "78%", "Preview", "Ghana"],
+        ["2021", "Growth", "4.1%", "Preview", "Ghana"],
+      ],
+    };
+  };
+
+  const handleDownload = async (dataset) => {
+    setIsDownloading(true);
+    const downloadUrl = `${import.meta.env.VITE_API_URL}/datasets/${dataset.id}/download`;
+    window.open(downloadUrl, "_blank");
+    window.setTimeout(() => setIsDownloading(false), 600);
+  };
+
+  const handleExport = async (dataset) => {
+    await navigator.clipboard.writeText(`${window.location.origin}/datasets/${dataset.id}`);
+    setExportLabel("Copied!");
+    window.setTimeout(() => setExportLabel("Export"), 2000);
+  };
+
+  const closeModal = () => {
+    setSelectedDataset(null);
+    setShowDescription(false);
+    setExportLabel("Export");
+  };
+
+  const selectedSampleTable = selectedDataset ? getSampleTable(selectedDataset) : null;
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") closeModal();
+    };
+    if (selectedDataset) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedDataset]);
 
   return (
     <div>
@@ -461,7 +551,7 @@ export default function DatasetsPage() {
             <div
               key={d.id}
               className="dataset-card"
-              onClick={() => navigate(`/datasets/${d.id}`)}
+              onClick={() => setSelectedDataset(d)}
             >
               <div className="dataset-card-title">{d.title}</div>
               <div className="dataset-card-meta">
@@ -551,6 +641,146 @@ export default function DatasetsPage() {
         </div>
       )}
 
+      {selectedDataset && (
+        <div
+          className="dataset-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeModal();
+          }}
+        >
+          <div className="dataset-modal-panel">
+            <div className="dataset-modal-header">
+              <span className="badge badge-blue">
+                {selectedDataset.category?.name || "Uncategorized"}
+              </span>
+              <button className="dataset-modal-close" onClick={closeModal}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="dataset-modal-title">{selectedDataset.title}</div>
+            <div className="dataset-modal-subtitle">
+              <span className="badge badge-gray">
+                {VIS_LABELS[selectedDataset.visibility] || "Unknown"}
+              </span>
+              {selectedDataset.file_type && (
+                <span className="badge badge-gray">
+                  {selectedDataset.file_type.split("/")[1]?.toUpperCase()}
+                </span>
+              )}
+              <span className="badge badge-gray">v{selectedDataset.version}</span>
+            </div>
+            <div className="dataset-modal-metadata">
+              <div>
+                <div className="dataset-modal-meta-label">File size</div>
+                <div className="dataset-modal-meta-value">{formatSize(selectedDataset.file_size)}</div>
+              </div>
+              <div>
+                <div className="dataset-modal-meta-label">Uploaded</div>
+                <div className="dataset-modal-meta-value">{formatDate(selectedDataset.created_at)}</div>
+              </div>
+              <div>
+                <div className="dataset-modal-meta-label">Downloads</div>
+                <div className="dataset-modal-meta-value">{selectedDataset.download_count ?? 0} downloads</div>
+              </div>
+              <div>
+                <div className="dataset-modal-meta-label">Owner</div>
+                <div className="dataset-modal-meta-value">{selectedDataset.owner?.full_name || "Unknown"}</div>
+              </div>
+            </div>
+            <div className="dataset-modal-description">
+              {selectedDataset.description ? (
+                <>
+                  <div className={`dataset-description-text ${showDescription ? "expanded" : "collapsed"}`}>
+                    {selectedDataset.description}
+                  </div>
+                  <button
+                    type="button"
+                    className="dataset-description-toggle"
+                    onClick={() => setShowDescription((prev) => !prev)}
+                  >
+                    {showDescription ? "Show less" : "Show more"}
+                  </button>
+                </>
+              ) : (
+                <div className="dataset-no-description">No description provided.</div>
+              )}
+            </div>
+            {selectedDataset.tags?.length > 0 && (
+              <div className="dataset-modal-tags">
+                <Tag size={12} />
+                {selectedDataset.tags.map((tag) => (
+                  <span key={tag.id || tag} className="dataset-tag-pill">
+                    {tag.name || tag}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="dataset-modal-preview">
+              <div className="dataset-preview-title">Data Preview</div>
+              {selectedDataset.file_type === "text/csv" ? (
+                <div className="dataset-preview-table-wrap">
+                  <table className="dataset-preview-table">
+                    <thead>
+                      <tr>
+                        {selectedSampleTable.headers.map((head) => (
+                          <th key={head}>{head}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedSampleTable.rows.map((row, idx) => (
+                        <tr key={idx}>
+                          {row.map((cell, cellIdx) => (
+                            <td key={cellIdx}>{cell}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="dataset-preview-note">
+                    Sample preview only. Download the full dataset to see all rows.
+                  </div>
+                </div>
+              ) : (
+                <div className="dataset-preview-unavailable">
+                  <FileText size={24} />
+                  Preview not available for this file type.
+                </div>
+              )}
+            </div>
+            <div className="dataset-modal-actions">
+              <button
+                type="button"
+                className="dataset-modal-btn primary"
+                onClick={() => handleDownload(selectedDataset)}
+                disabled={isDownloading}
+              >
+                <Download size={16} />
+                {isDownloading ? "Downloading..." : "Download"}
+              </button>
+              <button
+                type="button"
+                className="dataset-modal-btn secondary"
+                onClick={() => handleExport(selectedDataset)}
+              >
+                <Share2 size={16} />
+                {exportLabel}
+              </button>
+              <button
+                type="button"
+                className="dataset-modal-btn ghost"
+                onClick={() => {
+                  closeModal();
+                  navigate(`/datasets/${selectedDataset.id}`);
+                }}
+              >
+                Read More
+                <ArrowRight size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showUpload && (
         <UploadModal
           categories={categories}
