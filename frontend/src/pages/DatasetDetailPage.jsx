@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { datasetsApi, shareApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import QualityBadge from "../components/QualityBadge";
 import toast from "react-hot-toast";
 import {
   ArrowLeft,
@@ -397,6 +398,7 @@ export default function DatasetDetailPage() {
              <StatBubble icon={<FileText />} label="File Type" value={dataset.file_type?.toUpperCase() || 'CSV'} />
              <StatBubble icon={<Download />} label="Downloads" value={dataset.download_count} />
              <StatBubble icon={<History />} label="Version" value={`v${dataset.version}`} />
+             <QualityBadge dataset={dataset} size='md' />
           </div>
         </div>
       </div>

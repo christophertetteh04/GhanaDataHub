@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { datasetsApi, categoriesApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import QualityBadge from "../components/QualityBadge";
 import toast from "react-hot-toast";
 import { logInfo, logAction } from "../services/logger";
 
@@ -558,6 +559,7 @@ export default function DatasetsPage() {
                 <span className={`badge vis-${d.visibility}`}>
                   {VIS_LABELS[d.visibility]}
                 </span>
+                <QualityBadge dataset={d} size="sm" />
                 {d.file_type && (
                   <span className="badge badge-gray">
                     {d.file_type.split("/")[1]?.toUpperCase()}
