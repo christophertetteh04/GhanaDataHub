@@ -5,6 +5,7 @@ import { dashboardApi, notifApi, categoriesApi } from "../services/api";
 import TodayHighlight from "../components/TodayHighlight";
 import EconomicPulse from "../components/EconomicPulse";
 import ActivityFeed from "../components/ActivityFeed";
+import SinceLastVisit from "../components/SinceLastVisit";
 import {
   AreaChart,
   Area,
@@ -240,6 +241,9 @@ export default function DashboardPage() {
           <div className="greet-avatar">{initials}</div>
         </div>
       </section>
+
+      {/* SINCE LAST VISIT PANEL */}
+      <SinceLastVisit />
 
       {/* SECTION 2 - CATEGORY ICON STRIP */}
       <section className="dash-v2-cat-strip">
