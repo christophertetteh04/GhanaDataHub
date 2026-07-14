@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { dashboardApi, notifApi, categoriesApi } from "../services/api";
+import TodayHighlight from "../components/TodayHighlight";
+import EconomicPulse from "../components/EconomicPulse";
+import ActivityFeed from "../components/ActivityFeed";
 import {
   AreaChart,
   Area,
@@ -93,15 +96,24 @@ function getFileTypeStyles(type) {
   return { grad: "linear-gradient(135deg, #6B7280 0%, #4B5563 100%)", icon: Database };
 }
 
-function TooltipCard({ active, payload, label }) {
+const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="dash-tooltip" style={{ background: "rgba(17,24,39,0.9)", color: "#fff", padding: "8px 12px", borderRadius: "8px", fontSize: "12px" }}>
-      <div style={{ fontWeight: 600, marginBottom: "4px" }}>{label}</div>
-      <div>{payload[0].value} uploads</div>
+    <div style={{
+      background: 'white',
+      border: '1px solid var(--gray-300)',
+      borderRadius: 10,
+      padding: '10px 14px',
+      boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+      fontSize: 12,
+    }}>
+      <p style={{fontWeight:700, marginBottom:4, color:'var(--dark)'}}>{label}</p>
+      <p style={{color:'var(--green)', margin: 0}}>
+        {payload[0].name}: <strong>{payload[0].value}</strong>
+      </p>
     </div>
   );
-}
+};
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -112,6 +124,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Trending");
   const [activeCategory, setActiveCategory] = useState(null);
+  const [period, setPeriod] = useState('month');
 
   useEffect(() => {
     Promise.all([
@@ -129,6 +142,20 @@ export default function DashboardPage() {
   const mostDownloaded = stats?.most_downloaded || [];
   const recentUploads = stats?.recent_uploads || [];
   const monthlyUploads = stats?.monthly_uploads || [];
+
+  const filteredData = useMemo(() => {
+    if (period === 'week') return monthlyUploads.slice(-4);
+    if (period === 'year') {
+      return monthlyUploads.reduce((acc, item) => {
+        const year = item.month?.split('-')[0] || 'Unknown';
+        const existing = acc.find(a => a.month === year);
+        if (existing) existing.count += item.count;
+        else acc.push({ month: year, count: item.count });
+        return acc;
+      }, []);
+    }
+    return monthlyUploads;
+  }, [period, monthlyUploads]);
 
   const firstName = user?.full_name?.split(" ")?.[0] || "";
   const greeting = useMemo(() => greetingForHour(new Date().getHours()), []);
@@ -184,6 +211,12 @@ export default function DashboardPage() {
   return (
     <div className="dashboard-v2 fade-in">
       <style>{dashboardStyles}</style>
+
+      <div className="dash-v2-layout">
+        <div className="dash-v2-main">
+
+          {/* TODAY'S DATA HIGHLIGHT HERO */}
+      <TodayHighlight />
 
       {/* SECTION 1 - GREETING BAND */}
       <section className="dash-v2-greet-band">
@@ -244,6 +277,9 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      {/* ECONOMIC PULSE STRIP */}
+      <EconomicPulse />
+
       {/* SECTION 3 - STAT CARDS ROW */}
       <section className="dash-v2-section">
         <div className="dash-v2-grid-4">
@@ -252,6 +288,7 @@ export default function DashboardPage() {
               <Database size={20} />
             </div>
             <div className="stat-value">{Math.round(animateDatasets).toLocaleString()}</div>
+            {datasetCount > 0 && <div style={{ background: 'var(--green-pale, #DCFCE7)', color: 'var(--green)', fontSize: '11px', borderRadius: '99px', padding: '2px 8px', marginTop: '6px', display: 'inline-block' }}>+{datasetCount} total</div>}
             <div className="stat-label">Total Datasets</div>
           </div>
           <div className="dash-v2-stat-card">
@@ -259,6 +296,7 @@ export default function DashboardPage() {
               <Users size={20} />
             </div>
             <div className="stat-value">{Math.round(animateUsers).toLocaleString()}</div>
+            {userCount > 0 && <div style={{ background: 'var(--green-pale, #DCFCE7)', color: 'var(--green)', fontSize: '11px', borderRadius: '99px', padding: '2px 8px', marginTop: '6px', display: 'inline-block' }}>{userCount} registered</div>}
             <div className="stat-label">Total Users</div>
           </div>
           <div className="dash-v2-stat-card">
@@ -266,6 +304,7 @@ export default function DashboardPage() {
               <Building2 size={20} />
             </div>
             <div className="stat-value">{Math.round(animateOrgs).toLocaleString()}</div>
+            {orgCount > 0 && <div style={{ background: 'var(--green-pale, #DCFCE7)', color: 'var(--green)', fontSize: '11px', borderRadius: '99px', padding: '2px 8px', marginTop: '6px', display: 'inline-block' }}>{orgCount} orgs</div>}
             <div className="stat-label">Organizations</div>
           </div>
           <div className="dash-v2-stat-card">
@@ -273,6 +312,9 @@ export default function DashboardPage() {
               <HardDrive size={20} />
             </div>
             <div className="stat-value">{animateStorageGb.toFixed(1)} GB</div>
+            <div style={{ background: 'var(--green-pale, #DCFCE7)', color: 'var(--green)', fontSize: '11px', borderRadius: '99px', padding: '2px 8px', margin: '6px auto 0 0', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <HardDrive size={10} /> {formatBytes(storageBytes)}
+            </div>
             <div className="stat-label">Storage Used</div>
           </div>
         </div>
@@ -374,6 +416,28 @@ export default function DashboardPage() {
       {/* SECTION 6 - MONTHLY UPLOADS CHART */}
       <section className="dash-v2-section pb-24">
         <div className="chart-card">
+          <div style={{ display: 'flex', gap: '4px', marginBottom: '16px' }}>
+            {['week', 'month', 'year'].map(p => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                style={{
+                  background: period === p ? 'var(--green)' : 'transparent',
+                  color: period === p ? '#fff' : 'var(--gray-500)',
+                  borderRadius: '10px',
+                  height: '28px',
+                  padding: '0 12px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer',
+                  textTransform: 'capitalize'
+                }}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
           <div className="chart-head">
             <div className="chart-title">Upload Activity</div>
             <div className="chart-sub">Dataset activity over the last year</div>
@@ -382,22 +446,29 @@ export default function DashboardPage() {
             <div className="dash-empty" style={{ textAlign: "center", padding: "40px", color: "var(--gray-500)" }}>No monthly upload data yet.</div>
           ) : (
             <ResponsiveContainer width="100%" height={290}>
-              <AreaChart data={monthlyUploads} margin={{ top: 10, right: 10, left: -18, bottom: 0 }}>
+              <AreaChart data={filteredData} margin={{ top: 10, right: 10, left: -18, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="dashAreaFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="rgba(0,107,63,0.25)" />
-                    <stop offset="100%" stopColor="rgba(0,107,63,0.02)" />
+                  <linearGradient id='uploadGradient' x1='0' y1='0' x2='0' y2='1'>
+                    <stop offset='5%' stopColor='var(--green)' stopOpacity={0.3}/>
+                    <stop offset='95%' stopColor='var(--green)' stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid vertical={false} stroke="#F3F4F6" />
                 <XAxis dataKey="month" tick={{ fontSize: 12, fill: "var(--gray-500)" }} axisLine={false} tickLine={false} />
-                <Tooltip content={<TooltipCard />} />
-                <Area type="monotone" dataKey="count" stroke="var(--green)" fill="url(#dashAreaFill)" strokeWidth={2} dot={false} />
+                <Tooltip content={<CustomTooltip />} cursor={{fill:'rgba(0,107,63,0.04)'}} />
+                <Area type="monotone" dataKey="count" fill="url(#uploadGradient)" stroke="var(--green)" strokeWidth={2} dot={false} activeDot={{r:5, fill:'var(--green)'}} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
               </AreaChart>
             </ResponsiveContainer>
           )}
         </div>
       </section>
+
+        </div> {/* end dash-v2-main */}
+
+        <aside className="dash-v2-sidebar">
+          <ActivityFeed />
+        </aside>
+      </div> {/* end dash-v2-layout */}
 
     </div>
   );
