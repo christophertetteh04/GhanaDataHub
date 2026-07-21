@@ -13,6 +13,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { datasetsApi, categoriesApi } from "../services/api";
+import WatchButton from "../components/WatchButton";
 
 const FILE_TYPES = [
   { key: "csv", label: "CSV" },
@@ -737,9 +738,14 @@ export default function CataloguePage() {
                           );
                         })}
                       </div>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--gray-500)", fontSize: 12 }}>
-                        <Calendar size={14} />
-                        {formatDateLabel(item.created_at)}
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <WatchButton datasetId={item.id} datasetTitle={item.title} />
+                        </div>
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--gray-500)", fontSize: 12 }}>
+                          <Calendar size={14} />
+                          {formatDateLabel(item.created_at)}
+                        </div>
                       </div>
                     </div>
                   </div>

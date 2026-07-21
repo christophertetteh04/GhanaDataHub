@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { datasetsApi, shareApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import QualityBadge from "../components/QualityBadge";
+import { trackDatasetView } from "../components/PersonalisedRecs";
+import WatchButton from "../components/WatchButton";
 import toast from "react-hot-toast";
 import {
   ArrowLeft,
@@ -227,6 +229,12 @@ export default function DatasetDetailPage() {
       })
       .catch(() => {});
   }, [id, navigate]);
+  
+  useEffect(() => {
+    if (dataset) {
+      trackDatasetView(dataset);
+    }
+  }, [dataset]);
   
   useEffect(() => {
     const handleScroll = () => {
@@ -533,6 +541,10 @@ export default function DatasetDetailPage() {
               </button>
             )}
             
+            <div style={{ marginTop: 12 }}>
+              <WatchButton datasetId={dataset.id} datasetTitle={dataset.title} />
+            </div>
+
             <div style={{ height: 1, background: 'var(--gray-200)', margin: '20px 0' }} />
             
             <button onClick={() => {

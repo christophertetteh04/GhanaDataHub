@@ -17,6 +17,7 @@ from app.models.models import (
     Category,
     Dataset,
     DatasetVersion,
+    DatasetWatch,
     Notification,
     Tag,
     User,
@@ -337,6 +338,19 @@ async def update_dataset(
     log_activity(db, current_user.id, ActivityAction.update, "dataset", dataset.id, request.client.host)
     db.commit()
     db.refresh(dataset)
+
+    # Notify all users watching this dataset
+    watches = db.query(DatasetWatch).filter(DatasetWatch.dataset_id == dataset_id).all()
+    for watch in watches:
+        if watch.user_id != current_user.id:  # don't notify the updater
+            notif = Notification(
+                user_id=watch.user_id,
+                title="Dataset Updated",
+                message=f"{dataset.title} was updated to version {version.version_number}",
+                notification_type="dataset_update",
+            )
+            db.add(notif)
+    db.commit()
 
     logger.info(
         "dataset_updated",

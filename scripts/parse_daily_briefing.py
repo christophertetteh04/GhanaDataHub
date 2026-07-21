@@ -541,13 +541,17 @@ def main():
     parser = argparse.ArgumentParser(
         description="Parse Bora Capital daily briefing and upload to GhanaDataHub."
     )
-    src = parser.add_mutually_exclusive_group(required=True)
+    src = parser.add_mutually_exclusive_group(required=False)
     src.add_argument("--file", metavar="PATH", help="Path to briefing text file")
     src.add_argument("--stdin", action="store_true", help="Read from stdin")
     parser.add_argument("--parse-only", action="store_true", help="Parse only, skip upload")
     parser.add_argument("--dry-run", action="store_true", help="Show what would happen, no writes")
     parser.add_argument("--api-base", default=os.getenv("GDH_API_BASE", "http://localhost:8000"))
     args = parser.parse_args()
+
+    if not args.file and not args.stdin:
+        print("Error: provide --file <path>, --stdin, or --parse-only with one of the above.")
+        sys.exit(1)
 
     # Read input
     if args.file:
@@ -602,11 +606,14 @@ def main():
         results[label] = {"rows": len(rows), "csv": csv_path}
         print(f"  [OK] {label}: {len(rows)} rows -> {csv_path.name}")
 
-    # Summary
+    # Final summary
     print(f"\n{'─'*60}")
-    total = sum(v["rows"] for v in results.values())
-    print(f"  Sections parsed: {len(results)}  |  Total rows: {total}")
-    print(f"  Output directory: {OUTPUT_DIR}")
+    total_rows = sum(v["rows"] for v in results.values())
+    print(f"  Sections found and parsed    : {len(results)}")
+    print(f"  Total CSV files saved        : {len(results)}")
+    print(f"  Total rows across all files  : {total_rows}")
+    print(f"  Date extracted from briefing : {date}")
+    print(f"  Output directory             : {OUTPUT_DIR}")
     print(f"{'─'*60}")
 
     if args.parse_only or args.dry_run:
@@ -639,15 +646,15 @@ def main():
     print(f"  {len(existing_map)} existing datasets fetched for dedup\n")
 
     TITLE_MAP = {
-        f"daily_forex_{date}.csv":       f"Ghana Interbank Forex Rates - {date}",
-        f"daily_gse_{date}.csv":         f"GSE Daily Stock Prices - {date}",
-        f"ytd_gse_{date}.csv":           f"GSE Year-to-Date Performance - {date}",
-        f"daily_indicators_{date}.csv":  f"Ghana Economic Indicators - {date}",
-        f"daily_treasury_{date}.csv":    f"Ghana Treasury Bill Rates - {date}",
-        f"daily_petroleum_{date}.csv":   f"Ghana Petroleum Product Prices - {date}",
-        f"daily_commodities_{date}.csv": f"Global Commodity Prices - {date}",
-        f"daily_crypto_{date}.csv":      f"Cryptocurrency Market Prices - {date}",
-        f"daily_gold_coins_{date}.csv":  f"Bank of Ghana Gold Coin Prices - {date}",
+        f"daily_forex_{date}.csv":       f"Ghana Interbank Forex Rates {date}",
+        f"daily_gse_{date}.csv":         f"GSE Daily Stock Movers {date}",
+        f"ytd_gse_{date}.csv":           f"GSE Year-to-Date Performance {date}",
+        f"daily_indicators_{date}.csv":  f"Ghana Economic Indicators {date}",
+        f"daily_treasury_{date}.csv":    f"Ghana Treasury Bill Rates {date}",
+        f"daily_petroleum_{date}.csv":   f"Ghana Petroleum Product Prices {date}",
+        f"daily_commodities_{date}.csv": f"Global Commodity Prices {date}",
+        f"daily_crypto_{date}.csv":      f"Cryptocurrency Market Prices {date}",
+        f"daily_gold_coins_{date}.csv":  f"Bank of Ghana Gold Coin Prices {date}",
     }
 
     stats = {"created": 0, "updated": 0, "error": 0}
@@ -661,7 +668,16 @@ def main():
         print(f"  [{ICON.get(outcome, '?')}] {title}")
         time.sleep(0.5)
 
-    print(f"\n  Created: {stats.get('created', 0)} | Updated: {stats.get('updated', 0)} | Errors: {stats.get('error', 0)}\n")
+    print(f"\n{'='*60}")
+    print("FINAL SUMMARY")
+    print(f"{'='*60}")
+    print(f"  Sections found and parsed        : {len(results)}")
+    print(f"  Total CSV files saved            : {len(results)}")
+    print(f"  Total rows across all files      : {sum(v['rows'] for v in results.values())}")
+    print(f"  Datasets uploaded to GhanaDataHub: {stats.get('created', 0) + stats.get('updated', 0)}")
+    print(f"  Date extracted from briefing     : {date}")
+    print(f"  Created: {stats.get('created', 0)} | Updated: {stats.get('updated', 0)} | Errors: {stats.get('error', 0)}")
+    print(f"{'='*60}\n")
 
 
 if __name__ == "__main__":

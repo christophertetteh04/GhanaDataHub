@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import (
-    Column, String, Boolean, DateTime, Integer, ForeignKey,
-    Text, BigInteger, Enum, Table, JSON
+    Column, String, Boolean, DateTime, Date, Integer, ForeignKey,
+    Text, BigInteger, Enum, Table, JSON, UniqueConstraint
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -226,3 +226,30 @@ class UserBookmark(Base):
 
     user = relationship("User", back_populates="bookmarks")
     dataset = relationship("Dataset", back_populates="bookmarked_by")
+
+
+class DatasetWatch(Base):
+    __tablename__ = "dataset_watches"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    dataset_id = Column(UUID(as_uuid=True), ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint("user_id", "dataset_id", name="uq_user_dataset_watch"),)
+
+
+class ObservanceFeature(Base):
+    __tablename__ = 'observance_features'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    observance_name = Column(String(200), nullable=False)
+    observance_date = Column(Date, nullable=False, index=True)
+    category = Column(String(100), nullable=True)
+    headline = Column(String(300), nullable=True)
+    narrative = Column(Text, nullable=True)
+    featured_dataset_id = Column(UUID(as_uuid=True), ForeignKey('datasets.id', ondelete='SET NULL'), nullable=True)
+    status = Column(String(20), default='draft', nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    featured_dataset = relationship("Dataset")

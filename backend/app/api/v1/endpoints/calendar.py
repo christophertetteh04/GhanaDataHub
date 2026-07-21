@@ -1,0 +1,167 @@
+from fastapi import APIRouter
+from datetime import datetime
+
+router = APIRouter()
+
+CALENDAR_EVENTS = [
+    {
+        "id": 1,
+        "title": "Bank of Ghana Monetary Policy Rate Announcement",
+        "date": "2025-07-28",
+        "category": "Monetary Policy",
+        "description": "BOG MPC meeting outcome. Key for interest rate direction.",
+        "source": "Bank of Ghana",
+        "importance": "high",
+        "search_term": "monetary policy rate",
+    },
+    {
+        "id": 2,
+        "title": "GSS Q2 GDP Growth Rate Release",
+        "date": "2025-08-05",
+        "category": "GDP & Growth",
+        "description": "Ghana Statistical Service releases provisional Q2 2025 GDP figures.",
+        "source": "Ghana Statistical Service",
+        "importance": "high",
+        "search_term": "GDP growth rate",
+    },
+    {
+        "id": 3,
+        "title": "NSB Monthly Inflation Rate Release",
+        "date": "2025-08-13",
+        "category": "Inflation",
+        "description": "National Statistics Bureau publishes month-on-month consumer price index and headline inflation.",
+        "source": "Ghana Statistical Service",
+        "importance": "high",
+        "search_term": "inflation rate consumer price index",
+    },
+    {
+        "id": 4,
+        "title": "BOG Gross Foreign Exchange Reserves Update",
+        "date": "2025-08-20",
+        "category": "Forex & Reserves",
+        "description": "Bank of Ghana monthly bulletin on gross international reserves and import cover.",
+        "source": "Bank of Ghana",
+        "importance": "medium",
+        "search_term": "foreign exchange reserves",
+    },
+    {
+        "id": 5,
+        "title": "GRA Q2 Tax Revenue Performance Report",
+        "date": "2025-08-25",
+        "category": "Fiscal Revenue",
+        "description": "Ghana Revenue Authority quarterly report on domestic tax and customs revenue collections.",
+        "source": "Ghana Revenue Authority",
+        "importance": "medium",
+        "search_term": "GRA tax revenue",
+    },
+    {
+        "id": 6,
+        "title": "ECG Electricity Tariff Review Announcement",
+        "date": "2025-09-02",
+        "category": "Energy & Utilities",
+        "description": "Electricity Company of Ghana and PURC announce revised consumer tariff schedule.",
+        "source": "PURC / ECG",
+        "importance": "medium",
+        "search_term": "electricity tariff Ghana",
+    },
+    {
+        "id": 7,
+        "title": "COCOBOD Cocoa Purchase Price Announcement",
+        "date": "2025-09-10",
+        "category": "Agriculture",
+        "description": "COCOBOD sets the producer price per tonne of cocoa for the 2025/2026 main crop season.",
+        "source": "COCOBOD",
+        "importance": "high",
+        "search_term": "cocoa price Ghana",
+    },
+    {
+        "id": 8,
+        "title": "SEC Quarterly Capital Market Activity Report",
+        "date": "2025-09-15",
+        "category": "Capital Markets",
+        "description": "Securities and Exchange Commission releases Q2 2025 capital market report covering equities and bonds.",
+        "source": "Securities & Exchange Commission",
+        "importance": "medium",
+        "search_term": "capital market Ghana SEC",
+    },
+    {
+        "id": 9,
+        "title": "NIC Insurance Sector Quarterly Report",
+        "date": "2025-09-22",
+        "category": "Insurance",
+        "description": "National Insurance Commission publishes industry performance data including GWP and claims.",
+        "source": "National Insurance Commission",
+        "importance": "low",
+        "search_term": "insurance sector Ghana NIC",
+    },
+    {
+        "id": 10,
+        "title": "BOG Banking Sector Report",
+        "date": "2025-09-29",
+        "category": "Banking & Finance",
+        "description": "Bank of Ghana quarterly banking sector report covering capital adequacy, NPLs, and credit growth.",
+        "source": "Bank of Ghana",
+        "importance": "high",
+        "search_term": "banking sector report Ghana",
+    },
+    {
+        "id": 11,
+        "title": "GNPC Petroleum Revenue & Lifting Report",
+        "date": "2025-10-06",
+        "category": "Energy & Petroleum",
+        "description": "Ghana National Petroleum Corporation quarterly report on oil liftings and petroleum receipts.",
+        "source": "GNPC / PIAC",
+        "importance": "medium",
+        "search_term": "petroleum revenue Ghana GNPC",
+    },
+    {
+        "id": 12,
+        "title": "MoFEP Mid-Year Budget Review",
+        "date": "2025-10-13",
+        "category": "Fiscal Policy",
+        "description": "Ministry of Finance presents mid-year budget review including revised fiscal targets to Parliament.",
+        "source": "Ministry of Finance",
+        "importance": "high",
+        "search_term": "budget review Ghana fiscal",
+    },
+    {
+        "id": 13,
+        "title": "MoFEP Government Debt Bulletin",
+        "date": "2025-10-20",
+        "category": "Public Debt",
+        "description": "Ministry of Finance publishes quarterly public debt statistics including domestic and external debt stocks.",
+        "source": "Ministry of Finance",
+        "importance": "medium",
+        "search_term": "Ghana government debt public debt",
+    },
+    {
+        "id": 14,
+        "title": "EC Continuous Voter Register Update",
+        "date": "2025-10-27",
+        "category": "Electoral",
+        "description": "Electoral Commission releases updated voter registration statistics by region and district.",
+        "source": "Electoral Commission",
+        "importance": "low",
+        "search_term": "voter register Ghana electoral commission",
+    },
+    {
+        "id": 15,
+        "title": "GSS Consumer Price Index Monthly Release",
+        "date": "2025-11-10",
+        "category": "Inflation",
+        "description": "Ghana Statistical Service monthly CPI release detailing food and non-food price changes.",
+        "source": "Ghana Statistical Service",
+        "importance": "high",
+        "search_term": "consumer price index CPI Ghana",
+    },
+]
+
+
+@router.get("/calendar/events")
+def get_calendar_events(upcoming_only: bool = True):
+    """Return upcoming economic calendar events."""
+    events = CALENDAR_EVENTS
+    if upcoming_only:
+        today = datetime.now().date().isoformat()
+        events = [e for e in events if e["date"] >= today]
+    return sorted(events, key=lambda x: x["date"])

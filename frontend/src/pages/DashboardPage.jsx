@@ -6,6 +6,9 @@ import TodayHighlight from "../components/TodayHighlight";
 import EconomicPulse from "../components/EconomicPulse";
 import ActivityFeed from "../components/ActivityFeed";
 import SinceLastVisit from "../components/SinceLastVisit";
+import EconomicCalendar from "../components/EconomicCalendar";
+import PersonalisedRecs from "../components/PersonalisedRecs";
+import ComparisonEngine from "../components/ComparisonEngine";
 import {
   AreaChart,
   Area,
@@ -108,8 +111,8 @@ const CustomTooltip = ({ active, payload, label }) => {
       boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
       fontSize: 12,
     }}>
-      <p style={{fontWeight:700, marginBottom:4, color:'var(--dark)'}}>{label}</p>
-      <p style={{color:'var(--green)', margin: 0}}>
+      <p style={{ fontWeight: 700, marginBottom: 4, color: 'var(--dark)' }}>{label}</p>
+      <p style={{ color: 'var(--green)', margin: 0 }}>
         {payload[0].name}: <strong>{payload[0].value}</strong>
       </p>
     </div>
@@ -166,7 +169,7 @@ export default function DashboardPage() {
   const userCount = stats?.total_users ?? 0;
   const orgCount = stats?.total_organizations ?? 0;
   const storageBytes = stats?.total_storage_bytes ?? 0;
-  
+
   const storageNumber = storageBytes / (1024 ** 3);
 
   const animateDatasets = useCountUp(datasetCount);
@@ -182,7 +185,7 @@ export default function DashboardPage() {
           <div className="dash-skeleton w-220 h-28 mb-4"></div>
           <div className="dash-skeleton w-160 h-20 mb-8"></div>
           <div className="dash-v2-grid-4">
-            {[1,2,3,4].map(i => <div key={i} className="dash-skeleton w-full h-120 card-rounded"></div>)}
+            {[1, 2, 3, 4].map(i => <div key={i} className="dash-skeleton w-full h-120 card-rounded"></div>)}
           </div>
         </div>
       </div>
@@ -217,260 +220,268 @@ export default function DashboardPage() {
         <div className="dash-v2-main">
 
           {/* TODAY'S DATA HIGHLIGHT HERO */}
-      <TodayHighlight />
+          <TodayHighlight />
 
-      {/* SECTION 1 - GREETING BAND */}
-      <section className="dash-v2-greet-band">
-        <div className="greet-left">
-          <div className="greet-time">{greeting}</div>
-          <div className="greet-name">{firstName}</div>
-          <div className="greet-sub">See what is happening in Ghana data today</div>
-        </div>
-        <div className="greet-right">
-          <div className="dash-v2-tabs">
-            {TABS.map(tab => (
-              <button 
-                key={tab} 
-                className={`dash-v2-tab ${activeTab === tab ? "active" : ""}`}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-          <div className="greet-avatar">{initials}</div>
-        </div>
-      </section>
-
-      {/* SINCE LAST VISIT PANEL */}
-      <SinceLastVisit />
-
-      {/* SECTION 2 - CATEGORY ICON STRIP */}
-      <section className="dash-v2-cat-strip">
-        <div className="cat-strip-head">
-          <div className="cat-strip-title">Topic Categories</div>
-          <button className="cat-strip-link" onClick={() => navigate("/catalogue")}>View all</button>
-        </div>
-        <div className="cat-strip-scroll">
-          {displayCats.map(cat => {
-            const style = getCategoryStyles(cat.name);
-            const Icon = style.icon;
-            const isActive = activeCategory === cat.name || activeTab === cat.name;
-            
-            return (
-              <button 
-                key={cat.id} 
-                className={`cat-chip-wrap ${isActive ? "active" : ""}`}
-                onClick={() => !cat.isSkeleton && setActiveCategory(cat.name)}
-                disabled={cat.isSkeleton}
-              >
-                <div 
-                  className="cat-chip-icon-box"
-                  style={{ 
-                    background: style.bg, 
-                    color: isActive ? "var(--green)" : style.color,
-                    borderColor: isActive ? "var(--green)" : "transparent"
-                  }}
-                >
-                  <Icon size={22} />
-                </div>
-                <div className="cat-chip-label">{cat.name}</div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ECONOMIC PULSE STRIP */}
-      <EconomicPulse />
-
-      {/* SECTION 3 - STAT CARDS ROW */}
-      <section className="dash-v2-section">
-        <div className="dash-v2-grid-4">
-          <div className="dash-v2-stat-card">
-            <div className="stat-icon-box" style={{ background: "#EFF6FF", color: "#3B82F6" }}>
-              <Database size={20} />
+          {/* SECTION 1 - GREETING BAND */}
+          <section className="dash-v2-greet-band">
+            <div className="greet-left">
+              <div className="greet-time">{greeting}</div>
+              <div className="greet-name">{firstName}</div>
+              <div className="greet-sub">See what is happening in Ghana data today</div>
             </div>
-            <div className="stat-value">{Math.round(animateDatasets).toLocaleString()}</div>
-            {datasetCount > 0 && <div style={{ background: 'var(--green-pale, #DCFCE7)', color: 'var(--green)', fontSize: '11px', borderRadius: '99px', padding: '2px 8px', marginTop: '6px', display: 'inline-block' }}>+{datasetCount} total</div>}
-            <div className="stat-label">Total Datasets</div>
-          </div>
-          <div className="dash-v2-stat-card">
-            <div className="stat-icon-box" style={{ background: "#F5F3FF", color: "#8B5CF6" }}>
-              <Users size={20} />
-            </div>
-            <div className="stat-value">{Math.round(animateUsers).toLocaleString()}</div>
-            {userCount > 0 && <div style={{ background: 'var(--green-pale, #DCFCE7)', color: 'var(--green)', fontSize: '11px', borderRadius: '99px', padding: '2px 8px', marginTop: '6px', display: 'inline-block' }}>{userCount} registered</div>}
-            <div className="stat-label">Total Users</div>
-          </div>
-          <div className="dash-v2-stat-card">
-            <div className="stat-icon-box" style={{ background: "#FFF7ED", color: "#F97316" }}>
-              <Building2 size={20} />
-            </div>
-            <div className="stat-value">{Math.round(animateOrgs).toLocaleString()}</div>
-            {orgCount > 0 && <div style={{ background: 'var(--green-pale, #DCFCE7)', color: 'var(--green)', fontSize: '11px', borderRadius: '99px', padding: '2px 8px', marginTop: '6px', display: 'inline-block' }}>{orgCount} orgs</div>}
-            <div className="stat-label">Organizations</div>
-          </div>
-          <div className="dash-v2-stat-card">
-            <div className="stat-icon-box" style={{ background: "#FEF2F2", color: "#EF4444" }}>
-              <HardDrive size={20} />
-            </div>
-            <div className="stat-value">{animateStorageGb.toFixed(1)} GB</div>
-            <div style={{ background: 'var(--green-pale, #DCFCE7)', color: 'var(--green)', fontSize: '11px', borderRadius: '99px', padding: '2px 8px', margin: '6px auto 0 0', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-              <HardDrive size={10} /> {formatBytes(storageBytes)}
-            </div>
-            <div className="stat-label">Storage Used</div>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 4 - TODAY HEADLINES */}
-      <section className="dash-v2-section">
-        <div className="section-head">
-          <div className="section-title">Today on GhanaDataHub</div>
-          <div className="section-filters">
-            Filters <SlidersHorizontal size={14} />
-          </div>
-        </div>
-        <div className="dash-v2-grid-4">
-          {displayHeadlines.slice(0,4).map(d => {
-            if (d.isSkeleton) {
-              return (
-                <div key={d.id} className="headline-card skel">
-                  <div className="headline-thumb dash-skeleton" />
-                  <div className="dash-skeleton h-4 w-40 mt-2" />
-                  <div className="dash-skeleton h-4 w-full mt-2" />
-                </div>
-              );
-            }
-            
-            const fileStyle = getFileTypeStyles(d.file_type);
-            const FileIcon = fileStyle.icon;
-            const catStyle = getCategoryStyles(d.category);
-            
-            return (
-              <div key={d.id} className="headline-card" onClick={() => navigate(`/datasets/${d.id}`)}>
-                <div className="headline-thumb" style={{ background: fileStyle.grad }}>
-                  <FileIcon size={24} color="#fff" />
-                </div>
-                {d.category && (
-                  <div className="headline-badge" style={{ background: catStyle.bg, color: catStyle.color }}>
-                    {d.category}
-                  </div>
-                )}
-                <div className="headline-title">{clampTitle(d.title, 60)}</div>
-                <div className="headline-stats">
-                  <span><Eye size={12} /> {(d.download_count * 3).toLocaleString()}</span>
-                  <span><Download size={12} /> {d.download_count.toLocaleString()}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* SECTION 5 - LATEST UPLOADS ROW */}
-      <section className="dash-v2-section">
-        <div className="section-head">
-          <div className="section-title">Latest Datasets</div>
-          <div className="section-filters">
-            Filters <SlidersHorizontal size={14} />
-          </div>
-        </div>
-        <div className="dash-v2-grid-4">
-          {displayRecent.slice(0,4).map(d => {
-            if (d.isSkeleton) {
-              return (
-                <div key={d.id} className="latest-card skel">
-                  <div className="latest-img dash-skeleton" />
-                  <div className="latest-body">
-                    <div className="dash-skeleton h-4 w-full" />
-                    <div className="dash-skeleton h-4 w-60 mt-2" />
-                  </div>
-                </div>
-              );
-            }
-
-            const fileStyle = getFileTypeStyles(d.file_type);
-            const FileIcon = fileStyle.icon;
-            
-            return (
-              <div key={d.id} className="latest-card">
-                <div className="latest-img" style={{ background: fileStyle.grad }}>
-                  <FileIcon size={42} color="rgba(255,255,255,0.9)" />
-                  <button className="read-more-btn" onClick={() => navigate(`/datasets/${d.id}`)}>
-                    Read more <ArrowRight size={12} />
+            <div className="greet-right">
+              <div className="dash-v2-tabs">
+                {TABS.map(tab => (
+                  <button
+                    key={tab}
+                    className={`dash-v2-tab ${activeTab === tab ? "active" : ""}`}
+                    onClick={() => setActiveTab(tab)}
+                  >
+                    {tab}
                   </button>
-                </div>
-                <div className="latest-body">
-                  <div className="latest-title">{clampTitle(d.title, 60)}</div>
-                  <div className="latest-owner">
-                    <div className="latest-avatar">{d.owner?.full_name?.[0]?.toUpperCase() || "U"}</div>
-                    <span>{d.owner?.full_name || "Unknown"}</span>
-                    <span className="dot">•</span>
-                    <span>{timeAgo(d.created_at)}</span>
-                  </div>
-                </div>
+                ))}
               </div>
-            );
-          })}
-        </div>
-      </section>
+              <div className="greet-avatar">{initials}</div>
+            </div>
+          </section>
 
-      {/* SECTION 6 - MONTHLY UPLOADS CHART */}
-      <section className="dash-v2-section pb-24">
-        <div className="chart-card">
-          <div style={{ display: 'flex', gap: '4px', marginBottom: '16px' }}>
-            {['week', 'month', 'year'].map(p => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                style={{
-                  background: period === p ? 'var(--green)' : 'transparent',
-                  color: period === p ? '#fff' : 'var(--gray-500)',
-                  borderRadius: '10px',
-                  height: '28px',
-                  padding: '0 12px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  border: 'none',
-                  cursor: 'pointer',
-                  textTransform: 'capitalize'
-                }}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-          <div className="chart-head">
-            <div className="chart-title">Upload Activity</div>
-            <div className="chart-sub">Dataset activity over the last year</div>
-          </div>
-          {monthlyUploads.length === 0 ? (
-            <div className="dash-empty" style={{ textAlign: "center", padding: "40px", color: "var(--gray-500)" }}>No monthly upload data yet.</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={290}>
-              <AreaChart data={filteredData} margin={{ top: 10, right: 10, left: -18, bottom: 0 }}>
-                <defs>
-                  <linearGradient id='uploadGradient' x1='0' y1='0' x2='0' y2='1'>
-                    <stop offset='5%' stopColor='var(--green)' stopOpacity={0.3}/>
-                    <stop offset='95%' stopColor='var(--green)' stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid vertical={false} stroke="#F3F4F6" />
-                <XAxis dataKey="month" tick={{ fontSize: 12, fill: "var(--gray-500)" }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} cursor={{fill:'rgba(0,107,63,0.04)'}} />
-                <Area type="monotone" dataKey="count" fill="url(#uploadGradient)" stroke="var(--green)" strokeWidth={2} dot={false} activeDot={{r:5, fill:'var(--green)'}} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </section>
+          {/* SINCE LAST VISIT PANEL */}
+          <SinceLastVisit />
+
+          {/* SECTION 2 - CATEGORY ICON STRIP */}
+          {/*<section className="dash-v2-cat-strip">
+            <div className="cat-strip-head">
+              <div className="cat-strip-title">Topic Categories</div>
+              <button className="cat-strip-link" onClick={() => navigate("/catalogue")}>View all</button>
+            </div>
+            <div className="cat-strip-scroll">
+              {displayCats.map(cat => {
+                const style = getCategoryStyles(cat.name);
+                const Icon = style.icon;
+                const isActive = activeCategory === cat.name || activeTab === cat.name;
+
+                return (
+                  <button
+                    key={cat.id}
+                    className={`cat-chip-wrap ${isActive ? "active" : ""}`}
+                    onClick={() => !cat.isSkeleton && setActiveCategory(cat.name)}
+                    disabled={cat.isSkeleton}
+                  >
+                    <div
+                      className="cat-chip-icon-box"
+                      style={{
+                        background: style.bg,
+                        color: isActive ? "var(--green)" : style.color,
+                        borderColor: isActive ? "var(--green)" : "transparent"
+                      }}
+                    >
+                      <Icon size={22} />
+                    </div>
+                    <div className="cat-chip-label">{cat.name}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>*/}
+
+          {/* ECONOMIC PULSE STRIP */}
+          <EconomicPulse />
+
+          {/* SECTION 3 - STAT CARDS ROW */}
+          <section className="dash-v2-section">
+            <div className="dash-v2-grid-4">
+              <div className="dash-v2-stat-card">
+                <div className="stat-icon-box" style={{ background: "#EFF6FF", color: "#3B82F6" }}>
+                  <Database size={20} />
+                </div>
+                <div className="stat-value">{Math.round(animateDatasets).toLocaleString()}</div>
+                <ComparisonEngine indicator="gdp" value={65} />
+                {datasetCount > 0 && <div style={{ background: 'var(--green-pale, #DCFCE7)', color: 'var(--green)', fontSize: '11px', borderRadius: '99px', padding: '2px 8px', marginTop: '6px', display: 'inline-block' }}>+{datasetCount} total</div>}
+                <div className="stat-label">Total Datasets</div>
+              </div>
+              <div className="dash-v2-stat-card">
+                <div className="stat-icon-box" style={{ background: "#F5F3FF", color: "#8B5CF6" }}>
+                  <Users size={20} />
+                </div>
+                <div className="stat-value">{Math.round(animateUsers).toLocaleString()}</div>
+                {userCount > 0 && <div style={{ background: 'var(--green-pale, #DCFCE7)', color: 'var(--green)', fontSize: '11px', borderRadius: '99px', padding: '2px 8px', marginTop: '6px', display: 'inline-block' }}>{userCount} registered</div>}
+                <div className="stat-label">Total Users</div>
+              </div>
+              <div className="dash-v2-stat-card">
+                <div className="stat-icon-box" style={{ background: "#FFF7ED", color: "#F97316" }}>
+                  <Building2 size={20} />
+                </div>
+                <div className="stat-value">{Math.round(animateOrgs).toLocaleString()}</div>
+                {orgCount > 0 && <div style={{ background: 'var(--green-pale, #DCFCE7)', color: 'var(--green)', fontSize: '11px', borderRadius: '99px', padding: '2px 8px', marginTop: '6px', display: 'inline-block' }}>{orgCount} orgs</div>}
+                <div className="stat-label">Organizations</div>
+              </div>
+              <div className="dash-v2-stat-card">
+                <div className="stat-icon-box" style={{ background: "#FEF2F2", color: "#EF4444" }}>
+                  <HardDrive size={20} />
+                </div>
+                <div className="stat-value">{animateStorageGb.toFixed(1)} GB</div>
+                <div style={{ background: 'var(--green-pale, #DCFCE7)', color: 'var(--green)', fontSize: '11px', borderRadius: '99px', padding: '2px 8px', margin: '6px auto 0 0', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <HardDrive size={10} /> {formatBytes(storageBytes)}
+                </div>
+                <div className="stat-label">Storage Used</div>
+              </div>
+            </div>
+          </section>
+
+          {/* PERSONALISED RECOMMENDATIONS */}
+          <PersonalisedRecs
+            recentUploads={stats?.recent_uploads}
+            mostDownloaded={stats?.most_downloaded}
+          />
+
+          {/* SECTION 4 - TODAY HEADLINES */}
+          <section className="dash-v2-section">
+            <div className="section-head">
+              <div className="section-title">Today on GhanaDataHub</div>
+              <div className="section-filters">
+                Filters <SlidersHorizontal size={14} />
+              </div>
+            </div>
+            <div className="dash-v2-grid-4">
+              {displayHeadlines.slice(0, 4).map(d => {
+                if (d.isSkeleton) {
+                  return (
+                    <div key={d.id} className="headline-card skel">
+                      <div className="headline-thumb dash-skeleton" />
+                      <div className="dash-skeleton h-4 w-40 mt-2" />
+                      <div className="dash-skeleton h-4 w-full mt-2" />
+                    </div>
+                  );
+                }
+
+                const fileStyle = getFileTypeStyles(d.file_type);
+                const FileIcon = fileStyle.icon;
+                const catStyle = getCategoryStyles(d.category);
+
+                return (
+                  <div key={d.id} className="headline-card" onClick={() => navigate(`/datasets/${d.id}`)}>
+                    <div className="headline-thumb" style={{ background: fileStyle.grad }}>
+                      <FileIcon size={24} color="#fff" />
+                    </div>
+                    {d.category && (
+                      <div className="headline-badge" style={{ background: catStyle.bg, color: catStyle.color }}>
+                        {d.category}
+                      </div>
+                    )}
+                    <div className="headline-title">{clampTitle(d.title, 60)}</div>
+                    <div className="headline-stats">
+                      <span><Eye size={12} /> {(d.download_count * 3).toLocaleString()}</span>
+                      <span><Download size={12} /> {d.download_count.toLocaleString()}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* SECTION 5 - LATEST UPLOADS ROW */}
+          <section className="dash-v2-section">
+            <div className="section-head">
+              <div className="section-title">Latest Datasets</div>
+              <div className="section-filters">
+                Filters <SlidersHorizontal size={14} />
+              </div>
+            </div>
+            <div className="dash-v2-grid-4">
+              {displayRecent.slice(0, 4).map(d => {
+                if (d.isSkeleton) {
+                  return (
+                    <div key={d.id} className="latest-card skel">
+                      <div className="latest-img dash-skeleton" />
+                      <div className="latest-body">
+                        <div className="dash-skeleton h-4 w-full" />
+                        <div className="dash-skeleton h-4 w-60 mt-2" />
+                      </div>
+                    </div>
+                  );
+                }
+
+                const fileStyle = getFileTypeStyles(d.file_type);
+                const FileIcon = fileStyle.icon;
+
+                return (
+                  <div key={d.id} className="latest-card">
+                    <div className="latest-img" style={{ background: fileStyle.grad }}>
+                      <FileIcon size={42} color="rgba(255,255,255,0.9)" />
+                      <button className="read-more-btn" onClick={() => navigate(`/datasets/${d.id}`)}>
+                        Read more <ArrowRight size={12} />
+                      </button>
+                    </div>
+                    <div className="latest-body">
+                      <div className="latest-title">{clampTitle(d.title, 60)}</div>
+                      <div className="latest-owner">
+                        <div className="latest-avatar">{d.owner?.full_name?.[0]?.toUpperCase() || "U"}</div>
+                        <span>{d.owner?.full_name || "Unknown"}</span>
+                        <span className="dot">•</span>
+                        <span>{timeAgo(d.created_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* SECTION 6 - MONTHLY UPLOADS CHART */}
+          <section className="dash-v2-section pb-24">
+            <div className="chart-card">
+              <div style={{ display: 'flex', gap: '4px', marginBottom: '16px' }}>
+                {['week', 'month', 'year'].map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setPeriod(p)}
+                    style={{
+                      background: period === p ? 'var(--green)' : 'transparent',
+                      color: period === p ? '#fff' : 'var(--gray-500)',
+                      borderRadius: '10px',
+                      height: '28px',
+                      padding: '0 12px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer',
+                      textTransform: 'capitalize'
+                    }}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+              <div className="chart-head">
+                <div className="chart-title">Upload Activity</div>
+                <div className="chart-sub">Dataset activity over the last year</div>
+              </div>
+              {monthlyUploads.length === 0 ? (
+                <div className="dash-empty" style={{ textAlign: "center", padding: "40px", color: "var(--gray-500)" }}>No monthly upload data yet.</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={290}>
+                  <AreaChart data={filteredData} margin={{ top: 10, right: 10, left: -18, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id='uploadGradient' x1='0' y1='0' x2='0' y2='1'>
+                        <stop offset='5%' stopColor='var(--green)' stopOpacity={0.3} />
+                        <stop offset='95%' stopColor='var(--green)' stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} stroke="#F3F4F6" />
+                    <XAxis dataKey="month" tick={{ fontSize: 12, fill: "var(--gray-500)" }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,107,63,0.04)' }} />
+                    <Area type="monotone" dataKey="count" fill="url(#uploadGradient)" stroke="var(--green)" strokeWidth={2} dot={false} activeDot={{ r: 5, fill: 'var(--green)' }} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </section>
 
         </div> {/* end dash-v2-main */}
 
         <aside className="dash-v2-sidebar">
           <ActivityFeed />
+          <EconomicCalendar />
         </aside>
       </div> {/* end dash-v2-layout */}
 
@@ -490,6 +501,7 @@ const dashboardStyles = `
     background: #fff;
     border-bottom: 1px solid var(--gray-300);
     padding: 20px 28px;
+    margin-bottom: 40px;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;

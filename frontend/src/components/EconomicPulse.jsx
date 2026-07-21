@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { datasetsApi, dashboardApi } from "../services/api";
+import ComparisonEngine from "./ComparisonEngine";
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -149,6 +150,8 @@ export default function EconomicPulse() {
                    ? navigate(`/datasets/${forexDataset.id}`)
                    : navigate("/datasets?search=forex"),
       valueColour: "var(--dark, #111827)",
+      indicator: "cedi",
+      compValue: 11.46,
     },
     {
       key:       "inflation",
@@ -164,6 +167,8 @@ export default function EconomicPulse() {
                    ? navigate(`/datasets/${inflDataset.id}`)
                    : navigate("/datasets?search=inflation"),
       valueColour: inflColour,
+      indicator: "inflation",
+      compValue: inflPct !== null ? inflPct : 5.3,
     },
     {
       key:       "cocoa",
@@ -179,6 +184,8 @@ export default function EconomicPulse() {
                    ? navigate(`/datasets/${cocoaDataset.id}`)
                    : navigate("/datasets?search=cocoa"),
       valueColour: "var(--dark, #111827)",
+      indicator: "cocoa",
+      compValue: 6455,
     },
     {
       key:       "gse",
@@ -194,6 +201,8 @@ export default function EconomicPulse() {
                    ? navigate(`/datasets/${gseDataset.id}`)
                    : navigate("/datasets?search=gse"),
       valueColour: "var(--dark, #111827)",
+      indicator: "gse",
+      compValue: 25,
     },
     {
       key:       "platform",
@@ -247,6 +256,7 @@ export default function EconomicPulse() {
                   </span>
                   <TrendIcon direction={c.direction} />
                 </div>
+                {c.indicator && <ComparisonEngine indicator={c.indicator} value={c.compValue} />}
 
                 {/* Row 3: updated + sparkline */}
                 <div className="ep-row ep-row-bottom">
