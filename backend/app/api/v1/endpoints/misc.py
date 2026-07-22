@@ -1,10 +1,11 @@
 import re
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models.models import Category, Notification, User, UserRole
+from app.models.models import Category, Dataset, Notification, User, UserRole
 from app.schemas.schemas import CategoryCreate, CategoryOut, NotificationOut
 from app.api.v1.deps import get_current_user, require_roles
 
@@ -28,7 +29,13 @@ def create_category(
     slug = slugify(payload.name)
     if db.query(Category).filter(Category.slug == slug).first():
         raise HTTPException(status_code=400, detail="Category already exists")
-    cat = Category(name=payload.name, slug=slug, description=payload.description)
+    cat = Category(
+        name=payload.name,
+        slug=slug,
+        description=payload.description,
+        icon=payload.icon,
+        colour=payload.colour,
+    )
     db.add(cat)
     db.commit()
     db.refresh(cat)
@@ -37,7 +44,19 @@ def create_category(
 
 @categories_router.get("/", response_model=list[CategoryOut])
 def list_categories(db: Session = Depends(get_db)):
-    return db.query(Category).all()
+    categories = db.query(Category).order_by(Category.name.asc()).all()
+    counts = dict(
+        db.query(Dataset.category_id, func.count(Dataset.id))
+        .filter(Dataset.category_id.isnot(None))
+        .group_by(Dataset.category_id)
+        .all()
+    )
+    result = []
+    for category in categories:
+        item = CategoryOut.model_validate(category)
+        item.dataset_count = int(counts.get(category.id, 0))
+        result.append(item)
+    return result
 
 
 @categories_router.delete("/{cat_id}", status_code=204)

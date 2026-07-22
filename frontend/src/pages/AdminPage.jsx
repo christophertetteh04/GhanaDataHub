@@ -54,6 +54,16 @@ const STORAGE_TOGGLES = [
   },
 ];
 
+function loadAdminSettings() {
+  try {
+    const saved = localStorage.getItem("admin_settings");
+    return saved ? JSON.parse(saved) : {};
+  } catch {
+    localStorage.removeItem("admin_settings");
+    return {};
+  }
+}
+
 function SectionTab({ label, icon: Icon, active, onClick }) {
   return (
     <button
@@ -69,7 +79,10 @@ function SectionTab({ label, icon: Icon, active, onClick }) {
 }
 
 function formatDate(value) {
-  return new Date(value).toLocaleDateString("en-US", {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-US", {
     month: "short",
     day: "2-digit",
     year: "numeric",
@@ -106,6 +119,11 @@ function formatBytes(value = 0) {
 
 function getItems(payload) {
   return Array.isArray(payload) ? payload : payload?.items || [];
+}
+
+function getDatasetStatusEntries(overview) {
+  const statuses = overview?.datasets_by_status || overview?.datasets_by_visibility || {};
+  return Object.entries(statuses).map(([key, value]) => ({ name: key, value: Number(value) || 0 }));
 }
 
 function MiniBars({ values = [], colour = "var(--green)", gradient = false }) {
@@ -214,10 +232,7 @@ export default function AdminPage() {
   const [userRoleFilter, setUserRoleFilter] = useState("");
   const [userStatusFilter, setUserStatusFilter] = useState("");
   const [selectedDelete, setSelectedDelete] = useState(null);
-  const [toggleStates, setToggleStates] = useState(() => {
-    const saved = localStorage.getItem("admin_settings");
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [toggleStates, setToggleStates] = useState(loadAdminSettings);
 
   const isAdmin = user?.role === "super_admin" || user?.role === "org_admin";
 
@@ -306,7 +321,11 @@ export default function AdminPage() {
   }, [activeSection]);
 
   useEffect(() => {
-    localStorage.setItem("admin_settings", JSON.stringify(toggleStates));
+    try {
+      localStorage.setItem("admin_settings", JSON.stringify(toggleStates));
+    } catch {
+      // Settings are a convenience; storage failures should not break admin.
+    }
   }, [toggleStates]);
 
   const statusLabel = (isActive) => (isActive ? "Active" : "Suspended");
@@ -340,14 +359,17 @@ export default function AdminPage() {
     const cutoff = Date.now() - 7 * 86400000;
     return queueDatasets
       .map((dataset) => ({ dataset, quality: computeQuality(dataset) }))
-      .filter(({ dataset, quality }) => quality.grade === "D" && new Date(dataset.created_at).getTime() < cutoff)
+      .filter(({ dataset, quality }) => {
+        const createdAt = new Date(dataset.created_at).getTime();
+        return quality.grade === "D" && !Number.isNaN(createdAt) && createdAt < cutoff;
+      })
       .slice(0, 3);
   }, [queueDatasets]);
 
   const milestones = useMemo(() => computeMilestones(overview), [overview]);
 
   const vitalSigns = useMemo(() => {
-    const visibilityCounts = Object.values(overview?.datasets_by_status || {});
+    const visibilityCounts = getDatasetStatusEntries(overview).map((item) => item.value);
     const downloadCounts = overviewDatasets
       .map((item) => item.download_count || 0)
       .sort((a, b) => b - a)
@@ -411,7 +433,10 @@ export default function AdminPage() {
         }, 0) / rows.length,
       );
       const freshness = Math.round(
-        (rows.filter((dataset) => Date.now() - new Date(dataset.updated_at || dataset.created_at).getTime() <= 90 * 86400000).length / rows.length) * 100,
+        (rows.filter((dataset) => {
+          const updatedAt = new Date(dataset.updated_at || dataset.created_at).getTime();
+          return !Number.isNaN(updatedAt) && Date.now() - updatedAt <= 90 * 86400000;
+        }).length / rows.length) * 100,
       );
       const maxDownloads = Math.max(...rows.map((dataset) => dataset.download_count || 0), 1);
       const engagement = Math.round(
@@ -602,13 +627,15 @@ export default function AdminPage() {
                 <div style={{ display: "grid", gap: 12 }}>
                   {(overview?.recent_signups || []).map((item) => (
                     <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, background: "var(--surface-base)" }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 12, background: "rgba(16,185,129,0.12)", color: "var(--green)", display: "grid", placeItems: "center", fontWeight: 800 }}>{item.full_name?.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</div>
+                        <div style={{ width: 36, height: 36, borderRadius: 12, background: "rgba(16,185,129,0.12)", color: "var(--green)", display: "grid", placeItems: "center", fontWeight: 800 }}>
+                          {(item.full_name || item.username || "U").split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}
+                        </div>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontWeight: 700, fontSize: 13 }}>{item.full_name}</div>
                         <div style={{ fontSize: 12, color: "var(--gray-600)" }}>{item.email}</div>
                       </div>
                       <div style={{ marginLeft: "auto", textAlign: "right" }}>
-                        <div style={{ fontSize: 12, color: "var(--gray-500)", textTransform: "capitalize" }}>{item.role.replace("_", " ")}</div>
+                        <div style={{ fontSize: 12, color: "var(--gray-500)", textTransform: "capitalize" }}>{String(item.role || "viewer").replace("_", " ")}</div>
                         <div style={{ fontSize: 12, color: "var(--gray-400)" }}>{formatDate(item.created_at)}</div>
                       </div>
                     </div>
@@ -622,14 +649,14 @@ export default function AdminPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={overview ? Object.entries(overview.datasets_by_status).map(([key, value]) => ({ name: key, value })) : []}
+                        data={getDatasetStatusEntries(overview)}
                         dataKey="value"
                         nameKey="name"
                         innerRadius={60}
                         outerRadius={90}
                         paddingAngle={3}
                       >
-                        {Object.keys(overview?.datasets_by_status || {}).map((_, index) => (
+                        {getDatasetStatusEntries(overview).map((_, index) => (
                           <Cell key={index} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -733,7 +760,7 @@ export default function AdminPage() {
                       <td style={tableCellStyle}>
                         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                           <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(16,185,129,0.12)", color: "var(--green)", display: "grid", placeItems: "center", fontWeight: 800 }}>
-                            {item.full_name?.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}
+                            {(item.full_name || item.username || "U").split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}
                           </div>
                           <div>
                             <div style={{ fontWeight: 700 }}>{item.full_name}</div>

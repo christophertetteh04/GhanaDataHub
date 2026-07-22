@@ -45,15 +45,31 @@ function KwekuFace({ size = 48 }) {
   );
 }
 
+function readOnboardingComplete() {
+  try {
+    return localStorage.getItem("gdh_onboarding_complete") === "true";
+  } catch {
+    return true;
+  }
+}
+
+function writeOnboardingComplete() {
+  try {
+    localStorage.setItem("gdh_onboarding_complete", "true");
+  } catch {
+    // Onboarding state is optional; storage failures should not break login.
+  }
+}
+
 export default function KwekuOnboarding() {
   const [step, setStep] = useState(0);
   const [isVisible, setIsVisible] = useState(
-    () => localStorage.getItem("gdh_onboarding_complete") !== "true"
+    () => !readOnboardingComplete()
   );
   const [isExiting, setIsExiting] = useState(false);
 
   function dismiss() {
-    localStorage.setItem("gdh_onboarding_complete", "true");
+    writeOnboardingComplete();
     setIsExiting(true);
     window.setTimeout(() => setIsVisible(false), 300);
   }

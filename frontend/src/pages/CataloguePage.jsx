@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   BookOpen,
   Bot,
@@ -405,11 +405,12 @@ function csvEscape(value) {
 
 export default function CataloguePage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [categories, setCategories] = useState([]);
   const [datasets, setDatasets] = useState([]);
   const [allDatasets, setAllDatasets] = useState([]);
   const [allTotal, setAllTotal] = useState(0);
-  const [activeCategory, setActiveCategory] = useState(null);
+  const [activeCategory, setActiveCategory] = useState(searchParams.get("category") || null);
   const [selectedFileTypes, setSelectedFileTypes] = useState([]);
   const [sortBy, setSortBy] = useState("newest");
   const [sidebarOpen, setSidebarOpen] = useState({ categories: true, fileTypes: false });
@@ -516,6 +517,13 @@ export default function CataloguePage() {
 
   const handleCategorySelect = (id) => {
     setActiveCategory(id);
+    const nextParams = new URLSearchParams(searchParams);
+    if (id) {
+      nextParams.set("category", id);
+    } else {
+      nextParams.delete("category");
+    }
+    setSearchParams(nextParams, { replace: true });
     setShowMoreTabs(false);
     setTimeout(() => {
       mainTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });

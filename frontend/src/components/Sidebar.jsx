@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useState, useEffect, useRef } from "react";
 import {
   LayoutDashboard,
+  LayoutGrid,
   Database,
   Search,
   Newspaper,
@@ -26,6 +27,7 @@ const NAV = [
   { to: "/profile", icon: Users, label: "My Profile" },
   { to: "/datasets", icon: Database, label: "Datasets" },
   { to: "/catalogue", icon: BookOpen, label: "Catalogue" },
+  { to: "/categories", icon: LayoutGrid, label: "Categories" },
   { to: "/insights", icon: BookText, label: "Insights" },
   { to: "/pulse", icon: Newspaper, label: "Ghana Pulse" },
   { to: "/search", icon: Search, label: "Search" },
@@ -42,6 +44,22 @@ const ADMIN_NAV = [
   { to: "/audit", icon: FileText, label: "Audit Logs" },
   { to: "/admin", icon: ShieldCheck, label: "Admin Panel" },
 ];
+
+function readSidebarPinned() {
+  try {
+    return localStorage.getItem('gdh_sidebar_pinned') === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeSidebarPinned(value) {
+  try {
+    localStorage.setItem('gdh_sidebar_pinned', value);
+  } catch {
+    // Sidebar pinning is a preference; storage failures should not break auth.
+  }
+}
 
 function NavGroup({ label, items, isExpanded, hoveredItem, setHoveredItem }) {
   return (
@@ -82,7 +100,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
 
   const [isPinned, setIsPinned] = useState(() => {
-    return localStorage.getItem('gdh_sidebar_pinned') === 'true';
+    return readSidebarPinned();
   });
   const [isHovered, setIsHovered] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -97,7 +115,7 @@ export default function Sidebar() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('gdh_sidebar_pinned', isPinned);
+    writeSidebarPinned(isPinned);
   }, [isPinned]);
 
   const isExpanded = isMobile ? true : (isPinned || isHovered);
@@ -129,7 +147,7 @@ export default function Sidebar() {
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase();
+    .toUpperCase() || "DG";
 
   const displayRole = user?.role ? user.role.replace("_", " ") : "";
 
@@ -525,16 +543,16 @@ export default function Sidebar() {
             <div className="user-left" style={{ gap: isExpanded ? 10 : 0 }}>
               <div className="avatar">{initials}</div>
               <div className={`user-info sidebar-label ${!isExpanded ? 'hidden' : ''}`}>
-                <div className="user-name">{user?.full_name}</div>
-                <div className="user-role">{displayRole}</div>
+                <div className="user-name">{user?.full_name || "Guest"}</div>
+                <div className="user-role">{displayRole || "Public browser"}</div>
               </div>
             </div>
 
             <button
               className={`logout-btn sidebar-label ${!isExpanded ? 'hidden' : ''}`}
-              aria-label="Log out"
+              aria-label={user ? "Log out" : "Log in"}
               onClick={() => {
-                logout();
+                if (user) logout();
                 navigate("/login");
               }}
             >

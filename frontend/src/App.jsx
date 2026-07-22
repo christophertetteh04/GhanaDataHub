@@ -43,6 +43,7 @@ function AppContent() {
           {/* Public auth routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/sources" element={<SourcesPage />} />
+          <Route path="/categories" element={<Layout><CategoriesPage /></Layout>} />
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
@@ -68,9 +69,6 @@ function AppContent() {
           } />
           <Route path="/users" element={
             <PrivateRoute roles={ADMIN_ROLES}><Layout><UsersPage /></Layout></PrivateRoute>
-          } />
-          <Route path="/categories" element={
-            <PrivateRoute roles={ADMIN_ROLES}><Layout><CategoriesPage /></Layout></PrivateRoute>
           } />
           <Route path="/admin" element={
             <PrivateRoute roles={ADMIN_ROLES}><Layout><AdminPage /></Layout></PrivateRoute>

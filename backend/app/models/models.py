@@ -94,6 +94,8 @@ class Category(Base):
     name = Column(String(100), unique=True, nullable=False)
     slug = Column(String(100), unique=True, nullable=False)
     description = Column(Text, nullable=True)
+    icon = Column(String(50), nullable=True)
+    colour = Column(String(7), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     datasets = relationship("Dataset", back_populates="category")

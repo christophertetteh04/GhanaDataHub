@@ -29,6 +29,22 @@ function formatTimeAgo(timestamp) {
   return "a while ago";
 }
 
+function readLocalStorage(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalStorage(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Visit tracking is optional; storage failures should not break login.
+  }
+}
+
 export default function SinceLastVisit() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -48,12 +64,12 @@ export default function SinceLastVisit() {
 
   useEffect(() => {
     // 1. Read last visit from localStorage
-    const storedLastVisit = localStorage.getItem("gdh_last_visit");
+    const storedLastVisit = readLocalStorage("gdh_last_visit");
     const lastVisitTime = storedLastVisit ? parseInt(storedLastVisit, 10) : null;
     setLastVisitTimestamp(lastVisitTime);
 
     // 2. Read last dataset count from localStorage
-    const storedDatasetCount = localStorage.getItem("gdh_last_dataset_count");
+    const storedDatasetCount = readLocalStorage("gdh_last_dataset_count");
     const lastDatasetCount = storedDatasetCount ? parseInt(storedDatasetCount, 10) : null;
 
     const fetchData = async () => {
@@ -100,12 +116,12 @@ export default function SinceLastVisit() {
         }
 
         // Update dataset count in localStorage
-        localStorage.setItem("gdh_last_dataset_count", currentCount.toString());
+        writeLocalStorage("gdh_last_dataset_count", currentCount.toString());
       } catch (err) {
         console.error("Error loading SinceLastVisit data:", err);
       } finally {
         // Update last visit timestamp in localStorage
-        localStorage.setItem("gdh_last_visit", Date.now().toString());
+        writeLocalStorage("gdh_last_visit", Date.now().toString());
         setLoading(false);
       }
     };

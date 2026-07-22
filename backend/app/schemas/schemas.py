@@ -136,6 +136,8 @@ class OrgInvite(BaseModel):
 class CategoryCreate(BaseModel):
     name: str
     description: Optional[str] = None
+    icon: Optional[str] = None
+    colour: Optional[str] = None
 
 
 class CategoryOut(BaseModel):
@@ -143,6 +145,9 @@ class CategoryOut(BaseModel):
     name: str
     slug: str
     description: Optional[str]
+    icon: Optional[str] = None
+    colour: Optional[str] = None
+    dataset_count: Optional[int] = None
 
     class Config:
         from_attributes = True

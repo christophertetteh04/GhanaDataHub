@@ -35,7 +35,8 @@ import {
   Eye,
   Download,
   ArrowRight,
-  Map
+  Map,
+  FileText
 } from "lucide-react";
 
 import useCountUp from "../hooks/useCountUp";
@@ -88,8 +89,15 @@ const CATEGORY_MAP = {
   "Default": { bg: "var(--green-pale)", icon: BarChart3, color: "var(--green)" }
 };
 
-function getCategoryStyles(name) {
-  const match = Object.keys(CATEGORY_MAP).find(k => name?.includes(k));
+function getCategoryName(category) {
+  if (!category) return "";
+  if (typeof category === "string") return category;
+  return category.name || category.label || "";
+}
+
+function getCategoryStyles(category) {
+  const name = getCategoryName(category);
+  const match = Object.keys(CATEGORY_MAP).find(k => name.includes(k));
   return CATEGORY_MAP[match] || CATEGORY_MAP["Default"];
 }
 
@@ -391,21 +399,23 @@ export default function DashboardPage() {
                 const fileStyle = getFileTypeStyles(d.file_type);
                 const FileIcon = fileStyle.icon;
                 const catStyle = getCategoryStyles(d.category);
+                const categoryName = getCategoryName(d.category);
+                const downloadCount = Number(d.download_count || 0);
 
                 return (
                   <div key={d.id} className="headline-card" onClick={() => navigate(`/datasets/${d.id}`)}>
                     <div className="headline-thumb" style={{ background: fileStyle.grad }}>
                       <FileIcon size={24} color="#fff" />
                     </div>
-                    {d.category && (
+                    {categoryName && (
                       <div className="headline-badge" style={{ background: catStyle.bg, color: catStyle.color }}>
-                        {d.category}
+                        {categoryName}
                       </div>
                     )}
                     <div className="headline-title">{clampTitle(d.title, 60)}</div>
                     <div className="headline-stats">
-                      <span><Eye size={12} /> {(d.download_count * 3).toLocaleString()}</span>
-                      <span><Download size={12} /> {d.download_count.toLocaleString()}</span>
+                      <span><Eye size={12} /> {(downloadCount * 3).toLocaleString()}</span>
+                      <span><Download size={12} /> {downloadCount.toLocaleString()}</span>
                     </div>
                   </div>
                 );
