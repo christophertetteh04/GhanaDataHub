@@ -4,7 +4,10 @@ import { useAuth } from "../context/AuthContext";
 import { usersApi, datasetsApi, apiKeysApi, authApi } from "../services/api";
 import toast from "react-hot-toast";
 import {
+  AlertCircle,
+  Award,
   Bookmark,
+  Calendar,
   Copy,
   Database,
   Download,
@@ -13,8 +16,10 @@ import {
   Key,
   Search,
   Settings,
+  ShieldCheck,
   TrendingUp,
   Upload,
+  UserRound,
 } from "lucide-react";
 import ActivityHeatmap from "../components/ActivityHeatmap";
 import DataRadar from "../components/DataRadar";
@@ -63,6 +68,18 @@ function buildWeekCounts(items, dateKey = "created_at") {
 function truncate(text, max) {
   if (!text) return "No description provided.";
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+function getInitials(name = "") {
+  const parts = String(name || "User").trim().split(/\s+/).filter(Boolean);
+  return (parts.length ? parts : ["U"]).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+}
+
+function toList(response) {
+  const data = response?.data;
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.items)) return data.items;
+  return [];
 }
 
 function MiniDatasetSparkline({ dataset }) {
@@ -123,13 +140,42 @@ function Badge({ label }) {
   );
 }
 
-function StatCard({ icon: Icon, label, value }) {
+function StatCard({ icon: Icon, label, value, accent = "var(--green)", hint }) {
   return (
-    <div className="stat-card">
-      <div className="stat-icon"><Icon size={18} /></div>
+    <div
+      className="profile-stat-card"
+      style={{
+        background: "var(--surface-card)",
+        border: "1px solid var(--border-subtle)",
+        borderLeft: `4px solid ${accent}`,
+        borderRadius: 16,
+        padding: 18,
+        boxShadow: "var(--shadow-sm)",
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        minHeight: 96,
+      }}
+    >
+      <div
+        style={{
+          width: 42,
+          height: 42,
+          borderRadius: 14,
+          background: `${accent}18`,
+          color: accent,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        <Icon size={19} />
+      </div>
       <div>
-        <div className="stat-value">{value}</div>
-        <div className="stat-label">{label}</div>
+        <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text-primary)", lineHeight: 1 }}>{value}</div>
+        <div style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 700, marginTop: 6 }}>{label}</div>
+        {hint && <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>{hint}</div>}
       </div>
     </div>
   );
@@ -150,31 +196,66 @@ export default function ProfilePage() {
   const [passwordForm, setPasswordForm] = useState({ current_password: "", new_password: "", confirm_password: "" });
   const [activeTab, setActiveTab] = useState("datasets");
   const [loading, setLoading] = useState(true);
+  const [profileLoadWarnings, setProfileLoadWarnings] = useState([]);
 
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
+    setLoading(true);
+    setProfileLoadWarnings([]);
     setProfileForm({ full_name: user.full_name || "", email: user.email || "" });
     const saved = window.localStorage.getItem("gdh_profile_notifications");
     if (saved) {
-      setNotifications(JSON.parse(saved));
+      try {
+        setNotifications(JSON.parse(saved));
+      } catch {
+        window.localStorage.removeItem("gdh_profile_notifications");
+      }
     }
-    Promise.all([
-      datasetsApi.list({ owner_id: user.id, per_page: 100 }),
-      usersApi.bookmarks.list(),
-      usersApi.downloadHistory(),
-      apiKeysApi.list(),
-    ])
-      .then(([datasetsRes, bookmarksRes, historyRes, keysRes]) => {
-        setDatasets(datasetsRes.data.items || datasetsRes.data);
-        setBookmarks(bookmarksRes.data);
-        setHistory(historyRes.data);
-        setApiKeys(keysRes.data);
+
+    const requests = [
+      { key: "datasets", label: "datasets", request: datasetsApi.list({ owner_id: user.id, per_page: 100 }) },
+      { key: "bookmarks", label: "bookmarks", request: usersApi.bookmarks.list() },
+      { key: "history", label: "download history", request: usersApi.downloadHistory() },
+      { key: "keys", label: "API keys", request: apiKeysApi.list() },
+    ];
+
+    Promise.allSettled(requests.map((item) => item.request))
+      .then((results) => {
+        if (cancelled) return;
+        const warnings = [];
+
+        results.forEach((result, index) => {
+          const request = requests[index];
+          if (result.status === "fulfilled") {
+            const list = toList(result.value);
+            if (request.key === "datasets") setDatasets(list);
+            if (request.key === "bookmarks") setBookmarks(list);
+            if (request.key === "history") setHistory(list);
+            if (request.key === "keys") setApiKeys(list);
+            return;
+          }
+
+          console.warn(`Unable to load profile ${request.label}`, result.reason);
+          warnings.push(request.label);
+          if (request.key === "datasets") setDatasets([]);
+          if (request.key === "bookmarks") setBookmarks([]);
+          if (request.key === "history") setHistory([]);
+          if (request.key === "keys") setApiKeys([]);
+        });
+
+        setProfileLoadWarnings(warnings);
+        if (warnings.length === requests.length) {
+          toast.error("Unable to load profile data");
+        }
       })
-      .catch((err) => {
-        console.error(err);
-        toast.error("Unable to load profile data");
-      })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   useEffect(() => {
@@ -276,47 +357,91 @@ export default function ProfilePage() {
   if (!user) return null;
 
   return (
-    <div style={{ maxWidth: 1180, margin: "0 auto", padding: "24px 16px" }}>
-      <div className="card" style={{ position: "relative", overflow: "visible", padding: 0 }}>
-        <div style={{ height: 120, background: "linear-gradient(90deg, var(--green), #004D2C)" }} />
-        <div style={{ position: "absolute", left: 28, bottom: -36 }}>
-          <div style={{ width: 72, height: 72, borderRadius: "50%", background: "var(--green)", border: "3px solid var(--surface-card)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 24, fontWeight: 800 }}>
-            {user.full_name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+    <div className="profile-page" style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 16px 48px" }}>
+      <div
+        className="profile-hero-card"
+        style={{
+          position: "relative",
+          overflow: "hidden",
+          borderRadius: 24,
+          background:
+            "linear-gradient(135deg, rgba(0,107,63,0.96) 0%, #0A1410 58%, rgba(252,209,22,0.22) 120%)",
+          border: "1px solid rgba(255,255,255,0.10)",
+          boxShadow: "0 24px 70px rgba(0,0,0,0.24)",
+          color: "white",
+        }}
+      >
+        <div style={{ position: "absolute", width: 360, height: 360, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,255,255,0.16), transparent 68%)", top: -160, right: -80 }} />
+        <div style={{ position: "absolute", width: 260, height: 260, borderRadius: "50%", background: "radial-gradient(circle, rgba(252,209,22,0.16), transparent 70%)", bottom: -130, left: "30%" }} />
+
+        <div className="profile-hero-inner" style={{ position: "relative", padding: "34px 34px 30px", display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", gap: 22, alignItems: "center" }}>
+          <div style={{ width: 92, height: 92, borderRadius: 28, background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.28)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 30, fontWeight: 900, boxShadow: "0 12px 30px rgba(0,0,0,0.20)" }}>
+            {getInitials(user.full_name || user.username)}
           </div>
-        </div>
-        <div style={{ padding: "48px 32px 32px 140px" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24 }}>
-            <div>
-              <div style={{ fontSize: 22, fontWeight: 800 }}>{user.full_name}</div>
-              <div style={{ fontSize: 14, color: "var(--gray-500)" }}>{`@${user.username}`}</div>
-              <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <Badge label={user.role.replace("_", " ")} />
-                <span style={{ color: "var(--gray-500)", fontSize: 13 }}>Member since {formatDate(user.created_at)}</span>
-                {user.organization_id && <span style={{ color: "var(--gray-500)", fontSize: 13 }}>Organization ID: {user.organization_id}</span>}
-              </div>
+
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
+              <span style={{ padding: "5px 10px", borderRadius: 999, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.22)", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.7 }}>
+                DataGhana.io Profile
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 999, background: "rgba(0,163,92,0.18)", color: "#A7F3D0", fontSize: 11, fontWeight: 900 }}>
+                <ShieldCheck size={13} /> {user.role?.replace("_", " ") || "member"}
+              </span>
             </div>
+            <h1 style={{ margin: 0, fontSize: 34, lineHeight: 1.08, fontWeight: 900, letterSpacing: "-0.02em", overflowWrap: "anywhere" }}>
+              {user.full_name || user.username}
+            </h1>
+            <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", color: "rgba(255,255,255,0.72)", fontSize: 13 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><UserRound size={14} /> @{user.username}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Calendar size={14} /> Member since {formatDate(user.created_at)}</span>
+              {user.organization_id && <span>Organization ID: {user.organization_id}</span>}
+            </div>
+          </div>
+
+          <div className="profile-hero-actions" style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "flex-end", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => navigate("/datasets")}
+              style={{ height: 42, border: "none", background: "white", color: "var(--green)", borderRadius: 12, padding: "0 16px", fontWeight: 900, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}
+            >
+              <Upload size={16} /> Upload
+            </button>
             <button
               type="button"
               onClick={() => setEditMode((prev) => !prev)}
-              style={{ border: "1px solid var(--green)", background: "transparent", color: "var(--green)", borderRadius: 12, padding: "10px 16px", fontWeight: 700, cursor: "pointer" }}
+              style={{ height: 42, border: "1px solid rgba(255,255,255,0.32)", background: "rgba(255,255,255,0.08)", color: "white", borderRadius: 12, padding: "0 16px", fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}
             >
-              <Edit3 size={16} style={{ marginRight: 8 }} />
-              {editMode ? "Cancel" : "Edit Profile"}
+              <Edit3 size={16} />
+              {editMode ? "Cancel" : "Edit"}
             </button>
           </div>
 
+          <div className="profile-hero-metrics" style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginTop: 10 }}>
+            {[
+              ["Datasets", datasets.length],
+              ["Downloads", totalDownloads.toLocaleString()],
+              ["Saved", bookmarks.length],
+              ["Badges", `${earnedAchievements.length}/${ACHIEVEMENTS.length}`],
+            ].map(([label, value]) => (
+              <div key={label} style={{ padding: "14px 16px", borderRadius: 16, background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.14)" }}>
+                <div style={{ fontSize: 22, fontWeight: 900 }}>{value}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.62)", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.7, marginTop: 4 }}>{label}</div>
+              </div>
+            ))}
+          </div>
+
           {editMode && (
-            <div style={{ marginTop: 24, padding: 24, borderRadius: 18, background: "rgba(240,255,245,0.9)", border: "1px solid rgba(0,107,63,0.15)" }}>
+            <div style={{ gridColumn: "1 / -1", marginTop: 8, padding: 24, borderRadius: 18, background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.18)", backdropFilter: "blur(16px)" }}>
               <div style={{ display: "grid", gap: 16, maxWidth: 520 }}>
                 <label style={{ display: "grid", gap: 8 }}>
-                  <span style={{ fontWeight: 700 }}>Full name</span>
+                  <span style={{ fontWeight: 800, color: "white" }}>Full name</span>
                   <input
                     value={profileForm.full_name}
                     onChange={(e) => setProfileForm((prev) => ({ ...prev, full_name: e.target.value }))}
                   />
                 </label>
                 <label style={{ display: "grid", gap: 8 }}>
-                  <span style={{ fontWeight: 700 }}>Email</span>
+                  <span style={{ fontWeight: 800, color: "white" }}>Email</span>
                   <input
                     value={profileForm.email}
                     onChange={(e) => setProfileForm((prev) => ({ ...prev, email: e.target.value }))}
@@ -335,27 +460,48 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16, marginTop: 24 }}>
-        <StatCard icon={Database} label="My Datasets" value={datasets.length} />
-        <StatCard icon={Download} label="Total Downloads" value={totalDownloads} />
-        <StatCard icon={Bookmark} label="Bookmarks" value={bookmarks.length} />
-        <StatCard icon={Settings} label="Member Since" value={formatDate(user.created_at)} />
+      {profileLoadWarnings.length > 0 && (
+        <div style={{ marginTop: 16, padding: "12px 14px", borderRadius: 14, background: "rgba(217,119,6,0.10)", border: "1px solid rgba(217,119,6,0.22)", color: "var(--text-secondary)", display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, lineHeight: 1.5 }}>
+          <AlertCircle size={16} color="#D97706" style={{ flexShrink: 0, marginTop: 2 }} />
+          <span>
+            Some optional profile sections could not load: {profileLoadWarnings.join(", ")}. Your main profile is still available.
+          </span>
+        </div>
+      )}
+
+      <div className="profile-stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16, marginTop: 24 }}>
+        <StatCard icon={Database} label="My Datasets" value={datasets.length} accent="#006B3F" hint="Published or private uploads" />
+        <StatCard icon={Download} label="Total Downloads" value={totalDownloads.toLocaleString()} accent="#1D4ED8" hint="Across your uploads" />
+        <StatCard icon={Bookmark} label="Saved Datasets" value={bookmarks.length} accent="#7C3AED" hint="Your research shortlist" />
+        <StatCard icon={Award} label="Achievements" value={`${earnedAchievements.length}/${ACHIEVEMENTS.length}`} accent="#D97706" hint="Progress milestones" />
       </div>
 
-      <div className="profile-insights-grid" style={{ marginTop: 24, display: "grid", gridTemplateColumns: "minmax(0, 1fr) 300px", gap: 16 }}>
-        <div className="card" style={{ padding: 20, overflow: "hidden" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)", marginBottom: 14 }}>Activity</div>
+      <div className="profile-insights-grid" style={{ marginTop: 24, display: "grid", gridTemplateColumns: "minmax(0, 1fr) 320px", gap: 16 }}>
+        <div className="card" style={{ padding: 22, overflow: "hidden", border: "1px solid var(--border-subtle)", borderRadius: 18, background: "var(--surface-card)", boxShadow: "var(--shadow-sm)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 900, color: "var(--text-primary)" }}>Activity</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>Uploads and downloads across the last year.</div>
+            </div>
+            <span style={{ padding: "5px 9px", borderRadius: 999, background: "var(--green-pale)", color: "var(--green)", fontSize: 11, fontWeight: 900 }}>
+              52 weeks
+            </span>
+          </div>
           <ActivityHeatmap uploadWeeks={uploadWeeks} downloadWeeks={downloadWeeks} />
         </div>
-        <div className="card" style={{ padding: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)", marginBottom: 10 }}>Data Interests</div>
+        <div className="card" style={{ padding: 22, border: "1px solid var(--border-subtle)", borderRadius: 18, background: "var(--surface-card)", boxShadow: "var(--shadow-sm)" }}>
+          <div style={{ fontSize: 15, fontWeight: 900, color: "var(--text-primary)", marginBottom: 4 }}>Data Interests</div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}>Your strongest research signals.</div>
           <DataRadar datasets={datasets} downloadHistory={history} />
         </div>
       </div>
 
-      <div className="card" style={{ padding: 20, marginTop: 16 }}>
+      <div className="card" style={{ padding: 22, marginTop: 16, border: "1px solid var(--border-subtle)", borderRadius: 18, background: "var(--surface-card)", boxShadow: "var(--shadow-sm)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>Achievements</div>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 900, color: "var(--text-primary)" }}>Achievements</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>Milestones that show your contribution to Ghana's data ecosystem.</div>
+          </div>
           <div style={{ fontSize: 12, color: "var(--green)", fontWeight: 800 }}>
             {earnedAchievements.length}/{ACHIEVEMENTS.length}
           </div>
@@ -409,20 +555,24 @@ export default function ProfilePage() {
 
       <div style={{ marginTop: 26, display: "flex", gap: 10, flexWrap: "wrap" }}>
         {[
-          { key: "datasets", label: "My Datasets" },
-          { key: "bookmarks", label: "Bookmarks" },
-          { key: "history", label: "Download History" },
-          { key: "settings", label: "Settings" },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={activeTab === tab.key ? "tab-pill active" : "tab-pill"}
-            style={{ minWidth: 150 }}
-          >
-            {tab.label}
-          </button>
-        ))}
+          { key: "datasets", label: "My Datasets", icon: Database },
+          { key: "bookmarks", label: "Bookmarks", icon: Bookmark },
+          { key: "history", label: "Download History", icon: Download },
+          { key: "settings", label: "Settings", icon: Settings },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={activeTab === tab.key ? "tab-pill active" : "tab-pill"}
+              style={{ minWidth: 160, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            >
+              <Icon size={15} />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       <div style={{ marginTop: 18 }}>
@@ -516,7 +666,7 @@ export default function ProfilePage() {
             ) : bookmarks.length === 0 ? (
               <div style={{ textAlign: "center", padding: 48 }}>
                 <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>No bookmarks yet.</div>
-                <div style={{ color: "var(--gray-500)" }}>Bookmark datasets to keep them handy.</div>
+                <div style={{ color: "var(--text-secondary)" }}>Bookmark datasets to keep them handy.</div>
               </div>
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
@@ -525,8 +675,8 @@ export default function ProfilePage() {
                     <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
                       <div className="file-icon">{item.file_type?.slice(0, 2).toUpperCase() || "DS"}</div>
                       <div>
-                        <a href={`/datasets/${item.id}`} style={{ fontWeight: 700, color: "var(--gray-900)" }}>{item.title}</a>
-                        <div style={{ fontSize: 12, color: "var(--gray-500)", marginTop: 3 }}>
+                        <a href={`/datasets/${item.id}`} style={{ fontWeight: 800, color: "var(--text-primary)" }}>{item.title}</a>
+                        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 3 }}>
                           {item.visibility} · {item.download_count} downloads · uploaded {formatDate(item.created_at)}
                         </div>
                       </div>
@@ -556,10 +706,10 @@ export default function ProfilePage() {
                     <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
                       <div className="file-icon">{item.file_type?.slice(0, 2).toUpperCase() || "DL"}</div>
                       <div>
-                        <div style={{ fontWeight: 700, color: "var(--gray-900)" }}>
+                        <div style={{ fontWeight: 800, color: "var(--text-primary)" }}>
                           {item.title || "[Deleted dataset]"}
                         </div>
-                        <div style={{ fontSize: 12, color: "var(--gray-500)", marginTop: 3 }}>
+                        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 3 }}>
                           Downloaded · {timeAgo(item.created_at)}
                         </div>
                       </div>
@@ -600,7 +750,7 @@ export default function ProfilePage() {
                   />
                   <button type="submit" className="btn btn-primary btn-lg">Change password</button>
                 </form>
-                <div style={{ marginTop: 10, color: "var(--gray-500)", fontSize: 13 }}>
+                <div style={{ marginTop: 10, color: "var(--text-secondary)", fontSize: 13 }}>
                   If password change is not available, this feature will show as coming soon.
                 </div>
               </div>
@@ -616,7 +766,7 @@ export default function ProfilePage() {
                     { key: "comments", label: "Email me when someone comments on my dataset" },
                     { key: "digest", label: "Weekly data digest email" },
                   ].map((pref) => (
-                    <label key={pref.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: 14, borderRadius: 14, background: "var(--gray-50)", border: "1px solid var(--gray-200)" }}>
+                    <label key={pref.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: 14, borderRadius: 14, background: "var(--surface-elevated)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}>
                       <span>{pref.label}</span>
                       <input
                         type="checkbox"
@@ -627,7 +777,7 @@ export default function ProfilePage() {
                     </label>
                   ))}
                 </div>
-                <div style={{ marginTop: 10, color: "var(--gray-500)", fontSize: 13 }}>
+                <div style={{ marginTop: 10, color: "var(--text-secondary)", fontSize: 13 }}>
                   Saved locally in your browser.
                 </div>
               </div>
@@ -646,7 +796,7 @@ export default function ProfilePage() {
                   <button type="submit" className="btn btn-primary btn-lg">Generate key</button>
                 </form>
                 {newKey && (
-                  <div style={{ padding: 18, borderRadius: 14, background: "rgba(254,243,235,0.95)", border: "1px solid rgba(249,115,22,0.3)", marginBottom: 18 }}>
+                  <div style={{ padding: 18, borderRadius: 14, background: "rgba(217,119,6,0.10)", border: "1px solid rgba(217,119,6,0.28)", marginBottom: 18 }}>
                     <div style={{ fontWeight: 700, marginBottom: 8 }}>Save this key now. You will never see it again.</div>
                     <div style={{ fontFamily: "monospace", background: "var(--surface-card)", padding: 12, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                       <span style={{ overflowWrap: "anywhere" }}>{newKey.key}</span>
@@ -665,11 +815,11 @@ export default function ProfilePage() {
                 )}
                 <div style={{ display: "grid", gap: 12 }}>
                   {apiKeys.map((key) => (
-                    <div key={key.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", padding: 14, borderRadius: 14, background: "var(--gray-50)", border: "1px solid var(--gray-200)" }}>
+                    <div key={key.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", padding: 14, borderRadius: 14, background: "var(--surface-elevated)", border: "1px solid var(--border-subtle)" }}>
                       <div>
-                        <div style={{ fontWeight: 700 }}>{key.name}</div>
-                        <div style={{ fontSize: 12, color: "var(--gray-500)" }}>{key.key_prefix}... · {key.is_active ? "Active" : "Revoked"}</div>
-                        <div style={{ fontSize: 12, color: "var(--gray-500)", marginTop: 4 }}>Last used {key.last_used_at ? formatDate(key.last_used_at) : "never"}</div>
+                        <div style={{ fontWeight: 800, color: "var(--text-primary)" }}>{key.name}</div>
+                        <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{key.key_prefix}... · {key.is_active ? "Active" : "Revoked"}</div>
+                        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>Last used {key.last_used_at ? formatDate(key.last_used_at) : "never"}</div>
                       </div>
                       <button type="button" onClick={() => handleRevokeKey(key.id)} className="btn btn-secondary btn-sm">Revoke</button>
                     </div>
@@ -681,7 +831,35 @@ export default function ProfilePage() {
         )}
       </div>
       <style>{`
+        .profile-stat-card {
+          transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+
+        .profile-stat-card:hover {
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-md);
+        }
+
+        .profile-page .card {
+          background: var(--surface-card);
+          border-color: var(--border-subtle);
+        }
+
         @media (max-width: 900px) {
+          .profile-hero-inner {
+            grid-template-columns: 1fr !important;
+            text-align: left;
+          }
+
+          .profile-hero-actions {
+            justify-content: flex-start !important;
+          }
+
+          .profile-hero-metrics,
+          .profile-stats-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+
           .profile-insights-grid {
             grid-template-columns: 1fr !important;
           }
@@ -692,6 +870,24 @@ export default function ProfilePage() {
         }
 
         @media (max-width: 560px) {
+          .profile-page {
+            padding: 16px 12px 36px !important;
+          }
+
+          .profile-hero-inner {
+            padding: 24px 20px !important;
+          }
+
+          .profile-hero-metrics,
+          .profile-stats-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .profile-page .list-row {
+            align-items: flex-start !important;
+            flex-direction: column !important;
+          }
+
           .profile-achievements-grid {
             grid-template-columns: repeat(2, minmax(80px, 1fr)) !important;
           }

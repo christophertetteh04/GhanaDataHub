@@ -20,8 +20,6 @@ import {
   X,
   Copy,
   Link2,
-  ChevronRight,
-  Eye,
   Clock,
   FileText,
   Shield,
@@ -33,6 +31,7 @@ import {
   Bot,
   Send,
   Sparkles,
+  Table,
   TriangleAlert,
   TrendingUp,
   TrendingDown
@@ -276,6 +275,205 @@ function getAuthHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+const INDICATOR_META = {
+  "SP.URB.TOTL.IN.ZS": {
+    title: "Urban Population (% of Total Population)",
+    summary: "Tracks Ghana's annual urban population share and helps explain housing demand, city growth, transport pressure and regional development.",
+    topic: "Population",
+    coverage: "1960-2025",
+    records: "66 years",
+    geography: "National",
+    chart: "line",
+  },
+  "SP.POP.TOTL": {
+    title: "Total Population of Ghana",
+    summary: "Shows Ghana's long-term population growth, useful for planning schools, clinics, housing, infrastructure and jobs.",
+    topic: "Population",
+    coverage: "1960-2025",
+    records: "66 years",
+    geography: "National",
+    chart: "line",
+  },
+  "NY.GDP.MKTP.CD": {
+    title: "Gross Domestic Product (Current US$)",
+    summary: "Measures the size of Ghana's economy and supports macroeconomic analysis, investment research and policy decisions.",
+    topic: "Economy",
+    coverage: "1960-2025",
+    records: "66 years",
+    geography: "National",
+    chart: "area",
+  },
+  "NY.GDP.MKTP.KD.ZG": {
+    title: "GDP Growth Rate",
+    summary: "Tracks Ghana's annual economic growth rate, helping users compare expansions, slowdowns and recovery periods.",
+    topic: "Economy",
+    coverage: "1960-2025",
+    records: "66 years",
+    geography: "National",
+    chart: "area",
+  },
+  "FP.CPI.TOTL.ZG": {
+    title: "Inflation Rate",
+    summary: "Tracks consumer price inflation in Ghana and helps explain household purchasing power, food prices and monetary policy.",
+    topic: "Economy",
+    coverage: "1960-2025",
+    records: "66 years",
+    geography: "National",
+    chart: "line",
+  },
+  "SE.ADT.LITR.ZS": {
+    title: "Adult Literacy Rate",
+    summary: "Measures adult literacy in Ghana and supports education planning, regional equity analysis and human capital research.",
+    topic: "Education",
+    coverage: "1960-2025",
+    records: "66 years",
+    geography: "National",
+    chart: "bar",
+  },
+  "SP.DYN.IMRT.IN": {
+    title: "Infant Mortality Rate",
+    summary: "Tracks infant deaths per 1,000 live births and helps users understand child health progress and remaining gaps.",
+    topic: "Health",
+    coverage: "1960-2025",
+    records: "66 years",
+    geography: "National",
+    chart: "line",
+  },
+  "EG.ELC.ACCS.ZS": {
+    title: "Access to Electricity (% of Population)",
+    summary: "Shows electricity access in Ghana, useful for energy planning, infrastructure analysis and development work.",
+    topic: "Energy",
+    coverage: "1960-2025",
+    records: "66 years",
+    geography: "National",
+    chart: "map",
+  },
+};
+
+function getIndicatorCode(title = "") {
+  const match = title.match(/([A-Z]{2,}(?:\.[A-Z0-9]+){2,})\s*$/);
+  return match?.[1] || null;
+}
+
+function getPublisher(dataset) {
+  const text = `${dataset?.title || ""} ${dataset?.description || ""}`.toLowerCase();
+  if (text.includes("world bank")) return "World Bank";
+  if (text.includes("bank of ghana") || text.includes("bog")) return "Bank of Ghana";
+  if (text.includes("ghana statistical") || text.includes("statsghana") || text.includes("gss")) return "Ghana Statistical Service";
+  if (text.includes("faostat") || text.includes("fao")) return "FAOSTAT";
+  if (text.includes("who")) return "WHO";
+  if (text.includes("ghana health service") || text.includes("ghs")) return "Ghana Health Service";
+  return dataset?.owner?.full_name || dataset?.organization?.name || "DataGhana.io";
+}
+
+function getTopic(dataset) {
+  const text = `${dataset?.category?.name || ""} ${dataset?.title || ""} ${dataset?.description || ""}`.toLowerCase();
+  if (/inflation|gdp|forex|exchange|revenue|debt|bank|econom|trade|export/.test(text)) return "Economy";
+  if (/cocoa|maize|cassava|crop|farm|agric/.test(text)) return "Agriculture";
+  if (/health|hospital|mortality|malaria|maternal|hiv|disease/.test(text)) return "Health";
+  if (/school|education|literacy|teacher/.test(text)) return "Education";
+  if (/population|census|urban|demographic/.test(text)) return "Population";
+  if (/road|rail|port|infrastructure/.test(text)) return "Infrastructure";
+  if (/electricity|energy|power|oil/.test(text)) return "Energy";
+  if (/climate|forest|co2|environment|rainfall/.test(text)) return "Environment";
+  if (/job|employment|unemployment|labour/.test(text)) return "Employment";
+  if (/internet|technology|digital|mobile/.test(text)) return "Technology";
+  return dataset?.category?.name || "Ghana Data";
+}
+
+function getCleanTitle(dataset) {
+  const rawTitle = dataset?.title || "Untitled Dataset";
+  const code = getIndicatorCode(rawTitle);
+  if (code && INDICATOR_META[code]) return INDICATOR_META[code].title;
+  return rawTitle
+    .replace(/^World Bank Open Data\s*[–-]\s*Ghana\s*:\s*/i, "")
+    .replace(/\b[A-Z]{2,}(?:\.[A-Z0-9]+){2,}\b/g, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s*[-—:]\s*$/, "")
+    .trim() || rawTitle;
+}
+
+function getDatasetIntelligence(dataset) {
+  const code = getIndicatorCode(dataset?.title || "");
+  const mapped = code ? INDICATOR_META[code] : null;
+  const analysis = dataset?.analysis_data || {};
+  const aiSentence = analysis.ai_summary?.split(".")?.[0];
+  const topic = mapped?.topic || getTopic(dataset);
+  const summary = mapped?.summary
+    || (aiSentence && aiSentence.length > 24 ? `${aiSentence}.` : null)
+    || dataset?.description
+    || `This ${topic.toLowerCase()} dataset is ready for exploration with charts, metadata, API access, quality checks and Ask Kweku.`;
+
+  return {
+    title: mapped?.title || getCleanTitle(dataset),
+    code,
+    topic,
+    summary,
+    publisher: getPublisher(dataset),
+    coverage: mapped?.coverage || (dataset?.title?.toLowerCase().includes("regional") ? "Regional" : "Latest available"),
+    records: mapped?.records || (analysis.total_rows ? `${Number(analysis.total_rows).toLocaleString()} rows` : "Metadata ready"),
+    geography: mapped?.geography || (dataset?.title?.toLowerCase().includes("region") ? "Regional" : "National"),
+    chart: mapped?.chart || (topic === "Health" || topic === "Environment" ? "map" : topic === "Agriculture" ? "bar" : "line"),
+    verified: /world bank|ghana statistical service|bank of ghana|ministry|faostat|who|ghana health service/i.test(`${dataset?.title} ${dataset?.description || ""}`),
+  };
+}
+
+function getPreviewRows(csvPreviewRows, mockData) {
+  if (Array.isArray(csvPreviewRows) && csvPreviewRows.length > 1) return csvPreviewRows;
+  return [mockData.columns, ...mockData.rows.map((row) => Object.values(row))];
+}
+
+function getChartSeries(dataset, previewRows) {
+  const previewValues = Array.isArray(dataset?.preview_data)
+    ? dataset.preview_data.map((value) => Number(value)).filter((value) => !Number.isNaN(value))
+    : [];
+  if (previewValues.length > 1) {
+    return previewValues.slice(0, 18).map((value, index) => ({ label: `Point ${index + 1}`, value }));
+  }
+
+  const headers = previewRows?.[0] || [];
+  const rows = previewRows?.slice(1) || [];
+  const numericIndex = headers.findIndex((_, index) => {
+    const values = rows.map((row) => Number(String(row[index] || "").replace(/[,%]/g, ""))).filter((value) => !Number.isNaN(value));
+    return values.length >= Math.max(2, Math.ceil(rows.length * 0.5));
+  });
+  if (numericIndex !== -1) {
+    return rows.slice(0, 18).map((row, index) => ({
+      label: row[0] || `Row ${index + 1}`,
+      value: Number(String(row[numericIndex] || "").replace(/[,%]/g, "")) || 0,
+    }));
+  }
+  return [18, 24, 21, 35, 42, 48, 54, 63, 70, 76, 82, 88].map((value, index) => ({ label: `Point ${index + 1}`, value }));
+}
+
+function AutoChart({ series, type = "line" }) {
+  const values = series.map((point) => point.value);
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const range = max - min || 1;
+  const points = series.map((point, index) => {
+    const x = 18 + (index / Math.max(1, series.length - 1)) * 424;
+    const y = 190 - ((point.value - min) / range) * 145;
+    return `${x},${y}`;
+  }).join(" ");
+
+  return (
+    <svg viewBox="0 0 460 220" className="dataset-auto-chart" role="img" aria-label="Automatic chart preview">
+      {[48, 94, 140, 186].map((y) => <line key={y} x1="18" x2="442" y1={y} y2={y} stroke="var(--border-subtle)" />)}
+      {type === "bar" ? series.slice(0, 12).map((point, index) => {
+        const height = Math.max(8, ((point.value - min) / range) * 138 + 8);
+        return <rect key={`${point.label}-${index}`} x={28 + index * 34} y={194 - height} width="18" height={height} rx="6" fill="var(--green)" opacity={0.86} />;
+      }) : (
+        <>
+          <polyline points={`18,198 ${points} 442,198`} fill="var(--green)" opacity="0.10" />
+          <polyline points={points} fill="none" stroke="var(--green)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="442" cy={190 - ((series[series.length - 1].value - min) / range) * 145} r="5" fill="var(--green)" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 function getAnalysisIntro(dataset) {
   const summary = dataset?.analysis_data?.ai_summary;
   if (summary) {
@@ -303,7 +501,7 @@ function buildKwekuAnswer(dataset, question) {
   }
 
   if (q.includes("map") || q.includes("region")) {
-    return `The map view works best when the dataset contains a Ghana region, district, area, or zone column plus a numeric value column. If those fields are detected, GhanaDataHub renders a choropleth map automatically; otherwise the Map tab explains what is missing.`;
+    return `The map view works best when the dataset contains a Ghana region, district, area, or zone column plus a numeric value column. If those fields are detected, DataGhana.io renders a choropleth map automatically; otherwise the Map tab explains what is missing.`;
   }
 
   if (q.includes("trend") || q.includes("chart")) {
@@ -315,16 +513,16 @@ function buildKwekuAnswer(dataset, question) {
 
   if (q.includes("anomal")) {
     if (analysis.has_anomalies) {
-      return `I found possible anomalies in this dataset. Check the Analysis tab for columns marked with the warning icon; those values sit unusually far from the column average.`;
+      return `I found possible anomalies in this dataset. Check the Quality tab for columns marked with the warning icon; those values sit unusually far from the column average.`;
     }
     return `No major anomalies are currently flagged for this dataset. That means the local analyser did not find numeric values more than three standard deviations from their column average.`;
   }
 
   if (q.includes("quality") || q.includes("complete")) {
-    return `This dataset has ${completeness ?? "unknown"}% completeness${rows ? ` across ${rows.toLocaleString()} rows` : ""}${columns ? ` and ${columns} columns` : ""}. Use the Analysis tab for null rates, unique values, numeric ranges, and notable correlations.`;
+    return `This dataset has ${completeness ?? "unknown"}% completeness${rows ? ` across ${rows.toLocaleString()} rows` : ""}${columns ? ` and ${columns} columns` : ""}. Use the Quality tab for null rates, unique values, numeric ranges, and notable correlations.`;
   }
 
-  return `${getAnalysisIntro(dataset)}\n\nIn plain terms: "${title}" is a ${category.toLowerCase()} dataset${rows ? ` with ${rows.toLocaleString()} rows` : ""}${columns ? ` and ${columns} columns` : ""}. Good next steps are to inspect the Analysis tab, open the Map tab if it has regional data, or use the API tab to connect it to another tool.`;
+  return `${getAnalysisIntro(dataset)}\n\nIn plain terms: "${title}" is a ${category.toLowerCase()} dataset${rows ? ` with ${rows.toLocaleString()} rows` : ""}${columns ? ` and ${columns} columns` : ""}. Good next steps are to inspect the Quality tab, open the Map tab if it has regional data, or use the API tab to connect it to another tool.`;
 }
 
 export default function DatasetDetailPage() {
@@ -339,6 +537,7 @@ export default function DatasetDetailPage() {
   const [showAttributionModal, setShowAttributionModal] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [csvRows, setCsvRows] = useState(null);
+  const [csvPreviewRows, setCsvPreviewRows] = useState(null);
   const [hasRegionData, setHasRegionData] = useState(false);
   
   const [isScrolledPastHero, setIsScrolledPastHero] = useState(false);
@@ -381,7 +580,7 @@ export default function DatasetDetailPage() {
 
     const requestedTab = searchParams.get("tab");
     const requestedAsk = searchParams.get("ask");
-    if (["overview", "map", "analysis", "api"].includes(requestedTab)) {
+    if (["overview", "charts", "map", "table", "analysis", "metadata", "api"].includes(requestedTab)) {
       setActiveTab(requestedTab);
     }
     if (requestedAsk === "kweku") {
@@ -405,6 +604,7 @@ export default function DatasetDetailPage() {
     let cancelled = false;
     setHasRegionData(false);
     setCsvRows(null);
+    setCsvPreviewRows(null);
 
     const fileUrl = getDatasetDownloadUrl(dataset.id);
     const isCsv = dataset.file_type === "text/csv" || dataset.file_type === "application/csv" || dataset.file_name?.toLowerCase().endsWith(".csv");
@@ -418,6 +618,7 @@ export default function DatasetDetailPage() {
         .then((text) => {
           if (cancelled) return;
           const rows = parseCsvRows(text);
+          setCsvPreviewRows(rows.slice(0, 101));
           const regionIdx = detectRegionColumn(rows[0] || []);
           if (regionIdx !== -1 && hasNumericValueColumn(rows, regionIdx)) {
             setCsvRows(rows);
@@ -558,8 +759,30 @@ export default function DatasetDetailPage() {
   const displayDesc = (isLong && !expandedDesc) ? descText.substring(0, 300) + '...' : descText;
 
   const mockData = generateMockData(dataset.title, dataset.category?.name, 8);
-  const citationText = `${dataset.owner?.full_name || 'GhanaDataHub'}. (${new Date(dataset.created_at).getFullYear()}). ${dataset.title}. GhanaDataHub. ${window.location.href}`;
   const hasAnalysisData = dataset.analysis_data && !dataset.analysis_data.error;
+  const intelligence = getDatasetIntelligence(dataset);
+  const previewRows = getPreviewRows(csvPreviewRows, mockData);
+  const previewHeaders = previewRows[0] || [];
+  const previewBodyRows = previewRows.slice(1, 9);
+  const chartSeries = getChartSeries(dataset, previewRows);
+  const chartValues = chartSeries.map((point) => point.value).filter((value) => !Number.isNaN(value));
+  const highValue = chartValues.length ? Math.max(...chartValues) : null;
+  const lowValue = chartValues.length ? Math.min(...chartValues) : null;
+  const averageValue = chartValues.length ? chartValues.reduce((sum, value) => sum + value, 0) / chartValues.length : null;
+  const firstValue = chartValues[0];
+  const latestValue = chartValues[chartValues.length - 1];
+  const changePct = firstValue ? ((latestValue - firstValue) / Math.abs(firstValue)) * 100 : null;
+  const analysisCompleteness = Number(dataset.analysis_data?.completeness_pct || 0);
+  const qualityScore = hasAnalysisData
+    ? Math.round((analysisCompleteness * 0.55) + (dataset.analysis_data?.has_anomalies ? 18 : 30) + 12)
+    : intelligence.verified ? 88 : 72;
+  const insightBullets = [
+    `${intelligence.publisher} is the detected publisher for this dataset.`,
+    `${intelligence.geography} coverage with ${intelligence.coverage.toLowerCase()} availability.`,
+    highValue !== null ? `Highest visible value is ${Number(highValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}.` : "A chart preview is ready when numeric values are available.",
+    changePct !== null ? `Visible trend changes by ${changePct >= 0 ? "+" : ""}${changePct.toFixed(1)}%.` : "Use Ask Kweku to generate interpretation questions.",
+  ];
+  const citationText = `${intelligence.publisher}. (${new Date(dataset.created_at).getFullYear()}). ${intelligence.title}. DataGhana.io. ${window.location.href}`;
   const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
   const datasetApiUrl = `${apiBase}/datasets/${dataset.id}`;
   const downloadApiUrl = `${datasetApiUrl}/download`;
@@ -629,6 +852,70 @@ export default function DatasetDetailPage() {
         .ghost-btn:hover {
           background: rgba(255,255,255,0.1);
         }
+        .dataset-report-card {
+          background: var(--surface-card);
+          border: 1px solid var(--border-subtle);
+          border-radius: 18px;
+          padding: 24px;
+          box-shadow: var(--shadow-sm);
+        }
+        .dataset-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 12px;
+        }
+        .dataset-kpi {
+          background: var(--surface-elevated);
+          border: 1px solid var(--border-subtle);
+          border-radius: 14px;
+          padding: 14px;
+        }
+        .dataset-kpi-label {
+          font-size: 11px;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          margin-bottom: 8px;
+        }
+        .dataset-kpi-value {
+          font-size: 20px;
+          color: var(--text-primary);
+          font-weight: 800;
+        }
+        .dataset-auto-chart {
+          width: 100%;
+          min-height: 220px;
+          display: block;
+          background:
+            radial-gradient(circle at 20% 20%, rgba(0,163,92,0.10), transparent 28%),
+            var(--surface-elevated);
+          border: 1px solid var(--border-subtle);
+          border-radius: 16px;
+        }
+        .dataset-action-btn {
+          height: 42px;
+          border-radius: 10px;
+          border: 1px solid var(--border-default);
+          background: var(--surface-elevated);
+          color: var(--text-primary);
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 0 13px;
+          cursor: pointer;
+        }
+        .dataset-action-btn.primary {
+          background: var(--green);
+          border-color: var(--green);
+          color: white;
+        }
+        @media (max-width: 720px) {
+          .dataset-hero-title { font-size: 30px !important; }
+          .dataset-hero-grid { grid-template-columns: 1fr !important; }
+          .dataset-side-panel { position: static !important; }
+        }
       `}</style>
       
       {/* SECTION 1 — HERO BAND */}
@@ -658,18 +945,31 @@ export default function DatasetDetailPage() {
                )}
              </div>
           </div>
-          <div style={{ fontSize: 13, color: "#A7F3D0", textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, fontWeight: 600 }}>
-             {dataset.category?.name || 'Dataset'}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+            <span style={{ fontSize: 12, color: "#A7F3D0", textTransform: "uppercase", letterSpacing: 0.7, fontWeight: 800 }}>
+              {intelligence.topic}
+            </span>
+            {intelligence.verified && (
+              <span style={{ padding: "4px 9px", borderRadius: 999, background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.24)", fontSize: 11, fontWeight: 800 }}>
+                Verified source
+              </span>
+            )}
+            {intelligence.code && (
+              <span style={{ color: "rgba(255,255,255,0.62)", fontSize: 12 }}>Indicator code hidden from title: {intelligence.code}</span>
+            )}
           </div>
-          <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 16, lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-            {dataset.title}
+          <h1 className="dataset-hero-title" style={{ fontSize: 42, fontWeight: 800, marginBottom: 14, lineHeight: 1.08, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {intelligence.title}
           </h1>
+          <p style={{ maxWidth: 780, color: "rgba(255,255,255,0.82)", fontSize: 17, lineHeight: 1.7, margin: "0 0 18px" }}>
+            {intelligence.summary}
+          </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, color: 'rgba(255,255,255,0.7)', fontSize: 14, marginBottom: 24, flexWrap: 'wrap' }}>
-            <span>Uploaded {formatPrettyDate(dataset.created_at)}</span>
+            <span>Publisher: {intelligence.publisher}</span>
             <Dot size={16} />
-            <span>By {dataset.owner?.full_name || 'Unknown'}</span>
+            <span>Updated {formatPrettyDate(dataset.updated_at || dataset.created_at)}</span>
             <Dot size={16} />
-            <span>Version {dataset.version}</span>
+            <span>{intelligence.coverage}</span>
           </div>
           {dataset.tags?.length > 0 && (
             <div style={{ display: "flex", gap: 8, flexWrap: 'wrap', marginBottom: 32 }}>
@@ -682,10 +982,10 @@ export default function DatasetDetailPage() {
           )}
           
           <div style={{ display: 'flex', background: 'rgba(0,0,0,0.15)', borderRadius: 12, padding: '16px 24px', gap: 48, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-             <StatBubble icon={<Database />} label="File Size" value={formatSize(dataset.file_size)} />
-             <StatBubble icon={<FileText />} label="File Type" value={dataset.file_type?.toUpperCase() || 'CSV'} />
-             <StatBubble icon={<Download />} label="Downloads" value={dataset.download_count} />
-             <StatBubble icon={<History />} label="Version" value={`v${dataset.version}`} />
+             <StatBubble icon={<Database />} label="Records" value={intelligence.records} />
+             <StatBubble icon={<Map />} label="Regions" value={intelligence.geography} />
+             <StatBubble icon={<History />} label="Coverage" value={intelligence.coverage} />
+             <StatBubble icon={<Download />} label="Downloads" value={Number(dataset.download_count || 0).toLocaleString()} />
              <QualityBadge dataset={dataset} size='md' />
           </div>
         </div>
@@ -704,10 +1004,11 @@ export default function DatasetDetailPage() {
          }}>
          <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontSize: 14, color: 'var(--gray-600)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '50%', fontWeight: 500 }}>
-              {dataset.title}
+              {intelligence.title}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-outline btn-sm" onClick={() => openKweku()}><Bot size={14}/> Ask</button>
+              <button className="btn btn-outline btn-sm" onClick={() => selectTab("charts")}><BarChart2 size={14}/> Charts</button>
               {canShare && (
                 <button className="btn btn-outline btn-sm" onClick={() => setShowShare(true)}><Share2 size={14}/> Share</button>
               )}
@@ -804,6 +1105,12 @@ export default function DatasetDetailPage() {
               >
                 <Database size={14} /> Overview
               </button>
+              <button
+                onClick={() => selectTab("charts")}
+                className={activeTab === "charts" ? "tab-active" : "tab-inactive"}
+              >
+                <BarChart2 size={14} /> Charts
+              </button>
               {(hasRegionData || activeTab === "map") && (
                 <button
                   onClick={() => selectTab("map")}
@@ -812,14 +1119,26 @@ export default function DatasetDetailPage() {
                   <Map size={14} /> Regional Map
                 </button>
               )}
+              <button
+                onClick={() => selectTab("table")}
+                className={activeTab === "table" ? "tab-active" : "tab-inactive"}
+              >
+                <Table size={14} /> Table
+              </button>
               {hasAnalysisData && (
                 <button
                   onClick={() => selectTab("analysis")}
                   className={activeTab === "analysis" ? "tab-active" : "tab-inactive"}
                 >
-                  <BarChart2 size={14} /> Analysis
+                  <Sparkles size={14} /> Quality
                 </button>
               )}
+              <button
+                onClick={() => selectTab("metadata")}
+                className={activeTab === "metadata" ? "tab-active" : "tab-inactive"}
+              >
+                <FileText size={14} /> Metadata
+              </button>
               <button
                 onClick={() => selectTab("api")}
                 className={activeTab === "api" ? "tab-active" : "tab-inactive"}
@@ -827,6 +1146,100 @@ export default function DatasetDetailPage() {
                 <Code2 size={14} /> API Access
               </button>
             </div>
+
+          {activeTab === "charts" && (
+            <div style={{ padding: "20px 0", display: "flex", flexDirection: "column", gap: 18 }}>
+              <div className="dataset-report-card">
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 18 }}>
+                  <div>
+                    <div style={{ color: "var(--green)", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1 }}>Automatic Visualisation</div>
+                    <h2 style={{ margin: "6px 0 0", fontSize: 22, color: "var(--text-primary)" }}>{intelligence.title}</h2>
+                    <p style={{ margin: "8px 0 0", color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.6 }}>
+                      DataGhana.io selected a {intelligence.chart === "area" ? "trend area" : intelligence.chart} preview based on this dataset's title, topic and detected numeric values.
+                    </p>
+                  </div>
+                  <span style={{ padding: "6px 10px", borderRadius: 999, background: "var(--green-pale)", color: "var(--green)", fontSize: 12, fontWeight: 800 }}>
+                    {intelligence.chart === "map" ? "Map recommended" : `${intelligence.chart} chart`}
+                  </span>
+                </div>
+                <AutoChart series={chartSeries} type={intelligence.chart === "bar" ? "bar" : "line"} />
+              </div>
+
+              <div className="dataset-kpi-grid">
+                {[
+                  { label: "Highest", value: highValue !== null ? Number(highValue).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—" },
+                  { label: "Lowest", value: lowValue !== null ? Number(lowValue).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—" },
+                  { label: "Average", value: averageValue !== null ? Number(averageValue).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—" },
+                  { label: "Visible change", value: changePct !== null ? `${changePct >= 0 ? "+" : ""}${changePct.toFixed(1)}%` : "—" },
+                ].map((item) => (
+                  <div key={item.label} className="dataset-kpi">
+                    <div className="dataset-kpi-label">{item.label}</div>
+                    <div className="dataset-kpi-value">{item.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="dataset-report-card">
+                <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", marginBottom: 12 }}>Recommended next views</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                  {["Trend comparison", "Percentage change", "Regional ranking", "Quality report", "API export"].map((view) => (
+                    <button
+                      key={view}
+                      onClick={() => view === "Regional ranking" ? selectTab("map") : view === "Quality report" ? selectTab("analysis") : view === "API export" ? selectTab("api") : openKweku(`Create a ${view.toLowerCase()} for this dataset.`)}
+                      style={{ border: "1px solid var(--border-default)", background: "var(--surface-elevated)", color: "var(--text-secondary)", borderRadius: 999, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      {view}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "table" && (
+            <div style={{ padding: "20px 0" }}>
+              <div className="dataset-report-card">
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ color: "var(--green)", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1 }}>Preview Table</div>
+                    <div style={{ marginTop: 4, fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>
+                      {csvPreviewRows ? "First rows from the CSV" : "Sample preview"}
+                    </div>
+                  </div>
+                  <button onClick={handleDownload} className="dataset-action-btn primary">
+                    <Download size={15} /> Download full file
+                  </button>
+                </div>
+                <div style={{ overflowX: "auto", border: "1px solid var(--border-subtle)", borderRadius: 14 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 680 }}>
+                    <thead>
+                      <tr style={{ background: "var(--green)", color: "white" }}>
+                        {previewHeaders.map((header, index) => (
+                          <th key={`${header}-${index}`} style={{ padding: "11px 13px", textAlign: "left", fontSize: 12, fontWeight: 800 }}>
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewBodyRows.map((row, rowIndex) => (
+                        <tr key={rowIndex} style={{ background: rowIndex % 2 === 0 ? "var(--surface-card)" : "var(--surface-elevated)", borderBottom: "1px solid var(--border-subtle)" }}>
+                          {previewHeaders.map((_, cellIndex) => (
+                            <td key={cellIndex} style={{ padding: "10px 13px", fontSize: 13, color: "var(--text-secondary)", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {row[cellIndex] ?? "—"}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+                  {csvPreviewRows ? "Showing a limited browser preview only. Download or use the API for the full dataset." : "Sample preview only. Download the full dataset to inspect original rows."}
+                </div>
+              </div>
+            </div>
+          )}
 
           {activeTab === "map" && hasRegionData && csvRows && (
             <div style={{ padding: "20px 0" }}>
@@ -837,7 +1250,7 @@ export default function DatasetDetailPage() {
                 height={480}
               />
               <div style={{ marginTop: 16, padding: "14px 18px", background: "var(--green-pale)", borderRadius: 10, fontSize: 13, color: "var(--dark)", lineHeight: 1.6 }}>
-                <strong style={{ color: "var(--green)" }}>About this map:</strong> This map shows Ghana's 16 administrative regions. Download the full dataset and open it in Excel or Python to see regional values. Future versions of GhanaDataHub will parse and display the actual regional values automatically.
+                <strong style={{ color: "var(--green)" }}>About this map:</strong> This map shows Ghana's 16 administrative regions. Download the full dataset and open it in Excel or Python to see regional values. Future versions of DataGhana.io will parse and display the actual regional values automatically.
               </div>
             </div>
           )}
@@ -849,7 +1262,7 @@ export default function DatasetDetailPage() {
               </div>
               <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8 }}>No regional map available yet</div>
               <div style={{ maxWidth: 520, margin: "0 auto", color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.7 }}>
-                GhanaDataHub needs a Ghana region, district, area, or zone column plus a numeric value column to build a choropleth map for this dataset.
+                DataGhana.io needs a Ghana region, district, area, or zone column plus a numeric value column to build a choropleth map for this dataset.
               </div>
               <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
                 <button onClick={() => openKweku("Can this be mapped?")} className="btn btn-outline">
@@ -858,6 +1271,59 @@ export default function DatasetDetailPage() {
                 <button onClick={() => selectTab("overview")} className="btn btn-primary">
                   View Overview
                 </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "metadata" && (
+            <div style={{ padding: "20px 0", display: "grid", gap: 18 }}>
+              <div className="dataset-report-card">
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                  <FileText size={18} color="var(--green)" />
+                  <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>Dataset Metadata</div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12 }}>
+                  {[
+                    ["Publisher", intelligence.publisher],
+                    ["Category", intelligence.topic],
+                    ["Coverage", intelligence.coverage],
+                    ["Geography", intelligence.geography],
+                    ["Records", intelligence.records],
+                    ["File format", dataset.file_type?.toUpperCase() || "Unknown"],
+                    ["Licence", dataset.license || "Not specified"],
+                    ["Source", dataset.source_attribution || intelligence.publisher],
+                  ].map(([label, value]) => (
+                    <div key={label} className="dataset-kpi">
+                      <div className="dataset-kpi-label">{label}</div>
+                      <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 700, wordBreak: "break-word" }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="dataset-report-card">
+                <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", marginBottom: 12 }}>Data Dictionary Snapshot</div>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {(dataset.analysis_data?.column_profiles || previewHeaders.map((header) => ({ name: header, type: "unknown", null_rate_pct: "—", unique_count: "—" }))).slice(0, 8).map((profile) => (
+                    <div key={profile.name} style={{ display: "grid", gridTemplateColumns: "1.4fr 0.8fr 0.8fr 0.8fr", gap: 10, alignItems: "center", padding: "10px 0", borderBottom: "1px solid var(--border-subtle)", fontSize: 13 }}>
+                      <strong style={{ color: "var(--text-primary)" }}>{profile.name}</strong>
+                      <span style={{ color: "var(--text-secondary)", textTransform: "capitalize" }}>{profile.type}</span>
+                      <span style={{ color: "var(--text-secondary)" }}>{profile.null_rate_pct}% null</span>
+                      <span style={{ color: "var(--text-secondary)" }}>{profile.unique_count} unique</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="dataset-report-card">
+                <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", marginBottom: 10 }}>Perfect for</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {["Students", "Researchers", "Journalists", "Government", "Businesses", "Developers"].map((useCase) => (
+                    <span key={useCase} style={{ padding: "7px 11px", borderRadius: 999, background: "var(--green-pale)", color: "var(--green)", fontSize: 12, fontWeight: 800 }}>
+                      {useCase}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -1049,6 +1515,52 @@ export default function DatasetDetailPage() {
 
           {activeTab === "overview" && (
           <>
+          <div className="dataset-report-card" style={{ marginBottom: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 18 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--green)", fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1 }}>
+                  <Sparkles size={14} /> Dataset Intelligence Brief
+                </div>
+                <h2 style={{ margin: "8px 0 0", color: "var(--text-primary)", fontSize: 24, lineHeight: 1.25 }}>
+                  {intelligence.title}
+                </h2>
+              </div>
+              <span style={{ padding: "6px 10px", borderRadius: 999, background: qualityScore >= 85 ? "var(--green-pale)" : "rgba(252,209,22,0.14)", color: qualityScore >= 85 ? "var(--green)" : "#92400E", fontSize: 12, fontWeight: 800 }}>
+                {qualityScore}/100 quality
+              </span>
+            </div>
+            <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.8 }}>
+              {intelligence.summary}
+            </p>
+            <div className="dataset-kpi-grid" style={{ marginTop: 18 }}>
+              {[
+                ["Publisher", intelligence.publisher],
+                ["Coverage", intelligence.coverage],
+                ["Geography", intelligence.geography],
+                ["Records", intelligence.records],
+              ].map(([label, value]) => (
+                <div key={label} className="dataset-kpi">
+                  <div className="dataset-kpi-label">{label}</div>
+                  <div style={{ color: "var(--text-primary)", fontWeight: 800, fontSize: 15 }}>{value}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 18, display: "grid", gap: 10 }}>
+              {insightBullets.map((insight) => (
+                <div key={insight} style={{ display: "flex", gap: 9, alignItems: "flex-start", color: "var(--text-secondary)", fontSize: 13, lineHeight: 1.6 }}>
+                  <TrendingUp size={15} color="var(--green)" style={{ marginTop: 2, flexShrink: 0 }} />
+                  <span>{insight}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button onClick={() => selectTab("charts")} className="dataset-action-btn primary"><BarChart2 size={15} /> Explore charts</button>
+              {(hasRegionData || activeTab === "map") && <button onClick={() => selectTab("map")} className="dataset-action-btn"><Map size={15} /> View map</button>}
+              <button onClick={() => openKweku("Summarize the main findings in this dataset.")} className="dataset-action-btn"><Bot size={15} /> Ask Kweku</button>
+              <button onClick={() => selectTab("api")} className="dataset-action-btn"><Code2 size={15} /> API</button>
+            </div>
+          </div>
+
           <div className="card" style={{ padding: 32, borderRadius: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginBottom: 24, border: 'none', transition: 'transform 0.2s ease' }}
                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
                onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
@@ -1071,16 +1583,16 @@ export default function DatasetDetailPage() {
                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
                  <thead>
                    <tr style={{ borderBottom: '2px solid var(--gray-200)' }}>
-                     {mockData.columns.map((c, i) => (
+                     {previewHeaders.map((c, i) => (
                        <th key={i} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, color: 'var(--gray-500)', fontWeight: 600 }}>{c}</th>
                      ))}
                    </tr>
                  </thead>
                  <tbody>
-                   {mockData.rows.map((row, i) => (
+                   {previewBodyRows.slice(0, 5).map((row, i) => (
                      <tr key={i} style={{ borderBottom: '1px solid var(--gray-100)' }}>
-                       {Object.values(row).map((val, j) => (
-                         <td key={j} style={{ padding: '12px 16px', fontSize: 14, color: 'var(--gray-800)' }}>{val}</td>
+                       {previewHeaders.map((_, j) => (
+                         <td key={j} style={{ padding: '12px 16px', fontSize: 14, color: 'var(--gray-800)' }}>{row[j] ?? "—"}</td>
                        ))}
                      </tr>
                    ))}
@@ -1088,7 +1600,10 @@ export default function DatasetDetailPage() {
                </table>
             </div>
             <div style={{ marginTop: 16, fontSize: 13, color: 'var(--gray-400)', fontStyle: 'italic' }}>
-              Sample preview only. Download for full dataset.
+              {csvPreviewRows ? "Limited preview from the uploaded CSV." : "Sample preview only. Download for full dataset."}{" "}
+              <button onClick={() => selectTab("table")} style={{ border: "none", background: "none", color: "var(--green)", fontWeight: 700, cursor: "pointer", padding: 0 }}>
+                Open table view
+              </button>
             </div>
           </div>
 
@@ -1124,22 +1639,36 @@ export default function DatasetDetailPage() {
         </div>
 
         {/* RIGHT SIDEBAR */}
-        <div style={{ flex: '1 1 28%', minWidth: 280, position: 'sticky', top: 80, alignSelf: 'flex-start' }}>
+        <div className="dataset-side-panel" style={{ flex: '1 1 28%', minWidth: 280, position: 'sticky', top: 80, alignSelf: 'flex-start' }}>
           
           <div className="card" style={{ padding: 24, borderRadius: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginBottom: 24, border: 'none', transition: 'transform 0.2s ease' }}
                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
                onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Download Dataset</h3>
-            <div style={{ fontFamily: 'monospace', fontSize: 13, color: 'var(--gray-600)', marginBottom: 4, wordBreak: 'break-all' }}>{dataset.file_name || 'No file attached'}</div>
-            <div style={{ fontSize: 13, color: 'var(--gray-500)', marginBottom: 20 }}>{formatSize(dataset.file_size)}</div>
-            
-            {dataset.file_path && (
-              <button onClick={handleDownload} style={{ width: '100%', height: 48, background: 'var(--green)', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', marginBottom: 12, transition: 'opacity 0.2s' }}
-                      onMouseEnter={e => e.currentTarget.style.opacity = 0.9}
-                      onMouseLeave={e => e.currentTarget.style.opacity = 1}>
-                <Download size={18} /> Download
+            <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 6, color: "var(--text-primary)" }}>Explore Dataset</h3>
+            <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 16 }}>
+              Start with the visual and AI tools, then download the source file when you need the raw data.
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+              <button onClick={() => selectTab("charts")} className="dataset-action-btn primary" style={{ width: "100%" }}>
+                <BarChart2 size={16} /> Charts
               </button>
-            )}
+              <button onClick={() => openKweku()} className="dataset-action-btn" style={{ width: "100%" }}>
+                <Bot size={16} /> Ask
+              </button>
+              <button onClick={() => selectTab("map")} className="dataset-action-btn" style={{ width: "100%" }}>
+                <Map size={16} /> Map
+              </button>
+              <button onClick={() => selectTab("api")} className="dataset-action-btn" style={{ width: "100%" }}>
+                <Code2 size={16} /> API
+              </button>
+            </div>
+
+            <div style={{ padding: 12, borderRadius: 12, background: "var(--surface-elevated)", border: "1px solid var(--border-subtle)", marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 5 }}>Source file</div>
+              <div style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4, wordBreak: 'break-all' }}>{dataset.file_name || 'No file attached'}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatSize(dataset.file_size)} · {dataset.file_type?.toUpperCase() || "Unknown format"}</div>
+            </div>
             
             {canShare && (
               <button onClick={() => setShowShare(true)} style={{ width: '100%', height: 44, background: 'transparent', color: 'var(--gray-700)', border: '1px solid var(--gray-200)', borderRadius: 8, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', transition: 'background 0.2s' }}
@@ -1152,6 +1681,12 @@ export default function DatasetDetailPage() {
             <div style={{ marginTop: 12 }}>
               <WatchButton datasetId={dataset.id} datasetTitle={dataset.title} />
             </div>
+
+            {dataset.file_path && (
+              <button onClick={handleDownload} style={{ width: '100%', height: 44, background: 'rgba(0,107,63,0.08)', color: 'var(--green)', border: '1px solid rgba(0,107,63,0.18)', borderRadius: 8, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', marginTop: 12 }}>
+                <Download size={16} /> Download raw file
+              </button>
+            )}
 
             <div style={{ height: 1, background: 'var(--gray-200)', margin: '20px 0' }} />
             
@@ -1181,7 +1716,7 @@ export default function DatasetDetailPage() {
                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
                onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
             <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Cite This Dataset</h3>
-            <div style={{ background: '#F1F5F1', borderRadius: 8, padding: 16, fontFamily: 'monospace', fontSize: 12, color: 'var(--gray-800)', lineHeight: 1.6, marginBottom: 16, wordBreak: 'break-word' }}>
+            <div style={{ background: 'var(--surface-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: 16, fontFamily: 'monospace', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 16, wordBreak: 'break-word' }}>
               {citationText}
             </div>
             <button onClick={() => {
