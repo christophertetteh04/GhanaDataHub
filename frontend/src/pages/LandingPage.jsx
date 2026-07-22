@@ -1343,7 +1343,7 @@ export default function LandingPage() {
                   <span className="academy-badge">Analytics Academy</span>
                   <h3>Learn data analytics with real Ghana data</h3>
                   <p>4 tracks from complete beginner to advanced analyst. Free certificate on completion.</p>
-                  <Link className="landing-green-link" to="/blog">
+                  <Link className="landing-green-link" to="/insights">
                     Start Learning Free <ArrowRight size={15} />
                   </Link>
                 </div>
@@ -1422,7 +1422,7 @@ export default function LandingPage() {
         <div className="newsletter-card">
           <div>
             <h3>Get GhanaDataHub updates</h3>
-            <p>New datasets, data stories, and product notes in your inbox.</p>
+            <p>New datasets, insights, and product notes in your inbox.</p>
           </div>
           <form className="newsletter-form" onSubmit={(event) => event.preventDefault()}>
             <input type="email" placeholder="you@example.com" aria-label="Email address" />

@@ -26,7 +26,7 @@ const NAV = [
   { to: "/profile", icon: Users, label: "My Profile" },
   { to: "/datasets", icon: Database, label: "Datasets" },
   { to: "/catalogue", icon: BookOpen, label: "Catalogue" },
-  { to: "/blog", icon: BookText, label: "Data Stories" },
+  { to: "/insights", icon: BookText, label: "Insights" },
   { to: "/news", icon: Newspaper, label: "News Feed" },
   { to: "/search", icon: Search, label: "Search" },
 ];

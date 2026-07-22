@@ -5,6 +5,10 @@ import {
   Search,
   Calendar,
   Share2,
+  BadgeCheck,
+  Bot,
+  Lightbulb,
+  Sparkles,
   TrendingUp,
   Heart,
   Leaf,
@@ -200,9 +204,200 @@ function plainTextFromAiSummary(summary) {
     .trim();
 }
 
+const INDICATOR_STORY_META = {
+  "SP.URB.TOTL.IN.ZS": {
+    name: "Urban Population (% of Total Population)",
+    headline: "Ghana's Urban Population Is Reshaping Housing, Jobs and Transport",
+    summary: "Ghana's urban population share has risen steadily for decades, changing where people work, live, commute and demand public services.",
+    visual: "line",
+    takeaway: "Urbanisation is now one of Ghana's most important planning signals.",
+  },
+  "SP.POP.TOTL": {
+    name: "Total Population",
+    headline: "Ghana's Population Growth Is Changing Regional Demand",
+    summary: "Population growth is reshaping demand for schools, clinics, housing, transport and jobs across Ghana.",
+    visual: "line",
+    takeaway: "Population pressure is strongest where services and jobs are already concentrated.",
+  },
+  "NY.GDP.MKTP.CD": {
+    name: "GDP (Current US$)",
+    headline: "What Ghana's GDP Says About the Economy's Direction",
+    summary: "GDP data helps explain Ghana's economic size, growth cycles and the sectors driving national output.",
+    visual: "area",
+    takeaway: "GDP growth is useful, but sector and regional detail reveal the real story.",
+  },
+  "NY.GDP.MKTP.KD.ZG": {
+    name: "GDP Growth",
+    headline: "Is Ghana's Economy Growing Fast Enough?",
+    summary: "Growth data shows whether Ghana's economy is expanding strongly enough to absorb jobs, investment and public spending needs.",
+    visual: "area",
+    takeaway: "Growth momentum matters most when compared with inflation, employment and debt.",
+  },
+  "FP.CPI.TOTL.ZG": {
+    name: "Inflation Rate",
+    headline: "What Ghana's Inflation Data Means for Households",
+    summary: "Inflation data explains how prices are changing and why household budgets, food markets and policy rates remain under pressure.",
+    visual: "line",
+    takeaway: "Inflation is a household story, not just a central bank statistic.",
+  },
+  "SE.ADT.LITR.ZS": {
+    name: "Adult Literacy Rate",
+    headline: "Ghana's Literacy Gap Still Shapes Opportunity",
+    summary: "Literacy data reveals where education outcomes support opportunity and where regional gaps still hold people back.",
+    visual: "bar",
+    takeaway: "Literacy is one of the strongest signals of long-term human capital.",
+  },
+  "SP.DYN.IMRT.IN": {
+    name: "Infant Mortality Rate",
+    headline: "Ghana's Child Health Gains Still Need Regional Focus",
+    summary: "Infant mortality data tracks survival outcomes and highlights where health access, nutrition and prevention are improving.",
+    visual: "line",
+    takeaway: "Falling mortality is progress, but regional inequality remains the challenge.",
+  },
+  "EG.ELC.ACCS.ZS": {
+    name: "Electricity Access",
+    headline: "Where Electricity Access Is Still Holding Ghana Back",
+    summary: "Electricity access data shows which communities are connected to reliable power and which still face infrastructure gaps.",
+    visual: "map",
+    takeaway: "Energy access is a foundation for education, enterprise and public services.",
+  },
+};
+
+function detectPublisher(dataset) {
+  const text = `${dataset?.title || ""} ${dataset?.description || ""}`.toLowerCase();
+  if (text.includes("world bank")) return "World Bank";
+  if (text.includes("bank of ghana") || text.includes("bog")) return "Bank of Ghana";
+  if (text.includes("ghana statistical") || text.includes("statsghana") || text.includes("gss")) return "Ghana Statistical Service";
+  if (text.includes("faostat") || text.includes("fao")) return "FAOSTAT";
+  if (text.includes("who")) return "WHO";
+  if (text.includes("unicef")) return "UNICEF";
+  if (text.includes("electoral commission")) return "Electoral Commission Ghana";
+  return dataset?.owner?.full_name || "GhanaDataHub";
+}
+
+function findIndicatorMeta(dataset) {
+  const text = `${dataset?.title || ""} ${dataset?.description || ""}`;
+  return Object.entries(INDICATOR_STORY_META).find(([code]) => text.includes(code))?.[1] || null;
+}
+
+function getHumanDatasetName(dataset) {
+  const meta = findIndicatorMeta(dataset);
+  if (meta) return meta.name;
+
+  const rawTitle = dataset?.title || "Ghana dataset";
+  return rawTitle
+    .replace(/^World Bank Open Data\s*[-—]\s*Ghana:\s*/i, "")
+    .replace(/^Data Story:\s*/i, "")
+    .replace(/^AI Analysis:\s*/i, "")
+    .replace(/\b[A-Z]{2,}\.[A-Z0-9.]{4,}\b/g, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s*[-—:]\s*$/, "")
+    .trim() || rawTitle;
+}
+
+function buildInsightHeadline(dataset, category) {
+  const meta = findIndicatorMeta(dataset);
+  if (meta) return meta.headline;
+
+  const text = `${dataset?.title || ""} ${dataset?.description || ""}`.toLowerCase();
+  const name = getHumanDatasetName(dataset);
+  if (/inflation|cpi|price/.test(text)) return "What Ghana's Latest Inflation Data Means for Households";
+  if (/cocoa|crop|maize|cassava|agriculture|food/.test(text)) return "What Ghana's Agriculture Data Reveals About Food and Exports";
+  if (/health|mortality|malaria|maternal|hospital|hiv/.test(text)) return "Where Ghana's Health Data Shows Progress and Pressure";
+  if (/population|urban|census|demographic/.test(text)) return "How Ghana's Population Is Changing Across Communities";
+  if (/electricity|energy|power/.test(text)) return "Where Ghana's Energy Access Story Is Moving Fastest";
+  if (/voter|election|governance|procurement/.test(text)) return "What Ghana's Governance Data Reveals About Participation";
+  if (/gdp|trade|bank|forex|revenue|econom/.test(text)) return "What Ghana's Economic Data Says Right Now";
+  return `${name}: What the Data Reveals for Ghana`;
+}
+
+function buildInsightSummary(dataset, body) {
+  const meta = findIndicatorMeta(dataset);
+  if (meta) return meta.summary;
+
+  const first = (dataset?.description || body || "").split(".")[0]?.trim();
+  if (first && first.length > 24) return `${first}.`;
+  return "This insight turns a GhanaDataHub dataset into a plain-language brief for researchers, journalists, students and decision-makers.";
+}
+
+function getVisualType(dataset, category) {
+  const meta = findIndicatorMeta(dataset);
+  if (meta) return meta.visual;
+  const text = `${dataset?.title || ""} ${dataset?.description || ""}`.toLowerCase();
+  if (/region|district|map|health|hospital|mortality/.test(text)) return "map";
+  if (/gdp|inflation|population|urban|forex|rate/.test(text)) return "line";
+  if (/agriculture|crop|cocoa|trade|export/.test(text)) return "bar";
+  return category === "Demographics" ? "line" : category === "Agriculture" ? "bar" : "area";
+}
+
+function buildKeyTakeaways(dataset, analysis, body) {
+  const meta = findIndicatorMeta(dataset);
+  const rows = Number(analysis?.total_rows || 0);
+  const columns = Number(analysis?.total_columns || 0);
+  const completeness = analysis?.completeness_pct;
+  const downloads = dataset?.download_count || 0;
+
+  return [
+    meta?.takeaway || buildInsightSummary(dataset, body),
+    rows && columns
+      ? `${rows.toLocaleString()} records across ${columns} columns are available for analysis.`
+      : "The source dataset is available for deeper exploration and reuse.",
+    typeof completeness === "number"
+      ? `Automated checks show ${completeness}% data completeness.`
+      : "Metadata is available; column-level analysis will improve as files are processed.",
+    downloads > 0
+      ? `${downloads.toLocaleString()} download${downloads === 1 ? "" : "s"} signal user interest.`
+      : "This is a fresh insight ready for early readers.",
+  ].filter(Boolean).slice(0, 4);
+}
+
+function buildAdjoaDiscovery(category, dataset) {
+  const name = getHumanDatasetName(dataset);
+  const discoveries = {
+    Economy: `Adjoa noticed this may connect with inflation, exchange rates, employment and household spending. Compare it with other economy datasets before drawing conclusions.`,
+    Health: `Adjoa noticed this health signal may vary by region. A Ghana map or district breakdown could reveal where interventions should be focused.`,
+    Agriculture: `Adjoa noticed this agriculture data may connect with rainfall, food prices, exports and farmer income. The next useful comparison is climate or market data.`,
+    Demographics: `Adjoa noticed this demographic trend may affect housing, transport, schools and jobs. The next useful question is which regions are changing fastest.`,
+    Governance: `Adjoa noticed this governance data becomes more useful when compared by region, year and population share.`,
+    Environment: `Adjoa noticed this environmental signal may connect with energy access, land use and agriculture resilience.`,
+  };
+  return discoveries[category] || `Adjoa noticed ${name} may become more powerful when paired with related Ghana datasets.`;
+}
+
+function MiniInsightVisual({ type = "line", colour = "var(--green)" }) {
+  if (type === "map") {
+    return (
+      <svg viewBox="0 0 120 76" className="insight-mini-visual" aria-hidden="true">
+        <path d="M55 6 82 12 102 31 95 59 70 70 42 65 22 49 29 22Z" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.65)" strokeWidth="2" />
+        <path d="M55 6 57 34 29 22Z" fill="rgba(255,255,255,0.45)" />
+        <path d="M57 34 82 12 102 31 75 42Z" fill="rgba(255,255,255,0.32)" />
+        <path d="M57 34 75 42 70 70 42 65Z" fill="rgba(255,255,255,0.55)" />
+      </svg>
+    );
+  }
+
+  if (type === "bar") {
+    return (
+      <svg viewBox="0 0 120 76" className="insight-mini-visual" aria-hidden="true">
+        {[22, 38, 28, 54, 44, 64].map((height, index) => (
+          <rect key={height + index} x={12 + index * 17} y={68 - height} width="10" height={height} rx="4" fill="rgba(255,255,255,0.68)" />
+        ))}
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 120 76" className="insight-mini-visual" aria-hidden="true">
+      <path d="M8 58 C24 48 29 52 42 39 C54 27 65 34 78 22 C92 10 100 18 113 8" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="4" strokeLinecap="round" />
+      <path d="M8 62 C24 52 29 56 42 43 C54 31 65 38 78 26 C92 14 100 22 113 12 L113 72 L8 72Z" fill="rgba(255,255,255,0.16)" />
+      <circle cx="78" cy="22" r="5" fill="white" />
+    </svg>
+  );
+}
+
 function buildFallbackStoryBody(dataset, analysis) {
   const category = getDatasetCategory(dataset);
-  const title = dataset?.title || "this dataset";
+  const title = getHumanDatasetName(dataset);
   const rows = analysis?.total_rows;
   const columns = analysis?.total_columns;
   const completeness = analysis?.completeness_pct;
@@ -230,21 +425,23 @@ export function buildStoryFromDataset(dataset, index = 0) {
   const aiText = plainTextFromAiSummary(analysis.ai_summary);
   const body = aiText || buildFallbackStoryBody(dataset, analysis);
   const tags = (dataset?.tags || []).map((tag) => tag.name || tag).filter(Boolean);
-  const author = dataset?.owner?.full_name || "GhanaDataHub";
+  const publisher = detectPublisher(dataset);
+  const author = publisher === "GhanaDataHub" ? dataset?.owner?.full_name || "GhanaDataHub" : `AI + ${publisher}`;
   const initials = author
     .split(" ")
     .map((part) => part[0])
     .join("")
     .slice(0, 2)
     .toUpperCase() || "GD";
-  const title = analysis.ai_summary
-    ? `AI Analysis: ${dataset.title}`
-    : `Data Story: ${dataset.title}`;
-  const excerpt = dataset.description || body.split("\n\n")[0] || "A current GhanaDataHub dataset story.";
+  const title = buildInsightHeadline(dataset, category);
+  const excerpt = buildInsightSummary(dataset, body);
+  const visualType = getVisualType(dataset, category);
 
   return {
     id: `dataset-${dataset.id}`,
     datasetId: dataset.id,
+    rawDatasetTitle: dataset.title,
+    humanDatasetTitle: getHumanDatasetName(dataset),
     title,
     author,
     authorInitials: initials,
@@ -259,6 +456,16 @@ export function buildStoryFromDataset(dataset, index = 0) {
     tags: tags.length ? tags.slice(0, 4) : [category.toLowerCase(), "dataset", "ghana"],
     isLiveDatasetStory: true,
     analysisAvailable: Boolean(analysis?.ai_summary),
+    publisher,
+    sourceConfidence: publisher === "GhanaDataHub" ? 4 : 5,
+    visualType,
+    keyTakeaways: buildKeyTakeaways(dataset, analysis, body),
+    adjoaDiscovery: buildAdjoaDiscovery(category, dataset),
+    insightBadges: [
+      analysis?.ai_summary ? "AI Insight" : "Live Insight",
+      publisher === "GhanaDataHub" ? "Community Data" : "Verified Source",
+      visualType === "map" ? "Map Ready" : "Chart Ready",
+    ],
   };
 }
 
@@ -283,6 +490,20 @@ function groupByDate(posts) {
   return Object.entries(groups)
     .sort(([a], [b]) => (a < b ? 1 : -1))
     .map(([date, items]) => ({ date, items }));
+}
+
+export function normalizeInsightPost(post) {
+  if (!post) return post;
+  return {
+    publisher: post.publisher || post.author || "GhanaDataHub",
+    sourceConfidence: post.sourceConfidence || 5,
+    visualType: post.visualType || getVisualType(post, post.category),
+    humanDatasetTitle: post.humanDatasetTitle || post.title,
+    keyTakeaways: post.keyTakeaways || buildKeyTakeaways(post, {}, post.body || post.excerpt),
+    adjoaDiscovery: post.adjoaDiscovery || buildAdjoaDiscovery(post.category, post),
+    insightBadges: post.insightBadges || ["Editor's Pick", "Verified", "Data Explained"],
+    ...post,
+  };
 }
 
 export default function BlogPage() {
@@ -317,8 +538,8 @@ export default function BlogPage() {
         setLastSyncedAt(new Date());
       } catch (error) {
         if (!cancelled) {
-          console.error("Unable to refresh data stories", error);
-          setStoriesError("Live dataset stories are temporarily unavailable.");
+          console.error("Unable to refresh insights", error);
+          setStoriesError("Live dataset insights are temporarily unavailable.");
         }
       } finally {
         if (!cancelled) setStoriesLoading(false);
@@ -338,7 +559,10 @@ export default function BlogPage() {
     return () => window.clearInterval(tickId);
   }, []);
 
-  const storyPosts = livePosts.length > 0 ? livePosts : BLOG_POSTS;
+  const storyPosts = useMemo(
+    () => (livePosts.length > 0 ? livePosts : BLOG_POSTS).map(normalizeInsightPost),
+    [livePosts],
+  );
 
   const filteredPosts = useMemo(() => {
     return storyPosts.filter((post) => {
@@ -371,27 +595,27 @@ export default function BlogPage() {
   }, [filteredPosts]);
 
   const handleShare = async () => {
-    const url = `${window.location.origin}/blog/${selectedPost.id}`;
+  const url = `${window.location.origin}/insights/${selectedPost.id}`;
     await navigator.clipboard.writeText(url);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1500);
   };
 
-  const HeroIcon = CATEGORY_ICON[selectedPost?.category] || BookText;
+  const selectedInsight = normalizeInsightPost(selectedPost);
 
   return (
     <div className="blog-page-root">
       <div className="blog-layout">
         <aside className="blog-left-panel">
-          <div className="blog-left-heading">Data Stories</div>
+          <div className="blog-left-heading">Insights</div>
           <div className="blog-live-status">
             <span className={livePosts.length > 0 ? "live-dot" : "live-dot muted"} />
             <span>
               {livePosts.length > 0
-                ? `Live from ${livePosts.length} recent datasets`
+                ? `Live from ${livePosts.length} recent dataset insights`
                 : storiesLoading
-                  ? "Syncing dataset stories..."
-                  : "Showing curated stories"}
+                  ? "Syncing insights..."
+                  : "Showing curated insights"}
             </span>
           </div>
           <div className="blog-left-categories">
@@ -412,9 +636,9 @@ export default function BlogPage() {
             })}
           </div>
           <div className="blog-left-cta-card">
-            <div className="blog-left-cta-label">OPEN DATA</div>
-            <div className="blog-left-cta-title">All datasets are free to download</div>
-            <button type="button" className="blog-left-cta-button" onClick={() => navigate("/datasets")}>Browse Datasets</button>
+            <div className="blog-left-cta-label">INTELLIGENCE LAYER</div>
+            <div className="blog-left-cta-title">Every insight links back to the evidence</div>
+            <button type="button" className="blog-left-cta-button" onClick={() => navigate("/datasets")}>Explore Data</button>
           </div>
         </aside>
 
@@ -446,19 +670,19 @@ export default function BlogPage() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search stories..."
+                placeholder="Ask for insights: inflation, cocoa, hospitals, urbanisation..."
               />
             </div>
           )}
           <div className="blog-sync-row">
-            <span>{storiesError || "Stories refresh automatically from the dataset catalogue."}</span>
+            <span>{storiesError || "Insights refresh automatically from the dataset catalogue and AI analysis."}</span>
             {lastSyncedAt && <strong>Updated {formatTimeAgo(lastSyncedAt, now)}</strong>}
           </div>
 
           {filteredPosts.length === 0 ? (
             <div className="blog-empty-state">
               <BookText size={36} />
-              <div className="blog-empty-title">No stories found</div>
+              <div className="blog-empty-title">No insights found</div>
               <div className="blog-empty-copy">Try another category or search term.</div>
             </div>
           ) : activeTab === "Latest" ? (
@@ -475,7 +699,6 @@ export default function BlogPage() {
                     </div>
                     <div className="blog-group-posts">
                       {group.items.map((post) => {
-                        const Icon = CATEGORY_ICON[post.category] || BookText;
                         const active = selectedPost?.id === post.id;
                         return (
                           <button
@@ -487,7 +710,8 @@ export default function BlogPage() {
                             <div className="blog-article-left">
                               <span className="blog-article-meta">{formatTimeAgo(post.publishedAt, now)}</span>
                               <div className="blog-article-title">{post.title}</div>
-                              <div className="blog-article-author">by {post.author}</div>
+                              <div className="blog-article-excerpt">{post.excerpt}</div>
+                              <div className="blog-article-author">{post.publisher || post.author} · {post.readingTime} min read</div>
                               {post.isLiveDatasetStory && (
                                 <div className="blog-live-story-badge">
                                   {post.analysisAvailable ? "AI analysed" : "Live dataset"}
@@ -495,7 +719,7 @@ export default function BlogPage() {
                               )}
                             </div>
                             <div className="blog-article-thumb" style={{ background: post.heroColor }}>
-                              <Icon size={28} color="white" />
+                              <MiniInsightVisual type={post.visualType} />
                             </div>
                           </button>
                         );
@@ -508,7 +732,6 @@ export default function BlogPage() {
           ) : (
             <div className="blog-article-list popular-list">
               {popularPosts.map((post, index) => {
-                const Icon = CATEGORY_ICON[post.category] || BookText;
                 const active = selectedPost?.id === post.id;
                 return (
                   <button
@@ -521,7 +744,8 @@ export default function BlogPage() {
                     <div className="blog-article-left">
                       <span className="blog-article-meta">{formatTimeAgo(post.publishedAt, now)}</span>
                       <div className="blog-article-title">{post.title}</div>
-                      <div className="blog-article-author">by {post.author}</div>
+                      <div className="blog-article-excerpt">{post.excerpt}</div>
+                      <div className="blog-article-author">{post.publisher || post.author} · {post.readingTime} min read</div>
                       {post.isLiveDatasetStory && (
                         <div className="blog-live-story-badge">
                           {post.analysisAvailable ? "AI analysed" : "Live dataset"}
@@ -529,7 +753,7 @@ export default function BlogPage() {
                       )}
                     </div>
                     <div className="blog-article-thumb" style={{ background: post.heroColor }}>
-                      <Icon size={28} color="white" />
+                      <MiniInsightVisual type={post.visualType} />
                     </div>
                   </button>
                 );
@@ -539,18 +763,18 @@ export default function BlogPage() {
 
           {selectedPost && filteredPosts.length > 0 && (
             <article className="blog-responsive-preview">
-              <div className="blog-responsive-hero" style={{ background: selectedPost.heroColor }}>
-                <HeroIcon size={28} color="white" />
-                <span>{selectedPost.category}</span>
+              <div className="blog-responsive-hero" style={{ background: selectedInsight.heroColor }}>
+                <MiniInsightVisual type={selectedInsight.visualType} />
+                <span>{selectedInsight.category}</span>
               </div>
               <div className="blog-responsive-body">
                 <div className="blog-responsive-kicker">
-                  {selectedPost.readingTime} min read · by {selectedPost.author}
+                  {selectedInsight.readingTime} min read · {selectedInsight.publisher || selectedInsight.author}
                 </div>
-                <h2>{selectedPost.title}</h2>
-                <p>{selectedPost.excerpt}</p>
-                <button type="button" onClick={() => navigate(`/blog/${selectedPost.id}`)}>
-                  Read Full Article
+                <h2>{selectedInsight.title}</h2>
+                <p>{selectedInsight.excerpt}</p>
+                <button type="button" onClick={() => navigate(`/insights/${selectedInsight.id}`)}>
+                  Open Insight
                 </button>
               </div>
             </article>
@@ -558,50 +782,88 @@ export default function BlogPage() {
         </section>
 
         <aside className="blog-right-panel">
-          {selectedPost && (
-            <div className="blog-right-content" key={selectedPost.id}>
+          {selectedInsight && (
+            <div className="blog-right-content" key={selectedInsight.id}>
               <div className="blog-right-top-row">
                 <div className="blog-author-chip">
-                  <span className="blog-author-avatar" style={{ background: selectedPost.authorColor }}>
-                    {selectedPost.authorInitials}
+                  <span className="blog-author-avatar" style={{ background: selectedInsight.authorColor }}>
+                    {selectedInsight.authorInitials}
                   </span>
-                  <span className="blog-author-by">by {selectedPost.author}</span>
+                  <span className="blog-author-by">{selectedInsight.publisher || selectedInsight.author}</span>
                 </div>
                 <button type="button" className="blog-share-button" onClick={handleShare}>
                   <Share2 size={16} />
                   {copied ? "Copied!" : "Share"}
                 </button>
               </div>
-              <div className="blog-hero-card" style={{ background: selectedPost.heroColor }}>
+              <div className="blog-hero-card" style={{ background: selectedInsight.heroColor }}>
                 <div className="blog-hero-icon">
-                  <HeroIcon size={40} color="white" />
+                  <MiniInsightVisual type={selectedInsight.visualType} />
                 </div>
-                <span className="blog-hero-pill">{selectedPost.category}</span>
+                <span className="blog-hero-pill">{selectedInsight.category}</span>
               </div>
               <div className="blog-right-article">
-                <div className="blog-right-title">{selectedPost.title}</div>
-                <div className="blog-right-meta">· {selectedPost.readingTime} min read</div>
-                {selectedPost.isLiveDatasetStory && (
+                <div className="blog-right-title">{selectedInsight.title}</div>
+                <div className="blog-right-meta">{selectedInsight.readingTime} min read · {selectedInsight.publisher || selectedInsight.author}</div>
+                <div className="blog-confidence-row" title={`${selectedInsight.sourceConfidence} out of 5 source confidence`}>
+                  <BadgeCheck size={14} />
+                  <span>{"★".repeat(selectedInsight.sourceConfidence)}{"☆".repeat(5 - selectedInsight.sourceConfidence)} Verified evidence</span>
+                </div>
+                {selectedInsight.isLiveDatasetStory && (
                   <div className="blog-live-story-badge wide">
-                    {selectedPost.analysisAvailable
-                      ? "Generated from dataset analysis"
+                    {selectedInsight.analysisAvailable
+                      ? "Generated from AI dataset analysis"
                       : "Generated from latest dataset metadata"}
                   </div>
                 )}
-                {selectedPost.body.split("\n\n").map((paragraph, idx) => (
+                <div className="blog-summary-box">
+                  <Sparkles size={15} />
+                  <span>{selectedInsight.excerpt}</span>
+                </div>
+                <div className="blog-takeaway-box">
+                  <div className="blog-small-section-title">Key takeaways</div>
+                  {selectedInsight.keyTakeaways.map((takeaway, index) => (
+                    <div className="blog-takeaway-row" key={`${takeaway}-${index}`}>
+                      <span>{index + 1}</span>
+                      <p>{takeaway}</p>
+                    </div>
+                  ))}
+                </div>
+                {selectedInsight.body.split("\n\n").slice(0, 2).map((paragraph, idx) => (
                   <p key={idx}>{paragraph}</p>
                 ))}
+                <div className="blog-adjoa-box">
+                  <Lightbulb size={16} />
+                  <div>
+                    <strong>Adjoa's Discovery</strong>
+                    <p>{selectedInsight.adjoaDiscovery}</p>
+                  </div>
+                </div>
+                <div className="blog-kweku-box">
+                  <div className="blog-small-section-title">Ask Kweku about this insight</div>
+                  <div className="blog-kweku-prompts">
+                    {["Explain simply", "Show the data", "Create a chart"].map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        onClick={() => selectedInsight.relatedDatasetId && navigate(`/datasets/${selectedInsight.relatedDatasetId}?ask=kweku`)}
+                      >
+                        <Bot size={13} /> {prompt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="blog-tags-row">
-                  {selectedPost.tags.map((tag) => (
+                  {selectedInsight.tags.map((tag) => (
                     <span key={tag} className="blog-tag-pill">{tag}</span>
                   ))}
                 </div>
-                <button type="button" className="blog-full-button" onClick={() => navigate(`/blog/${selectedPost.id}`)}>
-                  Read Full Article
+                <button type="button" className="blog-full-button" onClick={() => navigate(`/insights/${selectedInsight.id}`)}>
+                  Open Full Insight
                 </button>
-                {selectedPost.relatedDatasetId && (
-                  <button type="button" className="blog-dataset-button" onClick={() => navigate(`/datasets/${selectedPost.relatedDatasetId}`)}>
-                    Open Related Dataset
+                {selectedInsight.relatedDatasetId && (
+                  <button type="button" className="blog-dataset-button" onClick={() => navigate(`/datasets/${selectedInsight.relatedDatasetId}`)}>
+                    Open Evidence Dataset
                   </button>
                 )}
               </div>
@@ -887,6 +1149,15 @@ export default function BlogPage() {
           -webkit-box-orient: vertical;
           overflow: hidden;
         }
+        .blog-article-excerpt {
+          color: var(--text-secondary);
+          font-size: 12px;
+          line-height: 1.5;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
         .blog-article-author {
           font-size: 12px;
           color: var(--green);
@@ -915,6 +1186,11 @@ export default function BlogPage() {
           border-radius: 10px;
           display: grid;
           place-items: center;
+        }
+        .insight-mini-visual {
+          width: 86%;
+          height: 86%;
+          display: block;
         }
         .blog-popular-rank {
           font-size: 20px;
@@ -1012,6 +1288,102 @@ export default function BlogPage() {
         .blog-right-meta {
           font-size: 12px;
           color: var(--text-muted);
+        }
+        .blog-confidence-row {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          width: fit-content;
+          padding: 6px 10px;
+          border-radius: 999px;
+          background: var(--green-pale);
+          color: var(--green);
+          font-size: 12px;
+          font-weight: 800;
+        }
+        .blog-summary-box,
+        .blog-adjoa-box,
+        .blog-kweku-box,
+        .blog-takeaway-box {
+          border: 1px solid var(--border-subtle);
+          border-radius: 14px;
+          background: var(--surface-elevated);
+          padding: 14px;
+        }
+        .blog-summary-box {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          color: var(--text-primary);
+          font-size: 13px;
+          line-height: 1.7;
+          font-weight: 650;
+        }
+        .blog-small-section-title {
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          font-size: 10px;
+          font-weight: 900;
+          margin-bottom: 10px;
+        }
+        .blog-takeaway-box {
+          display: grid;
+          gap: 10px;
+        }
+        .blog-takeaway-row {
+          display: grid;
+          grid-template-columns: 22px 1fr;
+          gap: 9px;
+          align-items: start;
+        }
+        .blog-takeaway-row span {
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          background: var(--green-pale);
+          color: var(--green);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 11px;
+          font-weight: 900;
+        }
+        .blog-takeaway-row p,
+        .blog-adjoa-box p {
+          margin: 0;
+          color: var(--text-secondary);
+          font-size: 12px;
+          line-height: 1.6;
+        }
+        .blog-adjoa-box {
+          display: flex;
+          gap: 10px;
+          color: var(--gold);
+        }
+        .blog-adjoa-box strong {
+          display: block;
+          color: var(--text-primary);
+          font-size: 13px;
+          margin-bottom: 4px;
+        }
+        .blog-kweku-prompts {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .blog-kweku-prompts button {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          border: 1px solid var(--border-default);
+          background: var(--surface-card);
+          color: var(--green);
+          border-radius: 999px;
+          padding: 7px 10px;
+          font-size: 12px;
+          font-weight: 800;
+          cursor: pointer;
         }
         .blog-right-article p {
           color: var(--text-secondary);

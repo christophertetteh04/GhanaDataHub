@@ -51,6 +51,8 @@ function AppContent() {
           <Route path="/datasets" element={<PrivateRoute><Layout><DatasetsPage /></Layout></PrivateRoute>} />
           <Route path="/datasets/:id" element={<PrivateRoute><Layout><DatasetDetailPage /></Layout></PrivateRoute>} />
           <Route path="/catalogue" element={<PrivateRoute><Layout><CataloguePage /></Layout></PrivateRoute>} />
+          <Route path="/insights" element={<PrivateRoute><Layout><BlogPage /></Layout></PrivateRoute>} />
+          <Route path="/insights/:slug" element={<PrivateRoute><Layout><BlogPostPage /></Layout></PrivateRoute>} />
           <Route path="/blog" element={<PrivateRoute><Layout><BlogPage /></Layout></PrivateRoute>} />
           <Route path="/blog/:slug" element={<PrivateRoute><Layout><BlogPostPage /></Layout></PrivateRoute>} />
           <Route path="/news" element={<PrivateRoute><Layout><NewsFeedPage /></Layout></PrivateRoute>} />
