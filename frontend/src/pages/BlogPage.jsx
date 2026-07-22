@@ -12,6 +12,7 @@ import {
   Vote,
   Wind,
 } from "lucide-react";
+import { datasetsApi } from "../services/api";
 
 export const BLOG_POSTS = [
   {
@@ -160,10 +161,111 @@ const CATEGORY_LIST = [
   "Environment",
 ];
 
-function formatTimeAgo(value) {
-  const now = new Date();
+function getDatasetCategory(dataset) {
+  const category = dataset?.category?.name || dataset?.category || "Data";
+  if (CATEGORY_LIST.includes(category)) return category;
+
+  const text = `${dataset?.title || ""} ${dataset?.description || ""} ${(dataset?.tags || [])
+    .map((tag) => tag.name || tag)
+    .join(" ")}`.toLowerCase();
+
+  if (/(inflation|gdp|econom|finance|bank|forex|revenue|tax|trade)/.test(text)) return "Economy";
+  if (/(health|mortality|maternal|malaria|hospital|immunization|hiv)/.test(text)) return "Health";
+  if (/(cocoa|food|crop|farm|agriculture|maize|cassava)/.test(text)) return "Agriculture";
+  if (/(population|census|demographic|household|urban)/.test(text)) return "Demographics";
+  if (/(voter|election|governance|parliament|procurement|budget)/.test(text)) return "Governance";
+  if (/(environment|energy|forest|soil|climate|electricity)/.test(text)) return "Environment";
+  return "Economy";
+}
+
+function getStoryColour(category) {
+  const colours = {
+    Economy: "linear-gradient(135deg, #006B3F 0%, #00A35C 100%)",
+    Health: "linear-gradient(135deg, #DB2777 0%, #F472B6 100%)",
+    Agriculture: "linear-gradient(135deg, #0F766E 0%, #A7F3D0 100%)",
+    Demographics: "linear-gradient(135deg, #9333EA 0%, #A78BFA 100%)",
+    Governance: "linear-gradient(135deg, #047857 0%, #A7F3D0 100%)",
+    Environment: "linear-gradient(135deg, #065F46 0%, #10B981 100%)",
+  };
+  return colours[category] || colours.Economy;
+}
+
+function plainTextFromAiSummary(summary) {
+  if (!summary) return null;
+  return String(summary)
+    .replace(/\*\*/g, "")
+    .replace(/^#+\s*/gm, "")
+    .replace(/^\d+\.\s*/gm, "")
+    .replace(/^- /gm, "• ")
+    .trim();
+}
+
+function buildFallbackStoryBody(dataset, analysis) {
+  const category = getDatasetCategory(dataset);
+  const title = dataset?.title || "this dataset";
+  const rows = analysis?.total_rows;
+  const columns = analysis?.total_columns;
+  const completeness = analysis?.completeness_pct;
+  const downloads = dataset?.download_count || 0;
+  const owner = dataset?.owner?.full_name || "the GhanaDataHub community";
+
+  const dataShape = rows && columns
+    ? `The dataset contains ${Number(rows).toLocaleString()} rows across ${columns} columns, giving analysts enough structure to explore patterns, compare indicators, and verify claims.`
+    : "The dataset is now available on GhanaDataHub for researchers, journalists, and organisations that need reusable Ghana data.";
+
+  const quality = typeof completeness === "number"
+    ? `Local analysis reports ${completeness}% completeness${analysis?.has_anomalies ? ", with possible anomalies worth reviewing before publication." : ", with no major anomaly flag from the automated checks."}`
+    : "Automated column-level analysis is not available yet, so users should inspect the file before drawing conclusions.";
+
+  return [
+    `${title} has been added as a fresh ${category.toLowerCase()} data story. ${dataShape}`,
+    `${quality} The dataset has ${downloads.toLocaleString()} download${downloads === 1 ? "" : "s"} so far and was published by ${owner}.`,
+    "This story updates from the dataset catalogue, so new uploads and refreshed analysis appear here automatically. Open the related dataset to download the source file, review metadata, and run your own analysis.",
+  ].join("\n\n");
+}
+
+export function buildStoryFromDataset(dataset, index = 0) {
+  const category = getDatasetCategory(dataset);
+  const analysis = dataset?.analysis_data || {};
+  const aiText = plainTextFromAiSummary(analysis.ai_summary);
+  const body = aiText || buildFallbackStoryBody(dataset, analysis);
+  const tags = (dataset?.tags || []).map((tag) => tag.name || tag).filter(Boolean);
+  const author = dataset?.owner?.full_name || "GhanaDataHub";
+  const initials = author
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "GD";
+  const title = analysis.ai_summary
+    ? `AI Analysis: ${dataset.title}`
+    : `Data Story: ${dataset.title}`;
+  const excerpt = dataset.description || body.split("\n\n")[0] || "A current GhanaDataHub dataset story.";
+
+  return {
+    id: `dataset-${dataset.id}`,
+    datasetId: dataset.id,
+    title,
+    author,
+    authorInitials: initials,
+    authorColor: ["#D1FAE5", "#E0F2FE", "#FEF3C7", "#E9D5FF", "#DCFCE7"][index % 5],
+    category,
+    publishedAt: dataset.updated_at || dataset.created_at || new Date().toISOString(),
+    readingTime: Math.max(3, Math.ceil(body.split(/\s+/).length / 180)),
+    excerpt,
+    body,
+    heroColor: getStoryColour(category),
+    relatedDatasetId: dataset.id,
+    tags: tags.length ? tags.slice(0, 4) : [category.toLowerCase(), "dataset", "ghana"],
+    isLiveDatasetStory: true,
+    analysisAvailable: Boolean(analysis?.ai_summary),
+  };
+}
+
+function formatTimeAgo(value, now = new Date()) {
   const then = new Date(value);
   const diff = Math.floor((now - then) / 1000);
+  if (diff < 0) return "Just now";
   if (diff < 60) return `${diff}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
@@ -191,9 +293,55 @@ export default function BlogPage() {
   const [query, setQuery] = useState("");
   const [selectedPost, setSelectedPost] = useState(BLOG_POSTS[0]);
   const [copied, setCopied] = useState(false);
+  const [livePosts, setLivePosts] = useState([]);
+  const [storiesLoading, setStoriesLoading] = useState(true);
+  const [storiesError, setStoriesError] = useState(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchLiveStories() {
+      try {
+        const { data } = await datasetsApi.list({
+          page: 1,
+          per_page: 12,
+          sort_by: "created_at",
+          sort_dir: "desc",
+        });
+        if (cancelled) return;
+        const items = data?.items || [];
+        setLivePosts(items.map((dataset, index) => buildStoryFromDataset(dataset, index)));
+        setStoriesError(null);
+        setLastSyncedAt(new Date());
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Unable to refresh data stories", error);
+          setStoriesError("Live dataset stories are temporarily unavailable.");
+        }
+      } finally {
+        if (!cancelled) setStoriesLoading(false);
+      }
+    }
+
+    fetchLiveStories();
+    const refreshId = window.setInterval(fetchLiveStories, 5 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(refreshId);
+    };
+  }, []);
+
+  useEffect(() => {
+    const tickId = window.setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => window.clearInterval(tickId);
+  }, []);
+
+  const storyPosts = livePosts.length > 0 ? livePosts : BLOG_POSTS;
 
   const filteredPosts = useMemo(() => {
-    return BLOG_POSTS.filter((post) => {
+    return storyPosts.filter((post) => {
       const categoryMatch = activeCategory === "Home" || post.category === activeCategory;
       const queryText = query.trim().toLowerCase();
       const searchMatch =
@@ -204,13 +352,13 @@ export default function BlogPage() {
         post.tags.some((tag) => tag.toLowerCase().includes(queryText));
       return categoryMatch && searchMatch;
     });
-  }, [activeCategory, query]);
+  }, [activeCategory, query, storyPosts]);
 
   useEffect(() => {
     if (!filteredPosts.some((post) => post.id === selectedPost?.id)) {
-      setSelectedPost(filteredPosts[0] || BLOG_POSTS[0]);
+      setSelectedPost(filteredPosts[0] || storyPosts[0] || BLOG_POSTS[0]);
     }
-  }, [filteredPosts, selectedPost]);
+  }, [filteredPosts, selectedPost, storyPosts]);
 
   const popularPosts = useMemo(
     () => [...filteredPosts].sort((a, b) => b.readingTime - a.readingTime),
@@ -236,6 +384,16 @@ export default function BlogPage() {
       <div className="blog-layout">
         <aside className="blog-left-panel">
           <div className="blog-left-heading">Data Stories</div>
+          <div className="blog-live-status">
+            <span className={livePosts.length > 0 ? "live-dot" : "live-dot muted"} />
+            <span>
+              {livePosts.length > 0
+                ? `Live from ${livePosts.length} recent datasets`
+                : storiesLoading
+                  ? "Syncing dataset stories..."
+                  : "Showing curated stories"}
+            </span>
+          </div>
           <div className="blog-left-categories">
             {CATEGORY_LIST.map((category) => {
               const Icon = CATEGORY_ICON[category];
@@ -292,8 +450,18 @@ export default function BlogPage() {
               />
             </div>
           )}
+          <div className="blog-sync-row">
+            <span>{storiesError || "Stories refresh automatically from the dataset catalogue."}</span>
+            {lastSyncedAt && <strong>Updated {formatTimeAgo(lastSyncedAt, now)}</strong>}
+          </div>
 
-          {activeTab === "Latest" ? (
+          {filteredPosts.length === 0 ? (
+            <div className="blog-empty-state">
+              <BookText size={36} />
+              <div className="blog-empty-title">No stories found</div>
+              <div className="blog-empty-copy">Try another category or search term.</div>
+            </div>
+          ) : activeTab === "Latest" ? (
             <div className="blog-article-list">
               {latestGroups.map((group) => {
                 const dateObj = new Date(group.date);
@@ -317,9 +485,14 @@ export default function BlogPage() {
                             onClick={() => setSelectedPost(post)}
                           >
                             <div className="blog-article-left">
-                              <span className="blog-article-meta">{formatTimeAgo(post.publishedAt)}</span>
+                              <span className="blog-article-meta">{formatTimeAgo(post.publishedAt, now)}</span>
                               <div className="blog-article-title">{post.title}</div>
                               <div className="blog-article-author">by {post.author}</div>
+                              {post.isLiveDatasetStory && (
+                                <div className="blog-live-story-badge">
+                                  {post.analysisAvailable ? "AI analysed" : "Live dataset"}
+                                </div>
+                              )}
                             </div>
                             <div className="blog-article-thumb" style={{ background: post.heroColor }}>
                               <Icon size={28} color="white" />
@@ -346,9 +519,14 @@ export default function BlogPage() {
                   >
                     <div className="blog-popular-rank">{index + 1}</div>
                     <div className="blog-article-left">
-                      <span className="blog-article-meta">{formatTimeAgo(post.publishedAt)}</span>
+                      <span className="blog-article-meta">{formatTimeAgo(post.publishedAt, now)}</span>
                       <div className="blog-article-title">{post.title}</div>
                       <div className="blog-article-author">by {post.author}</div>
+                      {post.isLiveDatasetStory && (
+                        <div className="blog-live-story-badge">
+                          {post.analysisAvailable ? "AI analysed" : "Live dataset"}
+                        </div>
+                      )}
                     </div>
                     <div className="blog-article-thumb" style={{ background: post.heroColor }}>
                       <Icon size={28} color="white" />
@@ -357,6 +535,25 @@ export default function BlogPage() {
                 );
               })}
             </div>
+          )}
+
+          {selectedPost && filteredPosts.length > 0 && (
+            <article className="blog-responsive-preview">
+              <div className="blog-responsive-hero" style={{ background: selectedPost.heroColor }}>
+                <HeroIcon size={28} color="white" />
+                <span>{selectedPost.category}</span>
+              </div>
+              <div className="blog-responsive-body">
+                <div className="blog-responsive-kicker">
+                  {selectedPost.readingTime} min read · by {selectedPost.author}
+                </div>
+                <h2>{selectedPost.title}</h2>
+                <p>{selectedPost.excerpt}</p>
+                <button type="button" onClick={() => navigate(`/blog/${selectedPost.id}`)}>
+                  Read Full Article
+                </button>
+              </div>
+            </article>
           )}
         </section>
 
@@ -384,6 +581,13 @@ export default function BlogPage() {
               <div className="blog-right-article">
                 <div className="blog-right-title">{selectedPost.title}</div>
                 <div className="blog-right-meta">· {selectedPost.readingTime} min read</div>
+                {selectedPost.isLiveDatasetStory && (
+                  <div className="blog-live-story-badge wide">
+                    {selectedPost.analysisAvailable
+                      ? "Generated from dataset analysis"
+                      : "Generated from latest dataset metadata"}
+                  </div>
+                )}
                 {selectedPost.body.split("\n\n").map((paragraph, idx) => (
                   <p key={idx}>{paragraph}</p>
                 ))}
@@ -395,6 +599,11 @@ export default function BlogPage() {
                 <button type="button" className="blog-full-button" onClick={() => navigate(`/blog/${selectedPost.id}`)}>
                   Read Full Article
                 </button>
+                {selectedPost.relatedDatasetId && (
+                  <button type="button" className="blog-dataset-button" onClick={() => navigate(`/datasets/${selectedPost.relatedDatasetId}`)}>
+                    Open Related Dataset
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -403,17 +612,20 @@ export default function BlogPage() {
       <style>{`
         .blog-page-root {
           min-height: calc(100vh - 56px);
-          background: var(--gray-100);
+          background: var(--surface-base);
+          color: var(--text-primary);
           padding: 0;
         }
         .blog-layout {
           display: grid;
-          grid-template-columns: 200px 1fr 420px;
+          grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) minmax(360px, 440px);
           min-height: calc(100vh - 56px);
+          max-width: 1440px;
+          margin: 0 auto;
         }
         .blog-left-panel {
           background: var(--surface-card);
-          border-right: 1px solid var(--gray-300);
+          border-right: 1px solid var(--border-subtle);
           display: flex;
           flex-direction: column;
           padding: 0;
@@ -423,6 +635,28 @@ export default function BlogPage() {
           font-weight: 700;
           color: var(--green);
           padding: 20px 16px 8px;
+        }
+        .blog-live-status {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 0 16px 14px;
+          color: var(--text-muted);
+          font-size: 11px;
+          font-weight: 700;
+          line-height: 1.4;
+        }
+        .live-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: var(--green);
+          box-shadow: 0 0 0 4px var(--green-pale);
+          flex-shrink: 0;
+        }
+        .live-dot.muted {
+          background: var(--text-muted);
+          box-shadow: 0 0 0 4px var(--surface-elevated);
         }
         .blog-left-categories {
           display: grid;
@@ -438,20 +672,20 @@ export default function BlogPage() {
           padding: 12px 12px;
           border: none;
           background: transparent;
-          color: var(--gray-700);
+          color: var(--text-secondary);
           text-align: left;
           cursor: pointer;
           border-left: 3px solid transparent;
           transition: background 0.15s ease, border-color 0.15s ease;
         }
         .category-row:hover {
-          background: var(--gray-100);
+          background: var(--green-pale);
         }
         .category-row.active {
           border-left-color: var(--green);
           color: var(--green);
           font-weight: 700;
-          background: var(--gray-50);
+          background: var(--green-pale);
         }
         .blog-left-cta-card {
           margin: 16px;
@@ -486,9 +720,10 @@ export default function BlogPage() {
         }
         .blog-centre-panel {
           background: var(--surface-card);
-          border-right: 1px solid var(--gray-300);
+          border-right: 1px solid var(--border-subtle);
           overflow-y: auto;
           padding: 20px;
+          min-width: 0;
         }
         .blog-top-tabs {
           display: flex;
@@ -497,7 +732,7 @@ export default function BlogPage() {
           gap: 16px;
           padding-bottom: 12px;
           margin-bottom: 16px;
-          border-bottom: 1px solid var(--gray-200);
+          border-bottom: 1px solid var(--border-subtle);
         }
         .blog-tab-list {
           display: flex;
@@ -507,14 +742,14 @@ export default function BlogPage() {
         .blog-tab {
           border: none;
           background: transparent;
-          color: var(--gray-600);
+          color: var(--text-secondary);
           padding: 10px 14px;
           border-radius: 8px;
           cursor: pointer;
           position: relative;
         }
         .blog-tab.active {
-          color: var(--gray-900);
+          color: var(--text-primary);
           font-weight: 700;
         }
         .blog-tab.active::after {
@@ -538,23 +773,51 @@ export default function BlogPage() {
           width: 38px;
           height: 38px;
           border-radius: 12px;
-          border: 1px solid var(--gray-200);
+          border: 1px solid var(--border-default);
           background: var(--surface-card);
-          color: var(--gray-600);
+          color: var(--text-secondary);
           cursor: pointer;
+        }
+        .blog-icon-button:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
         }
         .blog-search-row {
           padding: 14px 0;
-          border-bottom: 1px solid var(--gray-200);
+          border-bottom: 1px solid var(--border-subtle);
           margin-bottom: 16px;
         }
         .blog-search-row input {
           width: 100%;
           padding: 12px 14px;
           border-radius: 12px;
-          border: 1px solid var(--gray-300);
+          border: 1px solid var(--border-default);
+          background: var(--surface-elevated);
+          color: var(--text-primary);
           outline: none;
           font-size: 14px;
+        }
+        .blog-search-row input::placeholder {
+          color: var(--text-muted);
+        }
+        .blog-sync-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 16px;
+          padding: 10px 12px;
+          border: 1px solid var(--border-subtle);
+          border-radius: 12px;
+          background: var(--surface-base);
+          color: var(--text-secondary);
+          font-size: 12px;
+          line-height: 1.5;
+        }
+        .blog-sync-row strong {
+          color: var(--green);
+          font-size: 11px;
+          white-space: nowrap;
         }
         .blog-article-list {
           display: grid;
@@ -573,12 +836,12 @@ export default function BlogPage() {
         .blog-date-weekday {
           font-size: 12px;
           text-transform: uppercase;
-          color: var(--gray-500);
+          color: var(--text-muted);
         }
         .blog-date-number {
           font-size: 24px;
           font-weight: 700;
-          color: var(--gray-900);
+          color: var(--text-primary);
         }
         .blog-group-posts,
         .popular-list {
@@ -591,7 +854,7 @@ export default function BlogPage() {
           gap: 14px;
           padding: 12px 16px;
           border-radius: 12px;
-          border: none;
+          border: 1px solid transparent;
           background: transparent;
           text-align: left;
           align-items: center;
@@ -604,6 +867,7 @@ export default function BlogPage() {
         .blog-article-row.selected {
           background: var(--green-pale);
           border-left: 3px solid var(--green);
+          border-color: rgba(0,107,63,0.14);
         }
         .blog-article-left {
           display: grid;
@@ -611,13 +875,13 @@ export default function BlogPage() {
         }
         .blog-article-meta {
           font-size: 11px;
-          color: var(--gray-500);
+          color: var(--text-muted);
           text-transform: uppercase;
         }
         .blog-article-title {
           font-size: 14px;
           font-weight: 700;
-          color: var(--gray-900);
+          color: var(--text-primary);
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
@@ -627,6 +891,23 @@ export default function BlogPage() {
           font-size: 12px;
           color: var(--green);
           font-weight: 600;
+        }
+        .blog-live-story-badge {
+          width: fit-content;
+          display: inline-flex;
+          align-items: center;
+          padding: 4px 8px;
+          border-radius: 999px;
+          background: rgba(0,163,92,0.1);
+          color: var(--green);
+          font-size: 10px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+        .blog-live-story-badge.wide {
+          margin-top: -4px;
+          margin-bottom: 2px;
         }
         .blog-article-thumb {
           width: 72px;
@@ -675,7 +956,7 @@ export default function BlogPage() {
         .blog-author-by {
           font-size: 13px;
           font-weight: 700;
-          color: var(--gray-900);
+          color: var(--text-primary);
         }
         .blog-share-button {
           display: inline-flex;
@@ -725,12 +1006,12 @@ export default function BlogPage() {
         .blog-right-title {
           font-size: 22px;
           font-weight: 700;
-          color: var(--gray-900);
+          color: var(--text-primary);
           line-height: 1.3;
         }
         .blog-right-meta {
           font-size: 12px;
-          color: var(--gray-500);
+          color: var(--text-muted);
         }
         .blog-right-article p {
           color: var(--text-secondary);
@@ -765,6 +1046,92 @@ export default function BlogPage() {
           cursor: pointer;
           margin-top: 10px;
         }
+        .blog-dataset-button {
+          width: 100%;
+          padding: 12px 16px;
+          border-radius: 12px;
+          border: 1px solid var(--green);
+          background: transparent;
+          color: var(--green);
+          font-weight: 800;
+          cursor: pointer;
+        }
+        .blog-empty-state {
+          min-height: 320px;
+          display: grid;
+          place-items: center;
+          align-content: center;
+          gap: 10px;
+          border: 1px dashed var(--border-default);
+          border-radius: 16px;
+          color: var(--text-muted);
+          background: var(--surface-base);
+          text-align: center;
+          padding: 32px;
+        }
+        .blog-empty-title {
+          color: var(--text-primary);
+          font-size: 16px;
+          font-weight: 800;
+        }
+        .blog-empty-copy {
+          color: var(--text-secondary);
+          font-size: 13px;
+        }
+        .blog-responsive-preview {
+          display: none;
+          margin-top: 20px;
+          border: 1px solid var(--border-subtle);
+          border-radius: 16px;
+          background: var(--surface-elevated);
+          overflow: hidden;
+          box-shadow: var(--shadow-sm);
+        }
+        .blog-responsive-hero {
+          min-height: 120px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          color: white;
+          font-size: 12px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+        .blog-responsive-body {
+          padding: 18px;
+        }
+        .blog-responsive-kicker {
+          color: var(--text-muted);
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 8px;
+        }
+        .blog-responsive-body h2 {
+          color: var(--text-primary);
+          font-size: 18px;
+          line-height: 1.35;
+          margin: 0;
+        }
+        .blog-responsive-body p {
+          color: var(--text-secondary);
+          font-size: 13px;
+          line-height: 1.7;
+          margin: 10px 0 16px;
+        }
+        .blog-responsive-body button {
+          width: 100%;
+          height: 42px;
+          border: none;
+          border-radius: 10px;
+          background: var(--green);
+          color: white;
+          font-weight: 800;
+          cursor: pointer;
+        }
         @keyframes fadeContent {
           from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
@@ -776,6 +1143,9 @@ export default function BlogPage() {
           .blog-right-panel {
             display: none;
           }
+          .blog-responsive-preview {
+            display: block;
+          }
         }
         @media (max-width: 768px) {
           .blog-layout {
@@ -783,13 +1153,16 @@ export default function BlogPage() {
           }
           .blog-left-panel {
             border-right: none;
-            border-bottom: 1px solid var(--gray-300);
+            border-bottom: 1px solid var(--border-subtle);
           }
           .blog-left-categories {
             display: flex;
             overflow-x: auto;
             padding: 0 12px 12px;
             gap: 10px;
+          }
+          .blog-live-status {
+            padding: 0 12px 12px;
           }
           .category-row {
             min-width: max-content;
@@ -803,6 +1176,25 @@ export default function BlogPage() {
           }
           .blog-top-actions {
             justify-content: flex-start;
+          }
+          .blog-centre-panel {
+            border-right: none;
+            padding: 16px;
+          }
+          .blog-article-row {
+            grid-template-columns: 1fr 64px;
+            padding: 12px;
+          }
+          .blog-article-thumb {
+            width: 60px;
+            height: 60px;
+          }
+          .blog-left-cta-card {
+            display: none;
+          }
+          .blog-sync-row {
+            flex-direction: column;
+            align-items: flex-start;
           }
         }
       `}</style>

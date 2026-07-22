@@ -15,7 +15,6 @@ import {
   Eye,
   Share2,
   Bookmark,
-  Plus,
 } from "lucide-react";
 import { datasetsApi, categoriesApi, dashboardApi } from "../services/api";
 import ObservanceBanner from "../components/ObservanceBanner";
@@ -34,7 +33,7 @@ const THUMBNAIL_STYLES = {
   pdf: { bg: "#FEF2F2", color: "#DC2626", icon: FileText },
   excel: { bg: "#F0FDF4", color: "var(--green)", icon: Table },
   image: { bg: "#FFF7ED", color: "#F97316", icon: Image },
-  default: { bg: "var(--gray-100)", color: "var(--gray-500)", icon: File },
+  default: { bg: "var(--surface-elevated)", color: "var(--text-secondary)", icon: File },
 };
 
 const AVATAR_COLORS = [
@@ -46,15 +45,28 @@ const AVATAR_COLORS = [
   "#DCFCE7",
 ];
 
-function formatTimeAgo(value) {
+function formatTimeAgoFrom(value, now) {
   const date = new Date(value);
-  const now = new Date();
   const delta = Math.max(0, Math.floor((now - date) / 1000));
   if (delta < 60) return `${delta}s ago`;
   if (delta < 3600) return `${Math.floor(delta / 60)}m ago`;
   if (delta < 86400) return `${Math.floor(delta / 3600)}h ago`;
   const days = Math.floor(delta / 86400);
   return days <= 7 ? `${days}d ago` : `${Math.floor(days / 7)}w ago`;
+}
+
+function mergeDatasets(existing, incoming) {
+  const seen = new Set();
+  return [...existing, ...incoming].filter((item) => {
+    if (!item?.id || seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+function isUpdatedDataset(item) {
+  if (!item.updated_at || !item.created_at) return false;
+  return new Date(item.updated_at).getTime() - new Date(item.created_at).getTime() > 60000;
 }
 
 function getAvatarColor(name) {
@@ -102,6 +114,10 @@ export default function NewsFeedPage() {
   const [dashboardStats, setDashboardStats] = useState(null);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [filter, setFilter] = useState("all");
   const [activeCategory, setActiveCategory] = useState(null);
   const [sortBy, setSortBy] = useState("latest");
@@ -110,29 +126,48 @@ export default function NewsFeedPage() {
   const [bookmarkedCards, setBookmarkedCards] = useState({});
   const [isSticky, setIsSticky] = useState(false);
   const [observanceData, setObservanceData] = useState(null);
+  const [now, setNow] = useState(() => new Date());
   const topbarRef = useRef(null);
 
-  useEffect(() => {
-    async function load() {
-      setIsLoading(true);
-      try {
-        const [datasetsRes, categoriesRes, statsRes, observanceRes] = await Promise.all([
-          datasetsApi.list({ per_page: 20, sort_by: "created_at", sort_dir: "desc" }),
-          categoriesApi.list(),
-          dashboardApi.stats(),
-          fetch(`${API_BASE}/observances/today`).then((res) => (res.ok ? res.json() : null)),
-        ]);
-        setDatasets(datasetsRes.data?.items || datasetsRes.data || []);
-        setCategories(categoriesRes.data || []);
-        setDashboardStats(statsRes.data || null);
-        if (observanceRes) setObservanceData(observanceRes);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setIsLoading(false);
-      }
+  const loadFeed = async ({ silent = false } = {}) => {
+    if (silent) setIsRefreshing(true);
+    else setIsLoading(true);
+    setLoadError(null);
+
+    try {
+      const [datasetsRes, categoriesRes, statsRes, observanceRes] = await Promise.all([
+        datasetsApi.list({ page: 1, per_page: 20, sort_by: "created_at", sort_dir: "desc" }),
+        categoriesApi.list(),
+        dashboardApi.stats(),
+        fetch(`${API_BASE}/observances/today`).then((res) => (res.ok ? res.json() : null)).catch(() => null),
+      ]);
+      const payload = datasetsRes.data || {};
+      const items = payload.items || payload || [];
+      setDatasets(items);
+      setCategories(categoriesRes.data || []);
+      setDashboardStats(statsRes.data || null);
+      setObservanceData(observanceRes || null);
+      setPage(1);
+      setHasMore(payload.pages ? payload.page < payload.pages : items.length >= 20);
+      setNow(new Date());
+    } catch (error) {
+      console.error(error);
+      setLoadError("Unable to load the news feed. Please try again.");
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
-    load();
+  };
+
+  useEffect(() => {
+    loadFeed();
+    const refreshId = window.setInterval(() => loadFeed({ silent: true }), 5 * 60 * 1000);
+    return () => window.clearInterval(refreshId);
+  }, []);
+
+  useEffect(() => {
+    const tickId = window.setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => window.clearInterval(tickId);
   }, []);
 
   useEffect(() => {
@@ -152,7 +187,7 @@ export default function NewsFeedPage() {
         return new Date(item.created_at) >= new Date(Date.now() - 1000 * 60 * 60 * 24 * 14);
       }
       if (filter === "updated") {
-        return item.updated_at && item.updated_at !== item.created_at;
+        return isUpdatedDataset(item);
       }
       return true;
     });
@@ -170,20 +205,39 @@ export default function NewsFeedPage() {
     setBookmarkedCards((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const handleShare = async (id) => {
+    await navigator.clipboard.writeText(`${window.location.origin}/datasets/${id}`);
+    setActiveFeed((prev) => ({ ...prev, [id]: "copied" }));
+    window.setTimeout(() => {
+      setActiveFeed((prev) => ({ ...prev, [id]: null }));
+    }, 1600);
+  };
+
+  const handleDownload = (id) => {
+    window.open(`${API_BASE}/datasets/${id}/download`, "_blank", "noopener,noreferrer");
+  };
+
   const handleClearFilters = () => {
     setFilter("all");
     setActiveCategory(null);
   };
 
   const loadMore = async () => {
+    if (isLoadingMore || !hasMore) return;
     const nextPage = page + 1;
+    setIsLoadingMore(true);
     try {
       const res = await datasetsApi.list({ per_page: 20, sort_by: "created_at", sort_dir: "desc", page: nextPage });
-      const items = res.data?.items || res.data || [];
-      setDatasets((prev) => [...prev, ...items]);
+      const payload = res.data || {};
+      const items = payload.items || payload || [];
+      setDatasets((prev) => mergeDatasets(prev, items));
       setPage(nextPage);
+      setHasMore(payload.pages ? payload.page < payload.pages : items.length >= 20);
     } catch (error) {
       console.error(error);
+      setLoadError("Unable to load more updates.");
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 
@@ -210,21 +264,21 @@ export default function NewsFeedPage() {
   };
 
   return (
-    <div className="news-feed-page" style={{ padding: 24, minHeight: "100vh", background: "var(--gray-100)" }}>
+    <div className="news-feed-page" style={{ padding: 24, minHeight: "100vh", background: "var(--surface-base)", color: "var(--text-primary)" }}>
       <div
+        className="news-feed-shell"
         style={{
           maxWidth: 1200,
           margin: "0 auto",
           display: "grid",
           gap: 20,
-          gridTemplateColumns: "220px 1fr 280px",
         }}
       >
-        <div style={{ position: "sticky", top: 80, alignSelf: "start" }}>
+        <div className="news-feed-left" style={{ position: "sticky", top: 80, alignSelf: "start" }}>
           <div style={{ display: "grid", gap: 20 }}>
             <div>
               <div style={{ marginBottom: 12, padding: 16, borderRadius: 14, background: "var(--surface-card)", boxShadow: "var(--shadow-md)" }}>
-                <div style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--gray-500)", marginBottom: 10 }}>Feed Filters</div>
+                <div style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 10 }}>Feed Filters</div>
                 <div style={{ display: "grid", gap: 10 }}>
                   {FILTERS.map(({ key, label, icon: Icon }) => {
                     const active = filter === key;
@@ -240,7 +294,7 @@ export default function NewsFeedPage() {
                           padding: "12px 14px",
                           borderRadius: 8,
                           background: active ? "var(--green)" : "transparent",
-                          color: active ? "white" : "var(--gray-700)",
+                          color: active ? "white" : "var(--text-secondary)",
                           border: "1px solid transparent",
                           textAlign: "left",
                           cursor: "pointer",
@@ -255,7 +309,7 @@ export default function NewsFeedPage() {
               </div>
             </div>
             <div style={{ background: "var(--surface-card)", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 16 }}>
-              <div style={{ fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--gray-500)", marginBottom: 12 }}>Topics</div>
+              <div style={{ fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 12 }}>Topics</div>
               <div style={{ display: "grid", gap: 10 }}>
                 {categories.map((category) => {
                   const isActive = activeCategory === category.id;
@@ -271,8 +325,8 @@ export default function NewsFeedPage() {
                         padding: "11px 12px",
                         borderRadius: 10,
                         background: "transparent",
-                        color: isActive ? "var(--green)" : "var(--gray-700)",
-                        border: "1px solid var(--gray-200)",
+                        color: isActive ? "var(--green)" : "var(--text-secondary)",
+                        border: "1px solid var(--border-subtle)",
                         fontWeight: isActive ? 700 : 500,
                         cursor: "pointer",
                         textAlign: "left",
@@ -299,9 +353,9 @@ export default function NewsFeedPage() {
                       padding: "10px 12px",
                       borderRadius: 12,
                       textAlign: "left",
-                      border: "1px solid var(--gray-200)",
-                      color: "var(--gray-700)",
-                      background: "var(--gray-50)",
+                      border: "1px solid var(--border-subtle)",
+                      color: "var(--text-secondary)",
+                      background: "var(--surface-elevated)",
                       cursor: "pointer",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
@@ -316,9 +370,10 @@ export default function NewsFeedPage() {
           </div>
         </div>
 
-        <div>
+        <div className="news-feed-main">
           <div
             ref={topbarRef}
+            className="news-feed-topbar"
             style={{
               position: isSticky ? "sticky" : "relative",
               top: isSticky ? 80 : "unset",
@@ -334,21 +389,47 @@ export default function NewsFeedPage() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: "var(--gray-900)" }}>Data Feed</div>
-                <div style={{ fontSize: 13, color: "var(--gray-500)", marginTop: 4 }}>Latest updates from GhanaDataHub</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>Data Feed</div>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>
+                  Latest updates from GhanaDataHub
+                  {isRefreshing && <span style={{ color: "var(--green)", marginLeft: 8 }}>Refreshing...</span>}
+                </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <label style={{ fontSize: 12, color: "var(--gray-600)" }}>Sort by</label>
+                <button
+                  type="button"
+                  onClick={() => loadFeed({ silent: true })}
+                  disabled={isRefreshing}
+                  style={{
+                    height: 40,
+                    borderRadius: 10,
+                    border: "1px solid var(--border-default)",
+                    background: "var(--surface-elevated)",
+                    color: "var(--green)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "0 12px",
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: isRefreshing ? "not-allowed" : "pointer",
+                    opacity: isRefreshing ? 0.65 : 1,
+                  }}
+                >
+                  <RefreshCw size={14} style={{ animation: isRefreshing ? "newsFeedSpin 0.8s linear infinite" : "none" }} />
+                  Refresh
+                </button>
+                <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>Sort by</label>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   style={{
                     minWidth: 160,
                     borderRadius: 10,
-                    border: "1px solid var(--gray-300)",
+                    border: "1px solid var(--border-default)",
                     padding: "10px 12px",
                     background: "var(--surface-card)",
-                    color: "var(--gray-900)",
+                    color: "var(--text-primary)",
                   }}
                 >
                   <option value="latest">Latest</option>
@@ -358,6 +439,13 @@ export default function NewsFeedPage() {
               </div>
             </div>
           </div>
+
+          {loadError && !isLoading && (
+            <div className="feed-notice">
+              <span>{loadError}</span>
+              <button type="button" onClick={() => loadFeed({ silent: true })}>Retry</button>
+            </div>
+          )}
 
           {isLoading ? (
             <div style={{ display: "grid", gap: 14 }}>
@@ -382,6 +470,18 @@ export default function NewsFeedPage() {
             <div style={{ display: "grid", gap: 12 }}>
               {observanceData && (
                 <ObservanceBanner variant="feed" observance={observanceData} />
+              )}
+
+              {filteredDatasets.length === 0 && (
+                <div className="feed-empty-state">
+                  <Newspaper size={42} color="var(--text-muted)" />
+                  <div className="feed-empty-title">No updates match this view</div>
+                  <div className="feed-empty-copy">Clear filters or refresh the feed to check for new datasets.</div>
+                  <div className="feed-empty-actions">
+                    <button type="button" onClick={handleClearFilters}>Clear filters</button>
+                    <button type="button" onClick={() => loadFeed({ silent: true })}>Refresh feed</button>
+                  </div>
+                </div>
               )}
 
               {filteredDatasets.map((item, index) => {
@@ -412,16 +512,18 @@ export default function NewsFeedPage() {
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 16, marginBottom: 18, alignItems: "center" }}>
                         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                          <div style={{ width: 32, height: 32, borderRadius: "50%", background: getAvatarColor(ownerName), display: "grid", placeItems: "center", color: "var(--gray-900)", fontWeight: 700, fontSize: 12 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: "50%", background: getAvatarColor(ownerName), display: "grid", placeItems: "center", color: "#111827", fontWeight: 700, fontSize: 12 }}>
                             {initials}
                           </div>
                           <div>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--gray-900)" }}>{ownerName}</div>
-                            <div style={{ fontSize: 12, color: "var(--gray-500)" }}>{item.category?.name || "Uncategorized"}</div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{ownerName}</div>
+                            <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{item.category?.name || "Uncategorized"}</div>
                           </div>
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <div style={{ fontSize: 12, color: "var(--gray-500)" }}>{formatTimeAgo(item.created_at)}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                            {isUpdatedDataset(item) ? `Updated ${formatTimeAgoFrom(item.updated_at, now)}` : formatTimeAgoFrom(item.created_at, now)}
+                          </div>
                           <button
                             type="button"
                             onClick={() => handleSubscribeToggle(item.id)}
@@ -441,11 +543,11 @@ export default function NewsFeedPage() {
                           </button>
                         </div>
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: item.file_type ? "1fr 120px" : "1fr", gap: 18, alignItems: "start" }}>
+                      <div className="feed-card-body-grid" style={{ display: "grid", gridTemplateColumns: item.file_type ? "1fr 120px" : "1fr", gap: 18, alignItems: "start" }}>
                         <div>
-                          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)", marginBottom: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.title}</div>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.title}</div>
                           {item.description && (
-                            <div style={{ fontSize: 13, color: "var(--gray-500)", lineHeight: 1.6 }}>{clampText(item.description, 80)}</div>
+                            <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>{clampText(item.description, 120)}</div>
                           )}
                         </div>
                         {item.file_type && (
@@ -462,8 +564,8 @@ export default function NewsFeedPage() {
                         </div>
                       )}
                     </div>
-                    <div className="feed-card-actions" style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--gray-100)", display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, alignItems: "center" }}>
-                      <button type="button" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/datasets/${item.id}`)} style={actionButtonStyle}>
+                    <div className="feed-card-actions" style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--border-subtle)", display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, alignItems: "center" }}>
+                      <button type="button" onClick={() => handleDownload(item.id)} style={actionButtonStyle}>
                         <Download size={14} />
                         <span>{formatLargeNumber(item.download_count || 0)}</span>
                       </button>
@@ -471,9 +573,9 @@ export default function NewsFeedPage() {
                         <Eye size={14} />
                         <span>{formatLargeNumber((item.download_count || 0) * 3)} views</span>
                       </button>
-                      <button type="button" style={actionButtonStyle}>
+                      <button type="button" onClick={() => handleShare(item.id)} style={actionButtonStyle}>
                         <Share2 size={14} />
-                        <span>Share</span>
+                        <span>{activeFeed[item.id] === "copied" ? "Copied" : "Share"}</span>
                       </button>
                       <button type="button" onClick={() => handleBookmarkToggle(item.id)} style={actionButtonStyle}>
                         <Bookmark size={14} fill={bookmarked ? "currentColor" : "none"} />
@@ -483,28 +585,32 @@ export default function NewsFeedPage() {
                   </div>
                 );
               })}
-              <button
-                type="button"
-                onClick={loadMore}
-                style={{
-                  marginTop: 10,
-                  width: "100%",
-                  padding: "14px 16px",
-                  borderRadius: 12,
-                  border: "1px solid var(--green)",
-                  background: "transparent",
-                  color: "var(--green)",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                Load more updates
-              </button>
+              {filteredDatasets.length > 0 && (
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  disabled={isLoadingMore || !hasMore}
+                  style={{
+                    marginTop: 10,
+                    width: "100%",
+                    padding: "14px 16px",
+                    borderRadius: 12,
+                    border: "1px solid var(--green)",
+                    background: "transparent",
+                    color: "var(--green)",
+                    fontWeight: 700,
+                    cursor: isLoadingMore || !hasMore ? "not-allowed" : "pointer",
+                    opacity: isLoadingMore || !hasMore ? 0.6 : 1,
+                  }}
+                >
+                  {isLoadingMore ? "Loading..." : hasMore ? "Load more updates" : "You're all caught up"}
+                </button>
+              )}
             </div>
           )}
         </div>
 
-        <div style={{ position: "sticky", top: 80, alignSelf: "start" }}>
+        <div className="news-feed-right" style={{ position: "sticky", top: 80, alignSelf: "start" }}>
           <div style={{ display: "grid", gap: 20 }}>
             <div style={{ background: "var(--surface-card)", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
@@ -528,8 +634,8 @@ export default function NewsFeedPage() {
                         alignItems: "center",
                         padding: 12,
                         borderRadius: 12,
-                        border: "1px solid var(--gray-100)",
-                        background: "var(--gray-50)",
+                        border: "1px solid var(--border-subtle)",
+                        background: "var(--surface-elevated)",
                         textAlign: "left",
                         cursor: "pointer",
                       }}
@@ -538,9 +644,9 @@ export default function NewsFeedPage() {
                         <FileIcon size={18} color={fileStyle.color} />
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--gray-900)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.title}</div>
-                        <div style={{ fontSize: 11, color: "var(--gray-500)", marginTop: 4 }}>{item.category?.name || "Uncategorized"}</div>
-                        <div style={{ fontSize: 11, color: "var(--gray-400)", marginTop: 2 }}>{formatTimeAgo(item.created_at)}</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.title}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>{item.category?.name || "Uncategorized"}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{formatTimeAgoFrom(item.created_at, now)}</div>
                       </div>
                     </button>
                   );
@@ -553,15 +659,15 @@ export default function NewsFeedPage() {
               <div style={{ display: "grid", gap: 14 }}>
                 <div style={statItemStyle}>
                   <div style={{ fontSize: 24, fontWeight: 700, color: "var(--green)" }}>{dashboardStats?.total_datasets ?? 0}</div>
-                  <div style={{ fontSize: 12, color: "var(--gray-500)" }}>Total Datasets</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Total Datasets</div>
                 </div>
                 <div style={statItemStyle}>
                   <div style={{ fontSize: 24, fontWeight: 700, color: "var(--green)" }}>{dashboardStats?.total_users ?? 0}</div>
-                  <div style={{ fontSize: 12, color: "var(--gray-500)" }}>Total Users</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Total Users</div>
                 </div>
                 <div style={statItemStyle}>
                   <div style={{ fontSize: 24, fontWeight: 700, color: "var(--green)" }}>{formatLargeNumber(totalDownloads)}</div>
-                  <div style={{ fontSize: 12, color: "var(--gray-500)" }}>Total Downloads</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Total Downloads</div>
                 </div>
               </div>
             </div>
@@ -569,20 +675,40 @@ export default function NewsFeedPage() {
         </div>
       </div>
       <style>{`
+        .news-feed-shell {
+          grid-template-columns: minmax(190px, 220px) minmax(0, 1fr) minmax(240px, 280px);
+        }
+
+        .news-feed-left,
+        .news-feed-right {
+          min-width: 0;
+        }
+
+        .news-feed-topbar {
+          border: 1px solid var(--border-subtle);
+        }
+
         .feed-card {
           background: var(--surface-card);
+          border: 1px solid var(--border-subtle);
           border-radius: 14px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+          box-shadow: var(--shadow-sm);
           padding: 20px;
           opacity: 0;
           transform: translateY(12px);
           animation: feedFadeUp 0.35s ease forwards;
+          cursor: pointer;
+        }
+
+        .feed-card:hover {
+          border-color: var(--border-default);
+          transform: translateY(-1px);
         }
 
         .feed-card-actions button {
           border: none;
           background: transparent;
-          color: var(--gray-500);
+          color: var(--text-secondary);
           display: inline-flex;
           align-items: center;
           gap: 8px;
@@ -591,21 +717,97 @@ export default function NewsFeedPage() {
           padding: 0;
         }
 
+        .feed-card-actions button:hover {
+          color: var(--green);
+        }
+
         .skeleton-card {
           background: var(--surface-card);
+          border: 1px solid var(--border-subtle);
           border-radius: 14px;
           padding: 20px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+          box-shadow: var(--shadow-sm);
           display: grid;
           gap: 12px;
           animation: shimmerFade 0.8s ease forwards;
         }
 
         .skeleton-line {
-          background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%);
+          background: linear-gradient(90deg, var(--surface-base) 0%, var(--surface-elevated) 50%, var(--surface-base) 100%);
           background-size: 200% 100%;
           border-radius: 8px;
           animation: shimmer 1.2s infinite;
+        }
+
+        .feed-notice,
+        .feed-empty-state {
+          border: 1px solid var(--border-subtle);
+          background: var(--surface-card);
+          color: var(--text-secondary);
+          border-radius: 14px;
+          padding: 18px;
+          box-shadow: var(--shadow-sm);
+        }
+
+        .feed-notice {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 12px;
+          font-size: 13px;
+        }
+
+        .feed-notice button,
+        .feed-empty-actions button {
+          border: 1px solid var(--green);
+          background: transparent;
+          color: var(--green);
+          border-radius: 10px;
+          padding: 9px 12px;
+          font-size: 12px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .feed-empty-state {
+          min-height: 320px;
+          display: grid;
+          place-items: center;
+          align-content: center;
+          gap: 10px;
+          text-align: center;
+        }
+
+        .feed-empty-title {
+          color: var(--text-primary);
+          font-size: 16px;
+          font-weight: 800;
+        }
+
+        .feed-empty-copy {
+          max-width: 340px;
+          color: var(--text-secondary);
+          font-size: 13px;
+          line-height: 1.6;
+        }
+
+        .feed-empty-actions {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          justify-content: center;
+          margin-top: 8px;
+        }
+
+        .feed-empty-actions button:first-child {
+          background: var(--green);
+          color: white;
+        }
+
+        @keyframes newsFeedSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
 
         @keyframes feedFadeUp {
@@ -622,6 +824,67 @@ export default function NewsFeedPage() {
           from { opacity: 0.7; }
           to { opacity: 1; }
         }
+
+        @media (max-width: 1180px) {
+          .news-feed-shell {
+            grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+          }
+
+          .news-feed-right {
+            display: none;
+          }
+        }
+
+        @media (max-width: 820px) {
+          .news-feed-page {
+            padding: 16px !important;
+          }
+
+          .news-feed-shell {
+            grid-template-columns: 1fr;
+          }
+
+          .news-feed-left,
+          .news-feed-right {
+            position: static !important;
+          }
+
+          .news-feed-left > div {
+            grid-template-columns: 1fr;
+          }
+
+          .news-feed-topbar {
+            position: relative !important;
+            top: unset !important;
+          }
+
+          .feed-card-body-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .feed-card-body-grid > div:last-child {
+            justify-content: flex-start !important;
+          }
+
+          .feed-card-actions {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+        }
+
+        @media (max-width: 520px) {
+          .feed-card {
+            padding: 16px;
+          }
+
+          .feed-card-actions {
+            grid-template-columns: 1fr !important;
+          }
+
+          .feed-notice {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+        }
       `}</style>
     </div>
   );
@@ -634,14 +897,15 @@ const actionButtonStyle = {
   width: "100%",
   border: "none",
   background: "transparent",
-  color: "var(--gray-500)",
+  color: "var(--text-secondary)",
   fontSize: 12,
   cursor: "pointer",
   justifyContent: "flex-start",
 };
 
 const statItemStyle = {
-  background: "var(--gray-50)",
+  background: "var(--surface-elevated)",
+  border: "1px solid var(--border-subtle)",
   borderRadius: 12,
   padding: 14,
 };

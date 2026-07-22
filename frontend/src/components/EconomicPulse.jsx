@@ -1,15 +1,17 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { datasetsApi, dashboardApi } from "../services/api";
+import api from "../services/api";
 import ComparisonEngine from "./ComparisonEngine";
+
+const REFRESH_MS = 60 * 1000;
 
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
-function timeAgo(iso) {
+function timeAgo(iso, now = new Date()) {
   if (!iso) return "—";
-  const ms = Date.now() - new Date(iso).getTime();
+  const ms = Math.max(0, now.getTime() - new Date(iso).getTime());
   const m = Math.floor(ms / 60000);
   if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
@@ -17,8 +19,7 @@ function timeAgo(iso) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-/** Try to extract a percentage like "5.30" from a dataset title */
-function pctFromTitle(title) {
+function pctFromText(title) {
   if (!title) return null;
   const m = title.match(/([\d]+\.?\d*)\s*%/);
   return m ? parseFloat(m[1]) : null;
@@ -61,13 +62,13 @@ function Sparkline({ seed, colour = "var(--green)" }) {
   );
 }
 
-function LiveBadge({ live }) {
+function LiveBadge({ live, refreshing }) {
   return (
     <span className="ep-badge" data-live={live ? "true" : "false"}>
       {live ? (
         <>
           <span className="ep-pulse-dot" />
-          LIVE
+          {refreshing ? "SYNC" : "LIVE"}
         </>
       ) : (
         "STATIC"
@@ -99,56 +100,63 @@ export default function EconomicPulse() {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [pulseItems, setPulseItems] = useState([]);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
+  const [error, setError] = useState(null);
+  const [now, setNow] = useState(() => new Date());
 
-  // Raw data holders
-  const [forexDataset, setForexDataset]   = useState(null);
-  const [inflDataset,  setInflDataset]    = useState(null);
-  const [cocoaDataset, setCocoaDataset]   = useState(null);
-  const [gseDataset,   setGseDataset]     = useState(null);
-  const [totalDatasets, setTotalDatasets] = useState(null);
+  const refreshPulse = useCallback(async ({ silent = false } = {}) => {
+    if (silent) setRefreshing(true);
+    else setLoading(true);
 
-  useEffect(() => {
-    const pick = (r) => {
-      const data = r?.data;
-      const arr = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
-      // Return the most recently updated item
-      return arr.sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0))[0] || null;
-    };
-
-    Promise.allSettled([
-      datasetsApi.list({ search: "forex",     per_page: 5, limit: 5 }),
-      datasetsApi.list({ search: "inflation", per_page: 5, limit: 5 }),
-      datasetsApi.list({ search: "cocoa",     per_page: 5, limit: 5 }),
-      datasetsApi.list({ search: "gse",       per_page: 5, limit: 5 }),
-      dashboardApi.stats(),
-    ]).then(([forex, infl, cocoa, gse, dash]) => {
-      if (forex.status  === "fulfilled") setForexDataset(pick(forex.value));
-      if (infl.status   === "fulfilled") setInflDataset(pick(infl.value));
-      if (cocoa.status  === "fulfilled") setCocoaDataset(pick(cocoa.value));
-      if (gse.status    === "fulfilled") setGseDataset(pick(gse.value));
-      if (dash.status   === "fulfilled") setTotalDatasets(dash.value?.data?.total_datasets ?? null);
+    try {
+      const { data } = await api.get("/dashboard/economic-pulse");
+      setPulseItems(data?.items || []);
+      setLastRefreshedAt(data?.refreshed_at || new Date().toISOString());
+      setError(null);
+    } catch (err) {
+      console.error("Unable to refresh economic pulse", err);
+      setError("Live pulse temporarily unavailable");
+    } finally {
       setLoading(false);
-    });
+      setRefreshing(false);
+      setNow(new Date());
+    }
   }, []);
 
-  // ── Derive card specs from fetched data ──────────────────────────
-  const inflPct  = pctFromTitle(inflDataset?.title);
-  const inflColour = inflationColour(inflPct);
+  useEffect(() => {
+    refreshPulse();
+    const intervalId = window.setInterval(() => refreshPulse({ silent: true }), REFRESH_MS);
 
-  const cards = [
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") refreshPulse({ silent: true });
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [refreshPulse]);
+
+  useEffect(() => {
+    const tickId = window.setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => window.clearInterval(tickId);
+  }, []);
+
+  const fallbackCards = useMemo(() => [
     {
       key:       "cedi",
       title:     "USD / GHS",
       value:     "11.46",
       unit:      "",
       direction: "stable",
-      live:      !!forexDataset,
-      updatedAt: forexDataset?.updated_at,
-      seed:      (forexDataset?.download_count ?? 88) + 1,
+      live:      false,
+      updatedAt: null,
+      seed:      89,
       sparkColour: "var(--green)",
-      onClick:   () => forexDataset?.id
-                   ? navigate(`/datasets/${forexDataset.id}`)
-                   : navigate("/datasets?search=forex"),
+      onClick:   () => navigate("/datasets?search=forex"),
       valueColour: "var(--dark, #111827)",
       indicator: "cedi",
       compValue: 11.46,
@@ -156,19 +164,17 @@ export default function EconomicPulse() {
     {
       key:       "inflation",
       title:     "Inflation Rate",
-      value:     inflPct !== null ? `${inflPct.toFixed(2)}%` : "5.30%",
+      value:     "5.30%",
       unit:      "",
-      direction: inflPct !== null && inflPct < 15 ? "down" : "up",
-      live:      !!inflDataset,
-      updatedAt: inflDataset?.updated_at,
-      seed:      (inflDataset?.download_count ?? 53) + 7,
-      sparkColour: inflColour,
-      onClick:   () => inflDataset?.id
-                   ? navigate(`/datasets/${inflDataset.id}`)
-                   : navigate("/datasets?search=inflation"),
-      valueColour: inflColour,
+      direction: "down",
+      live:      false,
+      updatedAt: null,
+      seed:      60,
+      sparkColour: "#22C55E",
+      onClick:   () => navigate("/datasets?search=inflation"),
+      valueColour: "#22C55E",
       indicator: "inflation",
-      compValue: inflPct !== null ? inflPct : 5.3,
+      compValue: 5.3,
     },
     {
       key:       "cocoa",
@@ -176,13 +182,11 @@ export default function EconomicPulse() {
       value:     "$6,455",
       unit:      "",
       direction: "up",
-      live:      !!cocoaDataset,
-      updatedAt: cocoaDataset?.updated_at,
-      seed:      (cocoaDataset?.download_count ?? 64) + 3,
+      live:      false,
+      updatedAt: null,
+      seed:      67,
       sparkColour: "#D97706",
-      onClick:   () => cocoaDataset?.id
-                   ? navigate(`/datasets/${cocoaDataset.id}`)
-                   : navigate("/datasets?search=cocoa"),
+      onClick:   () => navigate("/datasets?search=cocoa"),
       valueColour: "var(--dark, #111827)",
       indicator: "cocoa",
       compValue: 6455,
@@ -193,13 +197,11 @@ export default function EconomicPulse() {
       value:     "14,780",
       unit:      "",
       direction: "up",
-      live:      !!gseDataset,
-      updatedAt: gseDataset?.updated_at,
-      seed:      (gseDataset?.download_count ?? 147) + 2,
+      live:      false,
+      updatedAt: null,
+      seed:      149,
       sparkColour: "#3B82F6",
-      onClick:   () => gseDataset?.id
-                   ? navigate(`/datasets/${gseDataset.id}`)
-                   : navigate("/datasets?search=gse"),
+      onClick:   () => navigate("/datasets?search=gse"),
       valueColour: "var(--dark, #111827)",
       indicator: "gse",
       compValue: 25,
@@ -207,17 +209,57 @@ export default function EconomicPulse() {
     {
       key:       "platform",
       title:     "Datasets",
-      value:     totalDatasets !== null ? totalDatasets.toLocaleString() : "—",
+      value:     "—",
       unit:      "",
       direction: "up",
       live:      true,
       updatedAt: null, // "Updated live"
-      seed:      (totalDatasets ?? 99) + 5,
+      seed:      104,
       sparkColour: "var(--green)",
       onClick:   () => navigate("/datasets"),
       valueColour: "var(--green, #006B3F)",
     },
-  ];
+  ], [navigate]);
+
+  const cards = useMemo(() => {
+    if (!pulseItems.length) return fallbackCards;
+
+    return pulseItems.map((item) => {
+      const numericValue = pctFromText(item.value) ?? Number(item.comp_value);
+      const valueColour =
+        item.key === "inflation"
+          ? inflationColour(numericValue)
+          : item.key === "platform"
+            ? "var(--green, #006B3F)"
+            : "var(--dark, #111827)";
+
+      const sparkColour =
+        item.key === "inflation"
+          ? inflationColour(numericValue)
+          : item.key === "cocoa"
+            ? "#D97706"
+            : item.key === "gse"
+              ? "#3B82F6"
+              : "var(--green)";
+
+      return {
+        key: item.key,
+        title: item.title,
+        value: item.value || "—",
+        direction: item.direction || "stable",
+        live: item.live,
+        updatedAt: item.updated_at,
+        seed: (item.download_count ?? 99) + item.key.length,
+        sparkColour,
+        valueColour,
+        indicator: item.indicator,
+        compValue: item.comp_value,
+        onClick: () => item.dataset_id
+          ? navigate(`/datasets/${item.dataset_id}`)
+          : navigate(item.key === "platform" ? "/datasets" : `/datasets?search=${item.key}`),
+      };
+    });
+  }, [fallbackCards, navigate, pulseItems]);
 
   return (
     <section className="ep-section">
@@ -227,7 +269,8 @@ export default function EconomicPulse() {
       <div className="ep-header">
         <span className="ep-header-title">Live Economic Pulse</span>
         <span className="ep-header-sub">
-          Data updated daily — run pipeline.py for latest figures
+          {error || `Auto-refreshes every ${REFRESH_MS / 1000}s`}
+          {lastRefreshedAt ? ` · Synced ${timeAgo(lastRefreshedAt, now)}` : ""}
         </span>
       </div>
 
@@ -246,7 +289,7 @@ export default function EconomicPulse() {
                 {/* Row 1: title + badge */}
                 <div className="ep-row">
                   <span className="ep-indicator-title">{c.title}</span>
-                  <LiveBadge live={c.live} />
+                  <LiveBadge live={c.live} refreshing={refreshing} />
                 </div>
 
                 {/* Row 2: value + trend */}
@@ -256,13 +299,17 @@ export default function EconomicPulse() {
                   </span>
                   <TrendIcon direction={c.direction} />
                 </div>
-                {c.indicator && <ComparisonEngine indicator={c.indicator} value={c.compValue} />}
+                {c.indicator && c.compValue !== null && c.compValue !== undefined && (
+                  <ComparisonEngine indicator={c.indicator} value={Number(c.compValue)} />
+                )}
 
                 {/* Row 3: updated + sparkline */}
                 <div className="ep-row ep-row-bottom">
                   <span className="ep-updated">
                     {c.updatedAt
                       ? `Updated ${timeAgo(c.updatedAt)}`
+                      : refreshing
+                      ? "Syncing now"
                       : c.live
                       ? "Updated live"
                       : "Static fallback"}

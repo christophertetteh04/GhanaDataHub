@@ -7,9 +7,15 @@ import {
   getColourScale,
 } from "../utils/mapUtils";
 
+const MAP_WIDTH = 800;
+
 function parseNumericValue(value) {
+  const cleaned = String(value ?? "")
+    .replace(/[,%]/g, "")
+    .replace(/[^\d.-]/g, "")
+    .trim();
   const parsed = parseFloat(
-    String(value ?? "").replace(/,/g, "").replace(/%/g, "").trim()
+    cleaned
   );
   return Number.isNaN(parsed) ? null : parsed;
 }
@@ -31,11 +37,72 @@ function getNumericColumns(rows) {
 
 function formatLegendValue(value, unit) {
   if (value === null || value === undefined || Number.isNaN(value)) return "-";
-  return `${Number(value).toFixed(2)}${unit}`;
+  const number = Number(value);
+  const formatted = Math.abs(number) >= 1000
+    ? number.toLocaleString(undefined, { maximumFractionDigits: 1 })
+    : number.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  return `${formatted}${unit}`;
 }
 
 function getSafeFilename(title) {
   return `${String(title || "dataset").replace(/[^a-z0-9]/gi, "_")}_ghana_map.png`;
+}
+
+function getFeatureCoordinates(feature) {
+  const geometry = feature?.geometry;
+  if (!geometry) return [];
+
+  if (geometry.type === "Polygon") {
+    return geometry.coordinates.flat();
+  }
+
+  if (geometry.type === "MultiPolygon") {
+    return geometry.coordinates.flat(2);
+  }
+
+  return [];
+}
+
+function getGeoBounds(featureCollection) {
+  const coordinates = (featureCollection?.features || []).flatMap(getFeatureCoordinates);
+  if (!coordinates.length) return null;
+
+  const longitudes = coordinates.map(([lon]) => lon);
+  const latitudes = coordinates.map(([, lat]) => lat);
+
+  return {
+    minLon: Math.min(...longitudes),
+    maxLon: Math.max(...longitudes),
+    minLat: Math.min(...latitudes),
+    maxLat: Math.max(...latitudes),
+  };
+}
+
+function mercatorY(lat) {
+  const radians = lat * Math.PI / 180;
+  return Math.log(Math.tan(Math.PI / 4 + radians / 2));
+}
+
+function inverseMercatorY(y) {
+  return (2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180 / Math.PI;
+}
+
+function getProjectionConfig(geoData, height) {
+  const bounds = getGeoBounds(geoData);
+  if (!bounds) return { scale: 3200, center: [-1.0, 7.9] };
+
+  const lonSpan = Math.max((bounds.maxLon - bounds.minLon) * Math.PI / 180, 0.0001);
+  const minY = mercatorY(bounds.minLat);
+  const maxY = mercatorY(bounds.maxLat);
+  const ySpan = Math.max(Math.abs(maxY - minY), 0.0001);
+  const scale = Math.min((MAP_WIDTH * 0.9) / lonSpan, (height * 0.88) / ySpan);
+  const centerLon = (bounds.minLon + bounds.maxLon) / 2;
+  const centerLat = inverseMercatorY((minY + maxY) / 2);
+
+  return {
+    scale,
+    center: [centerLon, centerLat],
+  };
 }
 
 export default function GhanaRegionMap({
@@ -43,6 +110,7 @@ export default function GhanaRegionMap({
   datasetTitle = "dataset",
   datasetId,
   height = 420,
+  compact = false,
 }) {
   const mapRef = useRef(null);
   const [geoData, setGeoData] = useState(null);
@@ -84,7 +152,18 @@ export default function GhanaRegionMap({
   }, []);
 
   useEffect(() => {
-    if (selectedValueCol !== null) return;
+    if (validNumericColumns.length === 0) {
+      if (selectedValueCol !== null) setSelectedValueCol(null);
+      return;
+    }
+
+    if (
+      selectedValueCol !== null &&
+      validNumericColumns.some((column) => column.index === selectedValueCol)
+    ) {
+      return;
+    }
+
     if (validNumericColumns.length > 0) {
       setSelectedValueCol(validNumericColumns[0].index);
     }
@@ -117,6 +196,11 @@ export default function GhanaRegionMap({
   const hasUsableData = regionColIdx !== -1 && validNumericColumns.length > 0 && selectedValueCol !== null;
   const columnName = headers[selectedValueCol] || "Value";
   const regionsWithData = Object.keys(computed.regionDataMap).length;
+  const mapHeight = compact ? Math.max(280, height) : height;
+  const projectionConfig = useMemo(
+    () => getProjectionConfig(geoData, mapHeight),
+    [geoData, mapHeight]
+  );
 
   async function handleShare() {
     const url = `${window.location.origin}/datasets/${datasetId}?tab=map&col=${selectedValueCol}`;
@@ -150,29 +234,39 @@ export default function GhanaRegionMap({
   }
 
   return (
-    <div style={{ width: "100%", borderRadius: 12, overflow: "hidden", boxShadow: "var(--shadow-md)" }}>
+    <div
+      className={compact ? "ghana-region-map ghana-region-map-compact" : "ghana-region-map"}
+      style={{
+        width: "100%",
+        borderRadius: compact ? 0 : 12,
+        overflow: "hidden",
+        boxShadow: compact ? "none" : "var(--shadow-md)",
+        background: "var(--surface-card)",
+      }}
+    >
       <div
+        className="ghana-region-map-toolbar"
         style={{
           background: "var(--surface-card)",
           borderRadius: "12px 12px 0 0",
-          padding: "12px 16px",
-          borderBottom: "1px solid var(--gray-100)",
+          padding: compact ? "10px 14px" : "12px 16px",
+          borderBottom: "1px solid var(--border-subtle)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: 16,
+          gap: compact ? 10 : 16,
           flexWrap: "wrap",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Map size={16} color="var(--green)" />
-          <span style={{ fontSize: 13, fontWeight: 800, color: "var(--gray-900)" }}>
-            Ghana Regional Map
+          <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>
+            {compact ? columnName : "Ghana Regional Map"}
           </span>
         </div>
 
         {validNumericColumns.length > 1 && (
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--gray-500)" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-secondary)" }}>
             Showing:
             <select
               value={selectedValueCol ?? ""}
@@ -184,6 +278,7 @@ export default function GhanaRegionMap({
                 padding: "0 8px",
                 fontSize: 12,
                 background: "var(--surface-card)",
+                color: "var(--text-primary)",
                 outlineColor: "var(--green)",
               }}
             >
@@ -209,7 +304,7 @@ export default function GhanaRegionMap({
                   borderRadius: 6,
                   border: active ? "1px solid var(--green)" : "1px solid var(--gray-300)",
                   background: active ? "var(--green)" : "var(--surface-card)",
-                  color: active ? "#fff" : "var(--gray-600)",
+                  color: active ? "#fff" : "var(--text-secondary)",
                   padding: "0 10px",
                   fontSize: 11,
                   fontWeight: 800,
@@ -221,53 +316,57 @@ export default function GhanaRegionMap({
             );
           })}
 
-          <button
-            type="button"
-            onClick={handleShare}
-            disabled={!datasetId || selectedValueCol === null}
-            style={{
-              height: 28,
-              borderRadius: 6,
-              border: "1px solid var(--green)",
-              background: "var(--surface-card)",
-              color: "var(--green)",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "0 10px",
-              fontSize: 11,
-              fontWeight: 800,
-              cursor: "pointer",
-              opacity: !datasetId || selectedValueCol === null ? 0.55 : 1,
-            }}
-          >
-            <Share2 size={14} />
-            {copied ? "Copied!" : "Share"}
-          </button>
+          {!compact && (
+            <>
+              <button
+                type="button"
+                onClick={handleShare}
+                disabled={!datasetId || selectedValueCol === null}
+                style={{
+                  height: 28,
+                  borderRadius: 6,
+                  border: "1px solid var(--green)",
+                  background: "var(--surface-card)",
+                  color: "var(--green)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "0 10px",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  opacity: !datasetId || selectedValueCol === null ? 0.55 : 1,
+                }}
+              >
+                <Share2 size={14} />
+                {copied ? "Copied!" : "Share"}
+              </button>
 
-          <button
-            type="button"
-            onClick={handleDownload}
-            disabled={isDownloading || !geoData || !hasUsableData}
-            style={{
-              height: 28,
-              borderRadius: 6,
-              border: "1px solid var(--green)",
-              background: "var(--surface-card)",
-              color: "var(--green)",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "0 10px",
-              fontSize: 11,
-              fontWeight: 800,
-              cursor: "pointer",
-              opacity: isDownloading || !geoData || !hasUsableData ? 0.55 : 1,
-            }}
-          >
-            <Download size={14} />
-            PNG
-          </button>
+              <button
+                type="button"
+                onClick={handleDownload}
+                disabled={isDownloading || !geoData || !hasUsableData}
+                style={{
+                  height: 28,
+                  borderRadius: 6,
+                  border: "1px solid var(--green)",
+                  background: "var(--surface-card)",
+                  color: "var(--green)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "0 10px",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  opacity: isDownloading || !geoData || !hasUsableData ? 0.55 : 1,
+                }}
+              >
+                <Download size={14} />
+                PNG
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -277,7 +376,7 @@ export default function GhanaRegionMap({
           position: "relative",
           overflow: "hidden",
           background: "var(--surface-card)",
-          height,
+          height: mapHeight,
           display: "grid",
           placeItems: "center",
         }}
@@ -289,7 +388,7 @@ export default function GhanaRegionMap({
               height: "100%",
               display: "grid",
               placeItems: "center",
-              background: "linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%)",
+              background: "linear-gradient(90deg, var(--surface-base) 0%, var(--surface-elevated) 50%, var(--surface-base) 100%)",
               backgroundSize: "200% 100%",
               animation: "ghanaMapShimmer 1.2s infinite",
             }}
@@ -301,10 +400,10 @@ export default function GhanaRegionMap({
         {(geoError || (geoData && !hasUsableData)) && (
           <div style={{ textAlign: "center", padding: 24 }}>
             <Map size={48} color="var(--gray-300)" />
-            <div style={{ marginTop: 12, fontSize: 16, fontWeight: 800, color: "var(--gray-600)" }}>
+            <div style={{ marginTop: 12, fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>
               No region data detected
             </div>
-            <div style={{ marginTop: 6, fontSize: 13, color: "var(--gray-500)" }}>
+            <div style={{ marginTop: 6, fontSize: 13, color: "var(--text-secondary)" }}>
               This dataset does not contain a Ghana region column.
             </div>
           </div>
@@ -313,12 +412,12 @@ export default function GhanaRegionMap({
         {geoData && hasUsableData && (
           <ComposableMap
             projection="geoMercator"
-            projectionConfig={{ scale: 3200, center: [-1.0, 7.9] }}
-            width={800}
-            height={height}
+            projectionConfig={projectionConfig}
+            width={MAP_WIDTH}
+            height={mapHeight}
             style={{ width: "100%", height: "100%" }}
           >
-            <ZoomableGroup>
+            <ZoomableGroup zoom={1}>
               <Geographies geography={geoData}>
                 {({ geographies }) =>
                   geographies.map((geo) => {
@@ -331,7 +430,7 @@ export default function GhanaRegionMap({
                         key={geo.rsmKey}
                         geography={geo}
                         fill={fillColour}
-                        stroke="#FFFFFF"
+                        stroke="var(--surface-card)"
                         strokeWidth={0.8}
                         style={{
                           default: {
@@ -368,7 +467,7 @@ export default function GhanaRegionMap({
         <div
           style={{
             background: "var(--surface-card)",
-            borderTop: "1px solid var(--gray-100)",
+            borderTop: "1px solid var(--border-subtle)",
             padding: "12px 16px",
             display: "flex",
             alignItems: "center",
@@ -376,7 +475,7 @@ export default function GhanaRegionMap({
             flexWrap: "wrap",
           }}
         >
-          <div style={{ fontSize: 12, color: "var(--gray-500)" }}>
+          <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
             Showing: {columnName}
           </div>
 
@@ -392,7 +491,7 @@ export default function GhanaRegionMap({
                     : "linear-gradient(to right, #DC2626, #F9FAFB, #006B3F)",
               }}
             />
-            <div style={{ width: 160, display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--gray-500)" }}>
+            <div style={{ width: 160, display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-muted)" }}>
               <span>{formatLegendValue(computed.min, computed.unit)}</span>
               <span>{formatLegendValue(computed.mid, computed.unit)}</span>
               <span>{formatLegendValue(computed.max, computed.unit)}</span>
@@ -401,10 +500,10 @@ export default function GhanaRegionMap({
 
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 12, height: 12, borderRadius: 3, background: "var(--surface-base)", border: "1px solid var(--border-default)" }} />
-            <span style={{ fontSize: 11, color: "var(--gray-500)" }}>No data</span>
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>No data</span>
           </div>
 
-          <div style={{ marginLeft: "auto", fontSize: 11, color: "var(--gray-500)" }}>
+          <div style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-muted)" }}>
             {regionsWithData} of 16 regions have data
           </div>
         </div>
@@ -421,11 +520,12 @@ export default function GhanaRegionMap({
             background: "var(--surface-card)",
             borderRadius: 8,
             padding: "8px 12px",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+            border: "1px solid var(--border-subtle)",
+            boxShadow: "var(--shadow-md)",
             fontSize: 12,
           }}
         >
-          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--dark)" }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>
             {hoveredRegion.name}
           </div>
           {hoveredRegion.value !== undefined ? (
@@ -434,7 +534,7 @@ export default function GhanaRegionMap({
               {hoveredRegion.unit}
             </div>
           ) : (
-            <div style={{ marginTop: 2, color: "var(--gray-500)", fontStyle: "italic" }}>
+            <div style={{ marginTop: 2, color: "var(--text-secondary)", fontStyle: "italic" }}>
               No data available
             </div>
           )}
@@ -442,6 +542,32 @@ export default function GhanaRegionMap({
       )}
 
       <style>{`
+        .ghana-region-map button:disabled {
+          cursor: not-allowed;
+        }
+
+        @media (max-width: 640px) {
+          .ghana-region-map-toolbar {
+            align-items: stretch !important;
+          }
+
+          .ghana-region-map-toolbar > div {
+            width: 100%;
+            justify-content: space-between;
+          }
+
+          .ghana-region-map-toolbar button,
+          .ghana-region-map-toolbar select {
+            min-height: 36px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .ghana-region-map-compact .ghana-region-map-toolbar {
+            padding: 10px 12px !important;
+          }
+        }
+
         @keyframes ghanaMapSpin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }

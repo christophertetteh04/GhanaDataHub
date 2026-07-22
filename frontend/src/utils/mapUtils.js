@@ -82,7 +82,11 @@ const REGION_COLUMN_NAMES = [
 
 export function normaliseRegionName(name) {
   if (!name || typeof name !== 'string') return null;
-  const lower = name.trim().toLowerCase().replace(/\s+/g, ' ');
+  const lower = name
+    .trim()
+    .toLowerCase()
+    .replace(/[-_/]+/g, ' ')
+    .replace(/\s+/g, ' ');
   return REGION_ALIASES[lower] || null;
 }
 
@@ -96,7 +100,7 @@ export function detectRegionColumn(headers) {
 }
 
 export function getColourScale(values, type = 'sequential') {
-  const nums = values.filter((v) => v !== null && v !== undefined && !isNaN(v));
+  const nums = values.map((v) => Number(v)).filter((v) => !Number.isNaN(v));
   if (nums.length === 0) return () => '#E5E7EB';
   const min = Math.min(...nums);
   const max = Math.max(...nums);
@@ -119,7 +123,7 @@ export function getColourScale(values, type = 'sequential') {
 
   return function colourForValue(value) {
     if (value === null || value === undefined || isNaN(value)) return '#E5E7EB';
-    const t = (value - min) / range;
+    const t = max === min ? 0.65 : (Number(value) - min) / range;
 
     if (type === 'sequential') {
       const from = hexToRgb('#E8F5EF');
@@ -161,7 +165,10 @@ export function buildRegionDataMap(rows, regionColIdx, valueColIdx) {
     const region = normaliseRegionName(rawRegion);
     if (!region) continue;
     const value = parseFloat(
-      String(rawValue).replace(/,/g, '').replace(/%/g, '').trim()
+      String(rawValue)
+        .replace(/[,%]/g, '')
+        .replace(/[^\d.-]/g, '')
+        .trim()
     );
     if (!isNaN(value)) result[region] = value;
   }

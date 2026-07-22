@@ -461,17 +461,22 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          <section style={{ marginBottom: 24, padding: "20px 28px 0" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Map size={16} color="var(--green)" />
-                <span style={{ fontSize: 14, fontWeight: 700 }}>Regional Ghana Data</span>
+          <section className="dashboard-region-section">
+            <div className="dashboard-region-header">
+              <div>
+                <div className="dashboard-region-title">
+                  <Map size={16} color="var(--green)" />
+                  <span>Regional Ghana Data</span>
+                </div>
+                <div className="dashboard-region-subtitle">
+                  Electricity access across Ghana's 16 administrative regions
+                </div>
               </div>
-              <a href="/catalogue" style={{ fontSize: 12, color: "var(--green)" }}>
+              <a href="/catalogue" className="dashboard-region-link">
                 Browse regional datasets
               </a>
             </div>
-            <div style={{ background: "var(--surface-card)", borderRadius: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", overflow: "hidden" }}>
+            <div className="dashboard-region-card">
               <GhanaRegionMap
                 rows={[
                   ["Region", "Electricity Access (%)"],
@@ -483,11 +488,12 @@ export default function DashboardPage() {
                 ]}
                 datasetTitle="Ghana Electricity Access by Region"
                 datasetId=""
-                height={340}
+                height={360}
+                compact
               />
-              <div style={{ padding: "10px 16px", borderTop: "1px solid var(--gray-100)", fontSize: 11, color: "var(--gray-400)" }}>
+              <div className="dashboard-region-note">
                 Sample data: Electricity access by region. Source: Ghana Energy Commission.
-                <a href="/datasets?search=electricity" style={{ color: "var(--green)", marginLeft: 6 }}>
+                <a href="/datasets?search=electricity">
                   Find related datasets
                 </a>
               </div>
@@ -914,6 +920,66 @@ const dashboardStyles = `
     opacity: 0.5;
   }
 
+  /* DASHBOARD REGIONAL MAP */
+  .dashboard-region-section {
+    margin-bottom: 24px;
+    padding: 20px 28px 0;
+  }
+  .dashboard-region-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .dashboard-region-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 800;
+  }
+  .dashboard-region-subtitle {
+    margin-top: 3px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .dashboard-region-link {
+    color: var(--green);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .dashboard-region-link:hover {
+    text-decoration: underline;
+  }
+  .dashboard-region-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  .dashboard-region-note {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .dashboard-region-note a {
+    color: var(--green);
+    font-weight: 700;
+    margin-left: 6px;
+    text-decoration: none;
+  }
+  .dashboard-region-note a:hover {
+    text-decoration: underline;
+  }
+
   /* SECTION 6 - CHART */
   .chart-card {
     background: var(--surface-card);
@@ -976,6 +1042,17 @@ const dashboardStyles = `
       justify-content: space-between;
       overflow-x: auto;
       padding-bottom: 8px;
+    }
+    .dashboard-region-section {
+      padding: 20px 16px 0;
+    }
+    .dashboard-region-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+    .dashboard-region-link {
+      align-self: flex-start;
     }
   }
 `;
