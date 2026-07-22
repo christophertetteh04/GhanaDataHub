@@ -5,6 +5,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.v1.deps import get_current_user, get_optional_user, require_roles
@@ -26,6 +27,7 @@ from app.models.models import (
 )
 from app.schemas.schemas import DatasetOut, DatasetVersionOut
 from app.services.csv_analyser import analyse_csv
+from app.services.health_insights import get_health_insight
 
 router = APIRouter()
 
@@ -231,6 +233,58 @@ def list_datasets(
         "per_page": per_page,
         "pages": (total + per_page - 1) // per_page,
     }
+
+
+@router.get("/{dataset_id}/health-insight")
+def get_dataset_health_insight(
+    dataset_id: UUID,
+    db: Session = Depends(get_db),
+):
+    dataset = db.query(Dataset).filter(Dataset.id == dataset_id).first()
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+    return get_health_insight(dataset.title, dataset.description)
+
+
+@router.get("/{dataset_id}/download")
+def download_dataset(
+    dataset_id: UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user),
+):
+    dataset = db.query(Dataset).filter(Dataset.id == dataset_id).first()
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+    if dataset.visibility == VisibilityEnum.private:
+        if not current_user or (
+            str(dataset.owner_id) != str(current_user.id)
+            and current_user.role != UserRole.super_admin
+        ):
+            raise HTTPException(status_code=403, detail="Access denied")
+
+    if not dataset.file_path or not os.path.exists(dataset.file_path):
+        raise HTTPException(status_code=404, detail="Dataset file not found")
+
+    dataset.download_count += 1
+    if current_user:
+        log_activity(
+            db,
+            current_user.id,
+            ActivityAction.download,
+            "dataset",
+            dataset.id,
+            request.client.host if request.client else None,
+        )
+    db.commit()
+
+    return FileResponse(
+        path=dataset.file_path,
+        media_type=dataset.file_type or "application/octet-stream",
+        filename=dataset.file_name or os.path.basename(dataset.file_path),
+    )
 
 
 @router.get("/{dataset_id}", response_model=DatasetOut)

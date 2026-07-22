@@ -6,6 +6,7 @@ import QualityBadge from "../components/QualityBadge";
 import { trackDatasetView } from "../components/PersonalisedRecs";
 import WatchButton from "../components/WatchButton";
 import GhanaRegionMap from "../components/GhanaRegionMap";
+import HealthInsightCard from "../components/HealthInsightCard";
 import { detectRegionColumn } from "../utils/mapUtils";
 import AttributionModal from "../components/AttributionModal";
 import toast from "react-hot-toast";
@@ -250,20 +251,27 @@ function hasNumericValueColumn(rows, regionColIdx) {
     const populated = dataRows.filter((row) => row[index] !== null && row[index] !== undefined && String(row[index]).trim() !== "");
     if (populated.length === 0) return false;
     const numericCount = populated.filter((row) => {
-      const parsed = parseFloat(String(row[index]).replace(/,/g, "").replace(/%/g, "").trim());
+      const parsed = parseFloat(
+        String(row[index])
+          .replace(/[,%]/g, "")
+          .replace(/[^\d.-]/g, "")
+          .trim()
+      );
       return !Number.isNaN(parsed);
     }).length;
     return numericCount / populated.length > 0.5;
   });
 }
 
-function getUploadedFileUrl(filePath) {
-  if (!filePath) return null;
-  const filename = filePath.split("/").pop();
-  const apiOrigin = (import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1")
-    .replace(/\/api\/v1\/?$/, "")
-    .replace(/\/$/, "");
-  return `${apiOrigin}/uploads/${filename}`;
+function getDatasetDownloadUrl(datasetId) {
+  if (!datasetId) return null;
+  const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
+  return `${apiBase}/datasets/${datasetId}/download`;
+}
+
+function getAuthHeaders() {
+  const token = localStorage.getItem("access_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 export default function DatasetDetailPage() {
@@ -321,11 +329,11 @@ export default function DatasetDetailPage() {
     setHasRegionData(false);
     setCsvRows(null);
 
-    const fileUrl = getUploadedFileUrl(dataset.file_path);
+    const fileUrl = getDatasetDownloadUrl(dataset.id);
     const isCsv = dataset.file_type === "text/csv" || dataset.file_type === "application/csv" || dataset.file_name?.toLowerCase().endsWith(".csv");
 
-    if (isCsv && fileUrl) {
-      fetch(fileUrl)
+    if (isCsv && dataset.file_path && fileUrl) {
+      fetch(fileUrl, { headers: getAuthHeaders() })
         .then((response) => {
           if (!response.ok) throw new Error(`CSV request failed: ${response.status}`);
           return response.text();
@@ -358,7 +366,7 @@ export default function DatasetDetailPage() {
     const tagsHaveRegion = tagNames.some((t) => regionSignals.some((s) => t.includes(s)));
     const previewHeaders = Array.isArray(dataset.preview_data?.[0]) ? dataset.preview_data[0] : [];
     const previewHasRegion = detectRegionColumn(previewHeaders) !== -1;
-    if (!fileUrl && (titleHasRegion || tagsHaveRegion || previewHasRegion)) {
+    if (!dataset.file_path && (titleHasRegion || tagsHaveRegion || previewHasRegion)) {
       setHasRegionData(true);
       // Build a sample rows array from dataset metadata for the map.
       // For the MVP: show a placeholder map with Ghana regions coloured
@@ -634,6 +642,8 @@ export default function DatasetDetailPage() {
               </div>
             </div>
           )}
+
+          <HealthInsightCard datasetId={dataset.id} datasetTitle={dataset.title} />
 
           {activeTab === "analysis" && hasAnalysisData && (() => {
             const analysis = dataset.analysis_data;
