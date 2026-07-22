@@ -207,6 +207,65 @@ const InfoRow = ({ label, value, isLast }) => (
   </div>
 );
 
+function parseCsvRows(text) {
+  const rows = [];
+  let row = [];
+  let value = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (char === '"' && inQuotes && next === '"') {
+      value += '"';
+      i += 1;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === "," && !inQuotes) {
+      row.push(value.trim());
+      value = "";
+    } else if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") i += 1;
+      row.push(value.trim());
+      if (row.some((cell) => cell !== "")) rows.push(row);
+      row = [];
+      value = "";
+    } else {
+      value += char;
+    }
+  }
+
+  row.push(value.trim());
+  if (row.some((cell) => cell !== "")) rows.push(row);
+  return rows;
+}
+
+function hasNumericValueColumn(rows, regionColIdx) {
+  const headers = rows?.[0] || [];
+  const dataRows = rows?.slice(1) || [];
+
+  return headers.some((_, index) => {
+    if (index === regionColIdx) return false;
+    const populated = dataRows.filter((row) => row[index] !== null && row[index] !== undefined && String(row[index]).trim() !== "");
+    if (populated.length === 0) return false;
+    const numericCount = populated.filter((row) => {
+      const parsed = parseFloat(String(row[index]).replace(/,/g, "").replace(/%/g, "").trim());
+      return !Number.isNaN(parsed);
+    }).length;
+    return numericCount / populated.length > 0.5;
+  });
+}
+
+function getUploadedFileUrl(filePath) {
+  if (!filePath) return null;
+  const filename = filePath.split("/").pop();
+  const apiOrigin = (import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1")
+    .replace(/\/api\/v1\/?$/, "")
+    .replace(/\/$/, "");
+  return `${apiOrigin}/uploads/${filename}`;
+}
+
 export default function DatasetDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -250,11 +309,41 @@ export default function DatasetDetailPage() {
   }, [dataset]);
 
   useEffect(() => {
+    if (activeTab === "map" && !hasRegionData) {
+      setActiveTab("overview");
+    }
+  }, [activeTab, hasRegionData]);
+
+  useEffect(() => {
     if (!dataset) return;
-    // Check if preview_data exists and try to detect region column.
-    // preview_data is an array of numbers from the first numeric column.
-    // We cannot detect region column from preview_data alone since it
-    // is just numbers. Instead, check the dataset title and tags.
+
+    let cancelled = false;
+    setHasRegionData(false);
+    setCsvRows(null);
+
+    const fileUrl = getUploadedFileUrl(dataset.file_path);
+    const isCsv = dataset.file_type === "text/csv" || dataset.file_type === "application/csv" || dataset.file_name?.toLowerCase().endsWith(".csv");
+
+    if (isCsv && fileUrl) {
+      fetch(fileUrl)
+        .then((response) => {
+          if (!response.ok) throw new Error(`CSV request failed: ${response.status}`);
+          return response.text();
+        })
+        .then((text) => {
+          if (cancelled) return;
+          const rows = parseCsvRows(text);
+          const regionIdx = detectRegionColumn(rows[0] || []);
+          if (regionIdx !== -1 && hasNumericValueColumn(rows, regionIdx)) {
+            setCsvRows(rows);
+            setHasRegionData(true);
+          }
+        })
+        .catch((error) => {
+          console.warn("Unable to load regional CSV data", error);
+        });
+    }
+
     const titleLower = (dataset.title || "").toLowerCase();
     const tagNames = (dataset.tags || []).map((t) => (t.name || t).toLowerCase());
     const regionSignals = [
@@ -264,15 +353,12 @@ export default function DatasetDetailPage() {
       "area",
       "zone",
       "constituency",
-      "northern",
-      "southern",
-      "ghana",
     ];
     const titleHasRegion = regionSignals.some((s) => titleLower.includes(s));
     const tagsHaveRegion = tagNames.some((t) => regionSignals.some((s) => t.includes(s)));
     const previewHeaders = Array.isArray(dataset.preview_data?.[0]) ? dataset.preview_data[0] : [];
     const previewHasRegion = detectRegionColumn(previewHeaders) !== -1;
-    if (titleHasRegion || tagsHaveRegion || previewHasRegion) {
+    if (!fileUrl && (titleHasRegion || tagsHaveRegion || previewHasRegion)) {
       setHasRegionData(true);
       // Build a sample rows array from dataset metadata for the map.
       // For the MVP: show a placeholder map with Ghana regions coloured
@@ -286,6 +372,10 @@ export default function DatasetDetailPage() {
         ["North East", 1], ["Upper East", 1], ["Upper West", 1],
       ]);
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [dataset]);
   
   useEffect(() => {

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from datetime import datetime
+from datetime import date, datetime
 
 router = APIRouter()
 
@@ -157,11 +157,38 @@ CALENDAR_EVENTS = [
 ]
 
 
+def _next_occurrence(event_date: str, today: date) -> date:
+    """Return the next annual occurrence for an event's configured month/day."""
+    _, month, day = [int(part) for part in event_date.split("-")]
+    occurrence = date(today.year, month, day)
+    if occurrence < today:
+        occurrence = date(today.year + 1, month, day)
+    return occurrence
+
+
+def _with_occurrence(event: dict, today: date) -> dict:
+    occurrence = _next_occurrence(event["date"], today)
+    updated = event.copy()
+    updated["date"] = occurrence.isoformat()
+    updated["year"] = occurrence.year
+    updated["title"] = (
+        updated["title"]
+        .replace("2025/2026", f"{occurrence.year}/{occurrence.year + 1}")
+        .replace("2025", str(occurrence.year))
+    )
+    updated["description"] = (
+        updated["description"]
+        .replace("2025/2026", f"{occurrence.year}/{occurrence.year + 1}")
+        .replace("2025", str(occurrence.year))
+    )
+    return updated
+
+
 @router.get("/calendar/events")
 def get_calendar_events(upcoming_only: bool = True):
-    """Return upcoming economic calendar events."""
-    events = CALENDAR_EVENTS
+    """Return economic calendar events with dates rolled forward each year."""
+    today = datetime.now().date()
+    events = [_with_occurrence(event, today) for event in CALENDAR_EVENTS]
     if upcoming_only:
-        today = datetime.now().date().isoformat()
-        events = [e for e in events if e["date"] >= today]
+        events = [event for event in events if event["date"] >= today.isoformat()]
     return sorted(events, key=lambda x: x["date"])

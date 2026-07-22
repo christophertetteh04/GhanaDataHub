@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CalendarDays } from "lucide-react";
 
-const API_BASE = "/api/v1";
+const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
 
 const MONTH_ABBR = [
   "JAN","FEB","MAR","APR","MAY","JUN",
@@ -11,7 +11,9 @@ const MONTH_ABBR = [
 
 function getDaysUntil(dateStr) {
   const eventDate = new Date(dateStr + "T00:00:00");
-  return Math.ceil((eventDate - Date.now()) / 86400000);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.ceil((eventDate - today) / 86400000);
 }
 
 function DaysUntilBadge({ daysUntil }) {
@@ -20,6 +22,8 @@ function DaysUntilBadge({ daysUntil }) {
     bg = "var(--green)"; color = "#fff"; text = "Today";
   } else if (daysUntil === 1) {
     bg = "#fef08a"; color = "#854d0e"; text = "Tomorrow";
+  } else if (daysUntil < 0) {
+    bg = "var(--surface-base)"; color = "var(--text-muted)"; text = "Past";
   } else if (daysUntil <= 7) {
     bg = "#fed7aa"; color = "#9a3412"; text = `${daysUntil} days`;
   } else {
