@@ -4,20 +4,18 @@ import {
   Layers,
   Database,
   RefreshCw,
-  Newspaper,
   FileSpreadsheet,
   Braces,
   FileText,
   Table,
   Image,
   File,
-  Download,
-  Eye,
-  Share2,
-  Bookmark,
 } from "lucide-react";
 import { datasetsApi, categoriesApi, dashboardApi } from "../services/api";
 import ObservanceBanner from "../components/ObservanceBanner";
+import TodayHighlight from "../components/TodayHighlight";
+import FeedCard from "../components/FeedCard";
+import AdjoaEmptyState from "../components/AdjoaEmptyState";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
@@ -36,14 +34,17 @@ const THUMBNAIL_STYLES = {
   default: { bg: "var(--surface-elevated)", color: "var(--text-secondary)", icon: File },
 };
 
-const AVATAR_COLORS = [
-  "#D1FAE5",
-  "#E0F2FE",
-  "#FEF3C7",
-  "#FEE2E2",
-  "#E9D5FF",
-  "#DCFCE7",
-];
+const CATEGORY_COLOURS = {
+  Economy: "#3B82F6",
+  Health: "#EF4444",
+  Agriculture: "#22C55E",
+  Demographics: "#F97316",
+  Governance: "#8B5CF6",
+  Environment: "#10B981",
+  Education: "#F59E0B",
+  Multiple: "#006B3F",
+  Default: "#006B3F",
+};
 
 function formatTimeAgoFrom(value, now) {
   const date = new Date(value);
@@ -69,13 +70,6 @@ function isUpdatedDataset(item) {
   return new Date(item.updated_at).getTime() - new Date(item.created_at).getTime() > 60000;
 }
 
-function getAvatarColor(name) {
-  const hash = name
-    .split("")
-    .reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
-}
-
 function getFileTypeKey(type) {
   if (!type) return "default";
   const normalized = type.toLowerCase();
@@ -91,10 +85,6 @@ function formatLargeNumber(value) {
   if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
   if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
   return `${value}`;
-}
-
-function clampText(text, max) {
-  return text?.length > max ? `${text.slice(0, max)}...` : text || "";
 }
 
 function sortItems(items, sortKey) {
@@ -121,9 +111,6 @@ export default function NewsFeedPage() {
   const [filter, setFilter] = useState("all");
   const [activeCategory, setActiveCategory] = useState(null);
   const [sortBy, setSortBy] = useState("latest");
-  const [activeFeed, setActiveFeed] = useState({});
-  const [subscribedCards, setSubscribedCards] = useState({});
-  const [bookmarkedCards, setBookmarkedCards] = useState({});
   const [isSticky, setIsSticky] = useState(false);
   const [observanceData, setObservanceData] = useState(null);
   const [now, setNow] = useState(() => new Date());
@@ -182,7 +169,7 @@ export default function NewsFeedPage() {
 
   const filteredDatasets = useMemo(() => {
     const active = datasets.filter((item) => {
-      if (activeCategory && item.category?.id !== activeCategory) return false;
+      if (activeCategory && item.category?.id !== activeCategory && item.category?.name !== activeCategory) return false;
       if (filter === "new") {
         return new Date(item.created_at) >= new Date(Date.now() - 1000 * 60 * 60 * 24 * 14);
       }
@@ -196,26 +183,10 @@ export default function NewsFeedPage() {
 
   const recentActivity = useMemo(() => datasets.slice(0, 5), [datasets]);
   const recentPosts = useMemo(() => datasets.slice(0, 6), [datasets]);
-
-  const handleSubscribeToggle = (id) => {
-    setSubscribedCards((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const handleBookmarkToggle = (id) => {
-    setBookmarkedCards((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const handleShare = async (id) => {
-    await navigator.clipboard.writeText(`${window.location.origin}/datasets/${id}`);
-    setActiveFeed((prev) => ({ ...prev, [id]: "copied" }));
-    window.setTimeout(() => {
-      setActiveFeed((prev) => ({ ...prev, [id]: null }));
-    }, 1600);
-  };
-
-  const handleDownload = (id) => {
-    window.open(`${API_BASE}/datasets/${id}/download`, "_blank", "noopener,noreferrer");
-  };
+  const activeCategoryName = useMemo(
+    () => categories.find((category) => category.id === activeCategory)?.name || (typeof activeCategory === "string" ? activeCategory : ""),
+    [categories, activeCategory],
+  );
 
   const handleClearFilters = () => {
     setFilter("all");
@@ -242,26 +213,6 @@ export default function NewsFeedPage() {
   };
 
   const totalDownloads = dashboardStats?.total_downloads ?? datasets.reduce((acc, item) => acc + (item.download_count || 0), 0);
-
-  const renderThumbnail = (fileType) => {
-    const key = getFileTypeKey(fileType);
-    const style = THUMBNAIL_STYLES[key] || THUMBNAIL_STYLES.default;
-    const Icon = style.icon;
-    return (
-      <div
-        style={{
-          width: 72,
-          height: 72,
-          borderRadius: 10,
-          background: style.bg,
-          display: "grid",
-          placeItems: "center",
-        }}
-      >
-        <Icon size={24} color={style.color} />
-      </div>
-    );
-  };
 
   return (
     <div className="news-feed-page" style={{ padding: 24, minHeight: "100vh", background: "var(--surface-base)", color: "var(--text-primary)" }}>
@@ -468,123 +419,52 @@ export default function NewsFeedPage() {
             </div>
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
+              <TodayHighlight />
+
+              <div className="feed-category-strip" aria-label="Category filters">
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory(null)}
+                  className={`feed-category-pill ${!activeCategory ? "active" : ""}`}
+                >
+                  All
+                </button>
+                {categories.map((category) => (
+                  <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => setActiveCategory(category.id)}
+                    className={`feed-category-pill ${activeCategory === category.id ? "active" : ""}`}
+                  >
+                    {category.name}
+                  </button>
+                ))}
+              </div>
+
               {observanceData && (
                 <ObservanceBanner variant="feed" observance={observanceData} />
               )}
 
               {filteredDatasets.length === 0 && (
-                <div className="feed-empty-state">
-                  <Newspaper size={42} color="var(--text-muted)" />
-                  <div className="feed-empty-title">No updates match this view</div>
-                  <div className="feed-empty-copy">Clear filters or refresh the feed to check for new datasets.</div>
-                  <div className="feed-empty-actions">
-                    <button type="button" onClick={handleClearFilters}>Clear filters</button>
-                    <button type="button" onClick={() => loadFeed({ silent: true })}>Refresh feed</button>
-                  </div>
-                </div>
+                <AdjoaEmptyState
+                  message={
+                    activeCategoryName
+                      ? `No ${activeCategoryName} found yet. Be the first to upload ${activeCategoryName} data for Ghana.`
+                      : "No datasets found yet. Be the first to upload Ghana data."
+                  }
+                  actionLabel="Upload a Dataset"
+                  onAction={() => navigate("/datasets")}
+                />
               )}
 
-              {filteredDatasets.map((item, index) => {
-                const ownerName = item.owner?.full_name || "Unknown";
-                const initials = ownerName
-                  .split(" ")
-                  .map((part) => part[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase();
-                const thumbKey = getFileTypeKey(item.file_type);
-                const thumbStyle = THUMBNAIL_STYLES[thumbKey] || THUMBNAIL_STYLES.default;
-                const ThumbIcon = thumbStyle.icon;
-                const subscribed = !!subscribedCards[item.id];
-                const bookmarked = !!bookmarkedCards[item.id];
-
-                return (
-                  <div
-                    key={`${item.id}-${index}`}
-                    className="feed-card"
-                    style={{ animationDelay: `${index * 0.05}s` }}
-                  >
-                    <div
-                      onClick={(event) => {
-                        if (event.target.closest(".feed-card-actions")) return;
-                        navigate(`/datasets/${item.id}`);
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 16, marginBottom: 18, alignItems: "center" }}>
-                        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                          <div style={{ width: 32, height: 32, borderRadius: "50%", background: getAvatarColor(ownerName), display: "grid", placeItems: "center", color: "#111827", fontWeight: 700, fontSize: 12 }}>
-                            {initials}
-                          </div>
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{ownerName}</div>
-                            <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{item.category?.name || "Uncategorized"}</div>
-                          </div>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                            {isUpdatedDataset(item) ? `Updated ${formatTimeAgoFrom(item.updated_at, now)}` : formatTimeAgoFrom(item.created_at, now)}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleSubscribeToggle(item.id)}
-                            className="subscribe-button"
-                            style={{
-                              height: 28,
-                              padding: "0 14px",
-                              borderRadius: 99,
-                              border: "1px solid var(--green)",
-                              background: subscribed ? "var(--green)" : "transparent",
-                              color: subscribed ? "white" : "var(--green)",
-                              fontSize: 12,
-                              cursor: "pointer",
-                            }}
-                          >
-                            {subscribed ? "Subscribed" : "Subscribe"}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="feed-card-body-grid" style={{ display: "grid", gridTemplateColumns: item.file_type ? "1fr 120px" : "1fr", gap: 18, alignItems: "start" }}>
-                        <div>
-                          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.title}</div>
-                          {item.description && (
-                            <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>{clampText(item.description, 120)}</div>
-                          )}
-                        </div>
-                        {item.file_type && (
-                          <div style={{ display: "flex", justifyContent: "flex-end" }}>{renderThumbnail(item.file_type)}</div>
-                        )}
-                      </div>
-                      {item.tags?.length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
-                          {item.tags.slice(0, 3).map((tag) => (
-                            <span key={tag.id || tag} style={{ display: "inline-flex", alignItems: "center", fontSize: 11, color: "var(--green)", background: "var(--green-pale)", borderRadius: 99, padding: "2px 8px" }}>
-                              {tag.name || tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="feed-card-actions" style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--border-subtle)", display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, alignItems: "center" }}>
-                      <button type="button" onClick={() => handleDownload(item.id)} style={actionButtonStyle}>
-                        <Download size={14} />
-                        <span>{formatLargeNumber(item.download_count || 0)}</span>
-                      </button>
-                      <button type="button" style={actionButtonStyle}>
-                        <Eye size={14} />
-                        <span>{formatLargeNumber((item.download_count || 0) * 3)} views</span>
-                      </button>
-                      <button type="button" onClick={() => handleShare(item.id)} style={actionButtonStyle}>
-                        <Share2 size={14} />
-                        <span>{activeFeed[item.id] === "copied" ? "Copied" : "Share"}</span>
-                      </button>
-                      <button type="button" onClick={() => handleBookmarkToggle(item.id)} style={actionButtonStyle}>
-                        <Bookmark size={14} fill={bookmarked ? "currentColor" : "none"} />
-                        <span>{bookmarked ? "Saved" : "Bookmark"}</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+              {filteredDatasets.map((item) => (
+                <FeedCard
+                  key={item.id}
+                  dataset={item}
+                  categoryColours={CATEGORY_COLOURS}
+                  onCategoryClick={(cat) => setActiveCategory(cat)}
+                />
+              ))}
               {filteredDatasets.length > 0 && (
                 <button
                   type="button"
@@ -689,36 +569,62 @@ export default function NewsFeedPage() {
         }
 
         .feed-card {
-          background: var(--surface-card);
-          border: 1px solid var(--border-subtle);
-          border-radius: 14px;
-          box-shadow: var(--shadow-sm);
-          padding: 20px;
           opacity: 0;
           transform: translateY(12px);
           animation: feedFadeUp 0.35s ease forwards;
-          cursor: pointer;
         }
 
         .feed-card:hover {
-          border-color: var(--border-default);
-          transform: translateY(-1px);
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-md) !important;
         }
 
-        .feed-card-actions button {
+        .feed-card-action {
           border: none;
           background: transparent;
           color: var(--text-secondary);
           display: inline-flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           font-size: 12px;
+          font-weight: 700;
           cursor: pointer;
           padding: 0;
         }
 
-        .feed-card-actions button:hover {
+        .feed-card-action:hover {
           color: var(--green);
+        }
+
+        .feed-category-strip {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          scrollbar-width: none;
+          padding: 0 0 12px;
+          margin-bottom: 4px;
+        }
+
+        .feed-category-strip::-webkit-scrollbar {
+          display: none;
+        }
+
+        .feed-category-pill {
+          flex: 0 0 auto;
+          border-radius: 999px;
+          padding: 6px 14px;
+          border: 1px solid var(--border-default);
+          background: var(--surface-card);
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .feed-category-pill.active {
+          background: var(--green);
+          color: white;
+          border-color: var(--green);
         }
 
         .skeleton-card {
@@ -858,26 +764,11 @@ export default function NewsFeedPage() {
             top: unset !important;
           }
 
-          .feed-card-body-grid {
-            grid-template-columns: 1fr !important;
-          }
-
-          .feed-card-body-grid > div:last-child {
-            justify-content: flex-start !important;
-          }
-
-          .feed-card-actions {
-            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-          }
         }
 
         @media (max-width: 520px) {
           .feed-card {
             padding: 16px;
-          }
-
-          .feed-card-actions {
-            grid-template-columns: 1fr !important;
           }
 
           .feed-notice {
@@ -889,19 +780,6 @@ export default function NewsFeedPage() {
     </div>
   );
 }
-
-const actionButtonStyle = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  width: "100%",
-  border: "none",
-  background: "transparent",
-  color: "var(--text-secondary)",
-  fontSize: 12,
-  cursor: "pointer",
-  justifyContent: "flex-start",
-};
 
 const statItemStyle = {
   background: "var(--surface-elevated)",
