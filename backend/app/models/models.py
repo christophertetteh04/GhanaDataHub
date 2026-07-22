@@ -121,6 +121,7 @@ class Dataset(Base):
     file_name = Column(String(500), nullable=True)
     file_size = Column(BigInteger, default=0)
     file_type = Column(String(100), nullable=True)
+    analysis_data = Column(JSON, nullable=True)
     download_count = Column(Integer, default=0)
     version = Column(Integer, default=1)
 

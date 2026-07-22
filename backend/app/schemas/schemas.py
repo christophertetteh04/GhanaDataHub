@@ -186,6 +186,7 @@ class DatasetOut(BaseModel):
     file_name: Optional[str]
     file_size: int
     file_type: Optional[str]
+    analysis_data: Optional[dict] = None
     download_count: int
     version: int
     owner_id: Optional[UUID]

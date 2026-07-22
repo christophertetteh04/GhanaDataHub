@@ -26,7 +26,12 @@ import {
   Code2,
   Dot,
   Database,
-  Map
+  Map,
+  BarChart2,
+  Sparkles,
+  TriangleAlert,
+  TrendingUp,
+  TrendingDown
 } from "lucide-react";
 
 const VIS_LABELS = {
@@ -369,6 +374,7 @@ export default function DatasetDetailPage() {
 
   const mockData = generateMockData(dataset.title, dataset.category?.name, 8);
   const citationText = `${dataset.owner?.full_name || 'GhanaDataHub'}. (${new Date(dataset.created_at).getFullYear()}). ${dataset.title}. GhanaDataHub. ${window.location.href}`;
+  const hasAnalysisData = dataset.analysis_data && !dataset.analysis_data.error;
 
   return (
     <div style={{ background: "var(--gray-100)", minHeight: "100vh", paddingBottom: 64 }} className="fade-in">
@@ -488,7 +494,7 @@ export default function DatasetDetailPage() {
         {/* LEFT COLUMN */}
         <div style={{ flex: '1 1 68%', minWidth: 0 }}>
 
-          {hasRegionData && (
+          {(hasRegionData || hasAnalysisData) && (
             <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
               <button
                 onClick={() => setActiveTab("overview")}
@@ -496,12 +502,22 @@ export default function DatasetDetailPage() {
               >
                 <Database size={14} /> Overview
               </button>
-              <button
-                onClick={() => setActiveTab("map")}
-                className={activeTab === "map" ? "tab-active" : "tab-inactive"}
-              >
-                <Map size={14} /> Regional Map
-              </button>
+              {hasRegionData && (
+                <button
+                  onClick={() => setActiveTab("map")}
+                  className={activeTab === "map" ? "tab-active" : "tab-inactive"}
+                >
+                  <Map size={14} /> Regional Map
+                </button>
+              )}
+              {hasAnalysisData && (
+                <button
+                  onClick={() => setActiveTab("analysis")}
+                  className={activeTab === "analysis" ? "tab-active" : "tab-inactive"}
+                >
+                  <BarChart2 size={14} /> Analysis
+                </button>
+              )}
             </div>
           )}
 
@@ -518,7 +534,149 @@ export default function DatasetDetailPage() {
               </div>
             </div>
           )}
-          
+
+          {activeTab === "analysis" && hasAnalysisData && (() => {
+            const analysis = dataset.analysis_data;
+            const completeness = Number(analysis.completeness_pct || 0);
+            const completenessColor = completeness >= 90 ? "var(--green)" : completeness >= 70 ? "var(--gold)" : "#DC2626";
+            const cardStyle = {
+              background: "var(--surface-card)",
+              border: "1px solid var(--border-subtle)",
+              borderRadius: 16,
+              padding: 20,
+              boxShadow: "var(--shadow-sm)",
+            };
+            const typeBadge = (type) => ({
+              display: "inline-flex",
+              padding: "3px 8px",
+              borderRadius: 999,
+              fontSize: 11,
+              fontWeight: 700,
+              color: type === "numeric" ? "var(--green)" : type === "categorical" ? "#2563EB" : "var(--text-secondary)",
+              background: type === "numeric" ? "var(--green-pale)" : type === "categorical" ? "rgba(37,99,235,0.10)" : "var(--surface-base)",
+            });
+            const nullBadge = (rate) => ({
+              display: "inline-flex",
+              padding: "3px 8px",
+              borderRadius: 999,
+              fontSize: 11,
+              fontWeight: 700,
+              color: rate === 0 ? "var(--green)" : rate < 10 ? "#92400E" : "#DC2626",
+              background: rate === 0 ? "var(--green-pale)" : rate < 10 ? "rgba(252,209,22,0.14)" : "rgba(220,38,38,0.10)",
+            });
+            const displayNumber = (value) => value === null || value === undefined ? "—" : value;
+
+            return (
+              <div style={{ padding: "20px 0", display: "flex", flexDirection: "column", gap: 20 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
+                  <div style={cardStyle}>
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>Total Rows</div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)" }}>{Number(analysis.total_rows || 0).toLocaleString()}</div>
+                  </div>
+                  <div style={cardStyle}>
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>Total Columns</div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)" }}>{analysis.total_columns}</div>
+                  </div>
+                  <div style={cardStyle}>
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>Completeness</div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: completenessColor }}>{completeness}%</div>
+                  </div>
+                  <div style={cardStyle}>
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>Anomalies</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: analysis.has_anomalies ? "#D97706" : "var(--green)" }}>
+                      {analysis.has_anomalies ? "Detected" : "None found"}
+                    </div>
+                  </div>
+                </div>
+
+                {analysis.ai_summary ? (
+                  <div style={cardStyle}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, color: "var(--text-primary)", fontWeight: 800 }}>
+                      <Sparkles size={16} color="var(--green)" /> AI Analysis
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {analysis.ai_summary.split(/\n\n+/).map((paragraph, index) => (
+                        <p key={index} style={{ margin: 0, color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                          {paragraph}
+                        </p>
+                      ))}
+                    </div>
+                    <div style={{ marginTop: 14, fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
+                      Generated by Gemini AI
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ ...cardStyle, background: "rgba(59,130,246,0.08)", borderColor: "rgba(59,130,246,0.18)", color: "var(--text-secondary)", fontSize: 14 }}>
+                    AI-powered summary not available. Add a GEMINI_API_KEY to your backend .env file to enable it.
+                  </div>
+                )}
+
+                <div style={cardStyle}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", marginBottom: 16 }}>Column Profiles</div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
+                      <thead>
+                        <tr style={{ borderBottom: "1px solid var(--border-default)" }}>
+                          {["Column Name", "Type", "Null Rate", "Unique Values", "Min", "Max", "Mean"].map((header) => (
+                            <th key={header} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                              {header}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(analysis.column_profiles || []).map((profile) => (
+                          <tr key={profile.name} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                            <td style={{ padding: "12px", fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                                {profile.name}
+                                {profile.has_anomalies && <TriangleAlert size={14} color="#D97706" />}
+                              </span>
+                            </td>
+                            <td style={{ padding: "12px" }}><span style={typeBadge(profile.type)}>{profile.type}</span></td>
+                            <td style={{ padding: "12px" }}><span style={nullBadge(profile.null_rate_pct)}>{profile.null_rate_pct}%</span></td>
+                            <td style={{ padding: "12px", fontSize: 13, color: "var(--text-secondary)" }}>{profile.unique_count}</td>
+                            <td style={{ padding: "12px", fontSize: 13, color: "var(--text-secondary)" }}>{profile.type === "numeric" ? displayNumber(profile.min) : "—"}</td>
+                            <td style={{ padding: "12px", fontSize: 13, color: "var(--text-secondary)" }}>{profile.type === "numeric" ? displayNumber(profile.max) : "—"}</td>
+                            <td style={{ padding: "12px", fontSize: 13, color: "var(--text-secondary)" }}>{profile.type === "numeric" ? displayNumber(profile.mean) : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {(analysis.correlations || []).length > 0 && (
+                  <div style={cardStyle}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", marginBottom: 16 }}>Notable Correlations</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {analysis.correlations.map((correlation, index) => {
+                        const positive = correlation.direction === "positive";
+                        return (
+                          <div key={`${correlation.col_a}-${correlation.col_b}-${index}`} style={{ padding: 14, border: "1px solid var(--border-subtle)", borderRadius: 12, background: "var(--surface-base)" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 13, color: "var(--text-primary)", fontWeight: 700 }}>
+                              <span>{correlation.col_a}</span>
+                              {positive ? <TrendingUp size={16} color="var(--green)" /> : <TrendingDown size={16} color="#DC2626" />}
+                              <span>{correlation.col_b}</span>
+                              <span style={{ padding: "3px 8px", borderRadius: 999, background: "var(--green-pale)", color: "var(--green)", fontSize: 11, textTransform: "capitalize" }}>
+                                {correlation.strength}
+                              </span>
+                              <span style={{ color: "var(--text-secondary)" }}>r={correlation.r}</span>
+                            </div>
+                            <div style={{ marginTop: 8, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                              When {correlation.col_a} increases, {correlation.col_b} tends to {positive ? "increase" : "decrease"} as well (r={correlation.r}).
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+          {activeTab !== "analysis" && (
+          <>
           <div className="card" style={{ padding: 32, borderRadius: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginBottom: 24, border: 'none', transition: 'transform 0.2s ease' }}
                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
                onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
@@ -588,6 +746,8 @@ export default function DatasetDetailPage() {
               )}
             </div>
           </div>
+          </>
+          )}
           
         </div>
 

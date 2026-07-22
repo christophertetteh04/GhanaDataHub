@@ -25,6 +25,7 @@ from app.models.models import (
     VisibilityEnum,
 )
 from app.schemas.schemas import DatasetOut, DatasetVersionOut
+from app.services.csv_analyser import analyse_csv
 
 router = APIRouter()
 
@@ -154,6 +155,16 @@ async def create_dataset(
     notify(db, current_user.id, "Dataset Uploaded", f'Your dataset "{title}" was uploaded.', "upload")
     db.commit()
     db.refresh(dataset)
+
+    if file and content and file.content_type in ("text/csv", "application/csv"):
+        try:
+            analysis = analyse_csv(content, title)
+            dataset.analysis_data = analysis
+            db.commit()
+            db.refresh(dataset)
+        except Exception as e:
+            logger.warning("csv_analysis_failed", dataset_id=str(dataset.id), error=str(e))
+            # Never let analysis failure break the upload.
 
     logger.info(
         "dataset_created",
@@ -410,4 +421,3 @@ def get_versions(
         .order_by(DatasetVersion.version_number.desc())
         .all()
     )
-
