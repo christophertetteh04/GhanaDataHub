@@ -23,7 +23,7 @@ const steps = [
   {
     title: "Track What Matters",
     message:
-      "Watch datasets to get notified of updates. Follow categories for personalised recommendations. The platform learns what you care about.",
+      "Save datasets to get notified of updates. Follow categories for personalised recommendations. The platform learns what you care about.",
     highlight: null,
   },
 ];

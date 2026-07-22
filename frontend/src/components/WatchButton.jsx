@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Bookmark, BookmarkCheck, Loader2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
@@ -72,7 +72,7 @@ export default function WatchButton({ datasetId, datasetTitle }) {
         });
         if (res.ok) {
           setIsWatching(true);
-          setToastMsg("Added to watchlist");
+          setToastMsg("Saved dataset");
         } else if (res.status === 401 || res.status === 403) {
           navigate("/login");
         } else {
@@ -85,7 +85,7 @@ export default function WatchButton({ datasetId, datasetTitle }) {
         });
         if (res.ok || res.status === 204 || res.status === 404) {
           setIsWatching(false);
-          setToastMsg("Removed from watchlist");
+          setToastMsg("Removed from saved datasets");
         } else if (res.status === 401 || res.status === 403) {
           navigate("/login");
         } else {
@@ -131,11 +131,11 @@ export default function WatchButton({ datasetId, datasetTitle }) {
         {loading ? (
           <Loader2 size={15} className="animate-spin" />
         ) : isWatching ? (
-          <EyeOff size={15} />
+          <BookmarkCheck size={15} />
         ) : (
-          <Eye size={15} />
+          <Bookmark size={15} />
         )}
-        <span>{isWatching ? "Watching" : "Watch"}</span>
+        <span>{isWatching ? "Saved" : "Save"}</span>
       </button>
 
       {/* Internal Toast Notification */}

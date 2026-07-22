@@ -27,7 +27,7 @@ const NAV = [
   { to: "/datasets", icon: Database, label: "Datasets" },
   { to: "/catalogue", icon: BookOpen, label: "Catalogue" },
   { to: "/insights", icon: BookText, label: "Insights" },
-  { to: "/news", icon: Newspaper, label: "News Feed" },
+  { to: "/pulse", icon: Newspaper, label: "Ghana Pulse" },
   { to: "/search", icon: Search, label: "Search" },
 ];
 

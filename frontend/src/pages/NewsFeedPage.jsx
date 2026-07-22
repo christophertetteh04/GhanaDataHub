@@ -1,17 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  Activity,
+  BadgeCheck,
+  Bot,
+  Clock,
   Layers,
-  Database,
   RefreshCw,
+  Flame,
+  Lightbulb,
+  Sparkles,
   FileSpreadsheet,
   Braces,
   FileText,
   Table,
   Image,
   File,
+  TrendingUp,
 } from "lucide-react";
 import { datasetsApi, categoriesApi, dashboardApi } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import ObservanceBanner from "../components/ObservanceBanner";
 import TodayHighlight from "../components/TodayHighlight";
 import FeedCard from "../components/FeedCard";
@@ -20,9 +28,9 @@ import AdjoaEmptyState from "../components/AdjoaEmptyState";
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
 const FILTERS = [
-  { key: "all", label: "All Updates", icon: Layers },
-  { key: "new", label: "New Datasets", icon: Database },
-  { key: "updated", label: "Updated", icon: RefreshCw },
+  { key: "all", label: "Today in Ghana", icon: Layers },
+  { key: "new", label: "Fresh Signals", icon: Flame },
+  { key: "updated", label: "Changed Indicators", icon: RefreshCw },
 ];
 
 const THUMBNAIL_STYLES = {
@@ -97,8 +105,63 @@ function sortItems(items, sortKey) {
   return [...items].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 }
 
+function getGreeting(date = new Date()) {
+  const hour = date.getHours();
+  if (hour < 12) return "Good Morning";
+  if (hour < 17) return "Good Afternoon";
+  return "Good Evening";
+}
+
+function inferTopic(dataset) {
+  const text = `${dataset?.title || ""} ${dataset?.description || ""} ${dataset?.category?.name || ""}`.toLowerCase();
+  if (/inflation|gdp|forex|bank|stock|revenue|trade|econom/.test(text)) return "Economic";
+  if (/cocoa|crop|food|agriculture|maize|cassava/.test(text)) return "Agriculture";
+  if (/health|malaria|maternal|hospital|mortality|hiv/.test(text)) return "Health";
+  if (/population|urban|census|demographic/.test(text)) return "Population";
+  if (/electricity|energy|power|oil|gold/.test(text)) return "Infrastructure";
+  if (/education|school|teacher|literacy/.test(text)) return "Education";
+  return dataset?.category?.name || "Data";
+}
+
+function buildPulseIndicators(datasets, dashboardStats) {
+  const totalDownloads = dashboardStats?.total_downloads ?? datasets.reduce((acc, item) => acc + (item.download_count || 0), 0);
+  const topicCounts = datasets.reduce((acc, dataset) => {
+    const topic = inferTopic(dataset);
+    acc[topic] = (acc[topic] || 0) + 1;
+    return acc;
+  }, {});
+
+  return [
+    { label: "GDP", value: topicCounts.Economic ? "Updated" : "Watch", trend: topicCounts.Economic ? "Live economic data" : "No new signal", colour: "#1D4ED8" },
+    { label: "Inflation", value: datasets.some((d) => /inflation|cpi/i.test(`${d.title} ${d.description}`)) ? "Changed" : "Stable", trend: "Household pressure", colour: "#DC2626" },
+    { label: "Cocoa", value: datasets.some((d) => /cocoa/i.test(`${d.title} ${d.description}`)) ? "New" : "Watch", trend: "Export signal", colour: "#059669" },
+    { label: "Health", value: topicCounts.Health || 0, trend: "health signals", colour: "#EF4444" },
+    { label: "Population", value: topicCounts.Population || 0, trend: "demographic signals", colour: "#7C3AED" },
+    { label: "Downloads", value: formatLargeNumber(totalDownloads), trend: "platform demand", colour: "#D97706" },
+  ];
+}
+
+function getAdjoaDiscovery(datasets) {
+  const hasInflation = datasets.some((d) => /inflation|cpi|price/i.test(`${d.title} ${d.description}`));
+  const hasCocoa = datasets.some((d) => /cocoa|agriculture|food/i.test(`${d.title} ${d.description}`));
+  const hasRegional = datasets.some((d) => /region|district|area|zone/i.test(`${d.title} ${d.description}`));
+  const hasHealth = datasets.some((d) => /health|malaria|hospital|mortality/i.test(`${d.title} ${d.description}`));
+
+  if (hasInflation && hasCocoa) {
+    return "Adjoa noticed food and inflation signals appearing together. Compare cocoa, food prices, and CPI before drawing conclusions.";
+  }
+  if (hasRegional) {
+    return "Adjoa found regional signals in today's data. A Ghana map may reveal which regions deserve attention first.";
+  }
+  if (hasHealth) {
+    return "Adjoa found health-related updates. Look for regional gaps, service access patterns, and prevention indicators.";
+  }
+  return "Adjoa is watching for hidden connections across economy, health, agriculture, population and infrastructure data.";
+}
+
 export default function NewsFeedPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [datasets, setDatasets] = useState([]);
   const [categories, setCategories] = useState([]);
   const [dashboardStats, setDashboardStats] = useState(null);
@@ -139,7 +202,7 @@ export default function NewsFeedPage() {
       setNow(new Date());
     } catch (error) {
       console.error(error);
-      setLoadError("Unable to load the news feed. Please try again.");
+      setLoadError("Unable to load Ghana Pulse. Please try again.");
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -206,13 +269,19 @@ export default function NewsFeedPage() {
       setHasMore(payload.pages ? payload.page < payload.pages : items.length >= 20);
     } catch (error) {
       console.error(error);
-      setLoadError("Unable to load more updates.");
+      setLoadError("Unable to load more pulse items.");
     } finally {
       setIsLoadingMore(false);
     }
   };
 
   const totalDownloads = dashboardStats?.total_downloads ?? datasets.reduce((acc, item) => acc + (item.download_count || 0), 0);
+  const pulseIndicators = useMemo(() => buildPulseIndicators(datasets, dashboardStats), [datasets, dashboardStats]);
+  const todayCount = datasets.filter((item) => new Date(item.created_at).toDateString() === now.toDateString()).length;
+  const aiDiscoveryCount = datasets.filter((item) => item.analysis_data?.ai_summary).length;
+  const changedCount = datasets.filter(isUpdatedDataset).length;
+  const adjoaDiscovery = getAdjoaDiscovery(datasets);
+  const firstName = user?.full_name?.split(" ")?.[0] || user?.username || "there";
 
   return (
     <div className="news-feed-page" style={{ padding: 24, minHeight: "100vh", background: "var(--surface-base)", color: "var(--text-primary)" }}>
@@ -229,7 +298,7 @@ export default function NewsFeedPage() {
           <div style={{ display: "grid", gap: 20 }}>
             <div>
               <div style={{ marginBottom: 12, padding: 16, borderRadius: 14, background: "var(--surface-card)", boxShadow: "var(--shadow-md)" }}>
-                <div style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 10 }}>Feed Filters</div>
+                <div style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 10 }}>Pulse Filters</div>
                 <div style={{ display: "grid", gap: 10 }}>
                   {FILTERS.map(({ key, label, icon: Icon }) => {
                     const active = filter === key;
@@ -260,7 +329,7 @@ export default function NewsFeedPage() {
               </div>
             </div>
             <div style={{ background: "var(--surface-card)", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 16 }}>
-              <div style={{ fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 12 }}>Topics</div>
+              <div style={{ fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 12 }}>Follow Topics</div>
               <div style={{ display: "grid", gap: 10 }}>
                 {categories.map((category) => {
                   const isActive = activeCategory === category.id;
@@ -292,7 +361,7 @@ export default function NewsFeedPage() {
             </div>
             <div style={{ background: "var(--surface-card)", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>Recent</div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>Timeline</div>
               </div>
               <div style={{ display: "grid", gap: 8 }}>
                 {recentActivity.map((item) => (
@@ -313,7 +382,7 @@ export default function NewsFeedPage() {
                       textOverflow: "ellipsis",
                     }}
                   >
-                    {item.title}
+                    {inferTopic(item)} · {formatTimeAgoFrom(item.created_at, now)}
                   </button>
                 ))}
               </div>
@@ -338,11 +407,17 @@ export default function NewsFeedPage() {
               transition: "background 0.2s ease, backdrop-filter 0.2s ease",
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>Data Feed</div>
-                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>
-                  Latest updates from GhanaDataHub
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 10px", borderRadius: 999, background: "var(--green-pale)", color: "var(--green)", fontSize: 11, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 10 }}>
+                  <Activity size={13} /> Ghana Pulse
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
+                  {getGreeting(now)}, {firstName}
+                </div>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6, lineHeight: 1.6 }}>
+                  Kweku found <strong style={{ color: "var(--green)" }}>{todayCount || datasets.length}</strong> current Ghana data signal{(todayCount || datasets.length) === 1 ? "" : "s"}.
+                  {" "}Adjoa discovered <strong style={{ color: "var(--green)" }}>{aiDiscoveryCount || changedCount || 1}</strong> trend{(aiDiscoveryCount || changedCount || 1) === 1 ? "" : "s"} worth watching.
                   {isRefreshing && <span style={{ color: "var(--green)", marginLeft: 8 }}>Refreshing...</span>}
                 </div>
               </div>
@@ -383,9 +458,9 @@ export default function NewsFeedPage() {
                     color: "var(--text-primary)",
                   }}
                 >
-                  <option value="latest">Latest</option>
+                  <option value="latest">Latest Signals</option>
                   <option value="downloads">Most Downloaded</option>
-                  <option value="discussed">Most Discussed</option>
+                  <option value="discussed">Highest Attention</option>
                 </select>
               </div>
             </div>
@@ -419,6 +494,43 @@ export default function NewsFeedPage() {
             </div>
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
+              <section className="pulse-briefing-card">
+                <div className="pulse-briefing-main">
+                  <div className="pulse-briefing-kicker">
+                    <Sparkles size={14} /> Today's Ghana Briefing
+                  </div>
+                  <h1>What changed in Ghana data today?</h1>
+                  <p>
+                    Kweku is tracking new economic, regional, health, agriculture and public data signals.
+                    This pulse refreshes automatically from GhanaDataHub datasets and analysis.
+                  </p>
+                  <div className="pulse-briefing-stats">
+                    <span>{datasets.length} live updates</span>
+                    <span>{aiDiscoveryCount} AI discoveries</span>
+                    <span>{changedCount} changed indicators</span>
+                  </div>
+                </div>
+                <div className="pulse-adjoa-card">
+                  <div className="pulse-adjoa-icon">
+                    <Lightbulb size={18} />
+                  </div>
+                  <div>
+                    <strong>Adjoa's Discovery</strong>
+                    <p>{adjoaDiscovery}</p>
+                  </div>
+                </div>
+              </section>
+
+              <div className="pulse-indicator-strip" aria-label="Live Ghana indicators">
+                {pulseIndicators.map((indicator) => (
+                  <div className="pulse-indicator" key={indicator.label} style={{ borderTopColor: indicator.colour }}>
+                    <span>{indicator.label}</span>
+                    <strong style={{ color: indicator.colour }}>{indicator.value}</strong>
+                    <small>{indicator.trend}</small>
+                  </div>
+                ))}
+              </div>
+
               <TodayHighlight />
 
               <div className="feed-category-strip" aria-label="Category filters">
@@ -483,7 +595,7 @@ export default function NewsFeedPage() {
                     opacity: isLoadingMore || !hasMore ? 0.6 : 1,
                   }}
                 >
-                  {isLoadingMore ? "Loading..." : hasMore ? "Load more updates" : "You're all caught up"}
+                  {isLoadingMore ? "Loading..." : hasMore ? "Load more pulse items" : "You're all caught up"}
                 </button>
               )}
             </div>
@@ -494,7 +606,7 @@ export default function NewsFeedPage() {
           <div style={{ display: "grid", gap: 20 }}>
             <div style={{ background: "var(--surface-card)", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <div style={{ fontSize: 14, fontWeight: 700 }}>Recent Updates</div>
+                <div style={{ fontSize: 14, fontWeight: 700 }}>Most Important</div>
                 <button onClick={handleClearFilters} style={{ border: "none", background: "transparent", color: "var(--green)", fontSize: 12, cursor: "pointer" }}>
                   Clear
                 </button>
@@ -524,8 +636,8 @@ export default function NewsFeedPage() {
                         <FileIcon size={18} color={fileStyle.color} />
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.title}</div>
-                        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>{item.category?.name || "Uncategorized"}</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{inferTopic(item)} signal worth watching</div>
+                        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>{item.category?.name || "Uncategorized"} · {item.download_count || 0} downloads</div>
                         <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{formatTimeAgoFrom(item.created_at, now)}</div>
                       </div>
                     </button>
@@ -535,21 +647,38 @@ export default function NewsFeedPage() {
             </div>
 
             <div style={{ background: "var(--surface-card)", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 16 }}>
-              <div style={{ marginBottom: 14, fontSize: 14, fontWeight: 700 }}>Platform Stats</div>
+              <div style={{ marginBottom: 14, fontSize: 14, fontWeight: 700 }}>Pulse Summary</div>
               <div style={{ display: "grid", gap: 14 }}>
                 <div style={statItemStyle}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: "var(--green)" }}>{dashboardStats?.total_datasets ?? 0}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Total Datasets</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 24, fontWeight: 700, color: "var(--green)" }}><Clock size={20} /> {todayCount}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Signals today</div>
                 </div>
                 <div style={statItemStyle}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: "var(--green)" }}>{dashboardStats?.total_users ?? 0}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Total Users</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 24, fontWeight: 700, color: "var(--green)" }}><Bot size={20} /> {aiDiscoveryCount}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>AI-ready updates</div>
                 </div>
                 <div style={statItemStyle}>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: "var(--green)" }}>{formatLargeNumber(totalDownloads)}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Total Downloads</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 24, fontWeight: 700, color: "var(--green)" }}><TrendingUp size={20} /> {formatLargeNumber(totalDownloads)}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Evidence downloads</div>
                 </div>
               </div>
+            </div>
+
+            <div style={{ background: "linear-gradient(135deg, var(--green), #004D2C)", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 18, color: "white" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <BadgeCheck size={18} />
+                <strong>Morning Briefing</strong>
+              </div>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: "rgba(255,255,255,0.82)" }}>
+                Ghana Pulse watches datasets, indicators and AI summaries so you can focus on the updates that may affect policy, business, research and households.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate("/insights")}
+                style={{ marginTop: 14, height: 36, borderRadius: 10, border: "1px solid rgba(255,255,255,0.65)", background: "rgba(255,255,255,0.12)", color: "white", fontWeight: 800, padding: "0 12px", cursor: "pointer" }}
+              >
+                Open Insights
+              </button>
             </div>
           </div>
         </div>
@@ -566,6 +695,141 @@ export default function NewsFeedPage() {
 
         .news-feed-topbar {
           border: 1px solid var(--border-subtle);
+        }
+
+        .pulse-briefing-card {
+          display: grid;
+          grid-template-columns: minmax(0, 1.25fr) minmax(240px, 0.75fr);
+          gap: 14px;
+          padding: 20px;
+          border-radius: 18px;
+          border: 1px solid rgba(0,163,92,0.18);
+          background:
+            radial-gradient(circle at top left, rgba(0,163,92,0.12), transparent 34%),
+            var(--surface-card);
+          box-shadow: var(--shadow-md);
+        }
+
+        .pulse-briefing-kicker {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: var(--green);
+          font-size: 11px;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          margin-bottom: 12px;
+        }
+
+        .pulse-briefing-main h1 {
+          margin: 0;
+          color: var(--text-primary);
+          font-size: 28px;
+          line-height: 1.1;
+          letter-spacing: -0.02em;
+        }
+
+        .pulse-briefing-main p {
+          margin: 12px 0 0;
+          color: var(--text-secondary);
+          font-size: 14px;
+          line-height: 1.7;
+          max-width: 620px;
+        }
+
+        .pulse-briefing-stats {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          margin-top: 16px;
+        }
+
+        .pulse-briefing-stats span {
+          display: inline-flex;
+          border-radius: 999px;
+          border: 1px solid var(--border-default);
+          background: var(--surface-elevated);
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 800;
+          padding: 6px 10px;
+        }
+
+        .pulse-adjoa-card {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          border-radius: 16px;
+          border: 1px solid var(--border-subtle);
+          background: var(--surface-elevated);
+          padding: 16px;
+        }
+
+        .pulse-adjoa-icon {
+          width: 38px;
+          height: 38px;
+          border-radius: 14px;
+          background: rgba(252,209,22,0.18);
+          color: #D97706;
+          display: grid;
+          place-items: center;
+          flex-shrink: 0;
+        }
+
+        .pulse-adjoa-card strong {
+          display: block;
+          color: var(--text-primary);
+          font-size: 13px;
+          margin-bottom: 5px;
+        }
+
+        .pulse-adjoa-card p {
+          margin: 0;
+          color: var(--text-secondary);
+          font-size: 12px;
+          line-height: 1.6;
+        }
+
+        .pulse-indicator-strip {
+          display: grid;
+          grid-template-columns: repeat(6, minmax(120px, 1fr));
+          gap: 10px;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+
+        .pulse-indicator-strip::-webkit-scrollbar {
+          display: none;
+        }
+
+        .pulse-indicator {
+          min-width: 120px;
+          border-top: 3px solid var(--green);
+          border-radius: 14px;
+          border-left: 1px solid var(--border-subtle);
+          border-right: 1px solid var(--border-subtle);
+          border-bottom: 1px solid var(--border-subtle);
+          background: var(--surface-card);
+          box-shadow: var(--shadow-sm);
+          padding: 12px;
+        }
+
+        .pulse-indicator span,
+        .pulse-indicator small {
+          display: block;
+          color: var(--text-muted);
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+
+        .pulse-indicator strong {
+          display: block;
+          margin: 6px 0 3px;
+          font-size: 18px;
+          font-weight: 900;
         }
 
         .feed-card {
@@ -762,6 +1026,14 @@ export default function NewsFeedPage() {
           .news-feed-topbar {
             position: relative !important;
             top: unset !important;
+          }
+
+          .pulse-briefing-card {
+            grid-template-columns: 1fr;
+          }
+
+          .pulse-indicator-strip {
+            grid-template-columns: repeat(6, 140px);
           }
 
         }

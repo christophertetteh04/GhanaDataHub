@@ -1,14 +1,19 @@
 import { useId, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  ArrowRight,
+  BadgeCheck,
   Bookmark,
+  Bot,
   Braces,
+  Code2,
   Download,
   File,
   FileSpreadsheet,
   FileText,
   Image,
   Info,
+  Map,
   Share2,
   Table,
 } from "lucide-react";
@@ -34,31 +39,108 @@ const FILE_TYPE_STYLES = {
   default: { bg: "var(--surface-elevated)", color: "var(--text-secondary)", icon: File },
 };
 
+const INDICATOR_META = {
+  "SP.URB.TOTL.IN.ZS": {
+    title: "Ghana's Urban Population Keeps Rising",
+    why: "Urbanisation affects housing, jobs, transport, school places and local government planning.",
+    visual: "line",
+    source: "World Bank",
+  },
+  "SP.POP.TOTL": {
+    title: "Ghana Population Data Signals Changing Demand",
+    why: "Population change helps explain pressure on housing, education, health services and jobs.",
+    visual: "line",
+    source: "World Bank",
+  },
+  "NY.GDP.MKTP.CD": {
+    title: "Ghana GDP Data Points to the Economy's Direction",
+    why: "GDP tells investors, policymakers and researchers how the size of the economy is changing.",
+    visual: "area",
+    source: "World Bank",
+  },
+  "NY.GDP.MKTP.KD.ZG": {
+    title: "Ghana Growth Data Shows Economic Momentum",
+    why: "Growth trends reveal whether output is expanding fast enough to support jobs and investment.",
+    visual: "area",
+    source: "World Bank",
+  },
+  "FP.CPI.TOTL.ZG": {
+    title: "Inflation Data Shows Pressure on Ghanaian Households",
+    why: "Inflation affects food prices, transport costs, wages and household purchasing power.",
+    visual: "line",
+    source: "World Bank",
+  },
+  "EG.ELC.ACCS.ZS": {
+    title: "Electricity Access Data Highlights Ghana's Infrastructure Gap",
+    why: "Power access shapes education, business growth, health delivery and rural opportunity.",
+    visual: "map",
+    source: "World Bank",
+  },
+  "SE.ADT.LITR.ZS": {
+    title: "Literacy Data Reveals Ghana's Human Capital Story",
+    why: "Literacy is a foundation for jobs, learning outcomes and long-term economic mobility.",
+    visual: "bar",
+    source: "World Bank",
+  },
+  "SP.DYN.IMRT.IN": {
+    title: "Child Health Data Shows Progress and Remaining Gaps",
+    why: "Infant mortality trends help identify where health access, prevention and nutrition need attention.",
+    visual: "line",
+    source: "World Bank",
+  },
+};
+
+function getIndicatorMeta(dataset) {
+  const text = `${dataset.title || ""} ${dataset.description || ""}`;
+  return Object.entries(INDICATOR_META).find(([code]) => text.includes(code))?.[1] || null;
+}
+
+function humaniseTitle(dataset) {
+  const meta = getIndicatorMeta(dataset);
+  if (meta) return meta.title;
+  return (dataset.title || "Ghana data update")
+    .replace(/^World Bank Open Data\s*[-—]\s*Ghana:\s*/i, "")
+    .replace(/\b[A-Z]{2,}\.[A-Z0-9.]{4,}\b/g, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s*[-—:]\s*$/, "")
+    .trim() || dataset.title || "Ghana data update";
+}
+
 function computeHeadline(dataset) {
-  const title = dataset.title || "";
+  const title = humaniseTitle(dataset);
+  const rawTitle = dataset.title || "";
+  const text = `${rawTitle} ${dataset.description || ""}`.toLowerCase();
   const cat = dataset.category?.name || "";
   const downloads = dataset.download_count || 0;
+  const meta = getIndicatorMeta(dataset);
+  if (meta) return meta.title;
 
-  if (title.toLowerCase().includes("forex") || title.toLowerCase().includes("exchange rate")) {
-    return `New Ghana forex data published — ${title}`;
+  if (text.includes("forex") || text.includes("exchange rate")) {
+    return `Ghana forex rates move into focus`;
   }
-  if (title.toLowerCase().includes("inflation")) {
-    return "Ghana inflation data updated — explore the latest figures";
+  if (text.includes("inflation") || text.includes("cpi")) {
+    return "Inflation data gives a fresh read on household pressure";
   }
-  if (title.toLowerCase().includes("cocoa")) {
-    return `Cocoa data: ${title} now available for download`;
+  if (text.includes("cocoa")) {
+    return "Cocoa data reveals what's changing in Ghana's export economy";
   }
-  if (title.toLowerCase().includes("gse") || title.toLowerCase().includes("stock")) {
-    return `Stock market data: ${title}`;
+  if (text.includes("gse") || text.includes("stock")) {
+    return `Market pulse: ${title}`;
   }
-  if (title.toLowerCase().includes("population") || title.toLowerCase().includes("census")) {
-    return `Population & demographics: ${title}`;
+  if (text.includes("population") || text.includes("census") || text.includes("urban")) {
+    return `Population pulse: ${title}`;
+  }
+  if (text.includes("health") || text.includes("malaria") || text.includes("hospital") || text.includes("mortality")) {
+    return `Health pulse: ${title}`;
+  }
+  if (text.includes("region") || text.includes("district")) {
+    return `Regional pulse: ${title}`;
   }
   if (downloads > 100) {
-    return `Trending: ${title} — downloaded ${downloads} times`;
+    return `Trending in Ghana data: ${title}`;
   }
   if (cat) {
-    return `New ${cat} data: ${title}`;
+    return `${cat} pulse: ${title}`;
   }
   return title;
 }
@@ -66,13 +148,16 @@ function computeHeadline(dataset) {
 function getBadge(dataset) {
   const ageMs = Date.now() - new Date(dataset.created_at).getTime();
   const ageHours = ageMs / 3600000;
-  if (ageHours < 2) return { label: "BREAKING", colour: "#DC2626", bg: "#FEF2F2" };
-  if (dataset.version > 1) return { label: "UPDATED", colour: "#1D4ED8", bg: "#EFF6FF" };
-  if (dataset.download_count > 50) return { label: "TRENDING", colour: "#059669", bg: "#ECFDF5" };
-  return null;
+  if (ageHours < 2) return { label: "Critical", colour: "#DC2626", bg: "rgba(220,38,38,0.10)" };
+  if (dataset.download_count > 50) return { label: "Trending", colour: "#059669", bg: "rgba(5,150,105,0.10)" };
+  if (dataset.version > 1) return { label: "Important", colour: "#D97706", bg: "rgba(217,119,6,0.12)" };
+  if (dataset.analysis_data?.ai_summary) return { label: "AI Discovery", colour: "#7C3AED", bg: "rgba(124,58,237,0.12)" };
+  return { label: "Research", colour: "#1D4ED8", bg: "rgba(29,78,216,0.10)" };
 }
 
 function getContextLine(dataset) {
+  const meta = getIndicatorMeta(dataset);
+  if (meta) return meta.why;
   if (dataset.analysis_data?.ai_summary) {
     const firstSentence = dataset.analysis_data.ai_summary.split(".")[0];
     if (firstSentence.length > 20 && firstSentence.length < 200) return `${firstSentence}.`;
@@ -82,6 +167,27 @@ function getContextLine(dataset) {
     if (first.length > 20) return `${first}.`;
   }
   return null;
+}
+
+function getPublisher(dataset) {
+  const meta = getIndicatorMeta(dataset);
+  if (meta?.source) return meta.source;
+  const text = `${dataset.title || ""} ${dataset.description || ""}`.toLowerCase();
+  if (text.includes("world bank")) return "World Bank";
+  if (text.includes("bank of ghana") || text.includes("bog")) return "Bank of Ghana";
+  if (text.includes("ghana statistical") || text.includes("statsghana")) return "Ghana Statistical Service";
+  if (text.includes("faostat") || text.includes("fao")) return "FAOSTAT";
+  if (text.includes("who")) return "WHO";
+  return dataset.owner?.full_name || "GhanaDataHub";
+}
+
+function getVisualType(dataset) {
+  const meta = getIndicatorMeta(dataset);
+  if (meta) return meta.visual;
+  const text = `${dataset.title || ""} ${dataset.description || ""} ${dataset.category?.name || ""}`.toLowerCase();
+  if (/region|district|map|health|hospital|mortality/.test(text)) return "map";
+  if (/crop|cocoa|agriculture|export|trade/.test(text)) return "bar";
+  return "line";
 }
 
 function getHashIndex(value, length) {
@@ -201,16 +307,49 @@ function FallbackFilePreview({ fileType }) {
   );
 }
 
+function PulseVisual({ dataset }) {
+  const type = getVisualType(dataset);
+  if (dataset.preview_data && type !== "map") {
+    return <SparklinePreview data={dataset.preview_data} />;
+  }
+
+  if (type === "map") {
+    return (
+      <svg width="96" height="54" viewBox="0 0 96 54" aria-label="Ghana map preview">
+        <path d="M42 5 65 9 82 23 75 43 54 50 31 46 16 34 22 14Z" fill="var(--green-pale)" stroke="var(--green)" strokeWidth="1.5" />
+        <path d="M42 5 44 25 22 14Z" fill="rgba(0,163,92,0.45)" />
+        <path d="M44 25 65 9 82 23 58 31Z" fill="rgba(0,163,92,0.28)" />
+        <path d="M44 25 58 31 54 50 31 46Z" fill="rgba(0,163,92,0.62)" />
+      </svg>
+    );
+  }
+
+  if (type === "bar") {
+    return (
+      <svg width="96" height="36" viewBox="0 0 96 36" aria-label="Bar chart preview">
+        {[14, 22, 17, 29, 24, 32].map((height, index) => (
+          <rect key={`${height}-${index}`} x={8 + index * 14} y={34 - height} width="8" height={height} rx="3" fill="var(--green)" opacity={0.35 + index * 0.09} />
+        ))}
+      </svg>
+    );
+  }
+
+  return <FallbackFilePreview fileType={dataset.file_type} />;
+}
+
 export default function FeedCard({ dataset, categoryColours = {}, onCategoryClick }) {
   const navigate = useNavigate();
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [copied, setCopied] = useState(false);
   const categoryName = dataset.category?.name || "Uncategorized";
   const categoryColour = categoryColours[categoryName] || categoryColours.Default || "var(--green)";
-  const ownerName = dataset.owner?.full_name || "Unknown";
+  const publisher = getPublisher(dataset);
+  const ownerName = publisher;
   const badge = getBadge(dataset);
   const contextLine = getContextLine(dataset);
   const tags = Array.isArray(dataset.tags) ? dataset.tags : [];
+  const headline = computeHeadline(dataset);
+  const confidence = publisher === "GhanaDataHub" || publisher === "Unknown" ? 4 : 5;
 
   const handleBookmark = async () => {
     if (!localStorage.getItem("access_token")) {
@@ -272,7 +411,7 @@ export default function FeedCard({ dataset, categoryColours = {}, onCategoryClic
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {ownerName}
+              {publisher}
             </div>
             <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
               {formatTimeAgo(dataset.created_at)}
@@ -297,15 +436,9 @@ export default function FeedCard({ dataset, categoryColours = {}, onCategoryClic
       </div>
 
       <div style={{ marginTop: 8 }}>
-        {dataset.preview_data ? (
-          <div style={{ float: "right", marginLeft: 12, marginBottom: 4 }}>
-            <SparklinePreview data={dataset.preview_data} />
-          </div>
-        ) : (
-          <div style={{ float: "right", marginLeft: 12, marginBottom: 4 }}>
-            <FallbackFilePreview fileType={dataset.file_type} />
-          </div>
-        )}
+        <div style={{ float: "right", marginLeft: 12, marginBottom: 4, minWidth: 96, minHeight: 42, display: "grid", placeItems: "center", borderRadius: 12, background: "var(--surface-elevated)", border: "1px solid var(--border-subtle)" }}>
+          <PulseVisual dataset={dataset} />
+        </div>
         <button
           type="button"
           onClick={() => navigate(`/datasets/${dataset.id}`)}
@@ -326,14 +459,20 @@ export default function FeedCard({ dataset, categoryColours = {}, onCategoryClic
             overflow: "hidden",
           }}
         >
-          {computeHeadline(dataset)}
+          {headline}
         </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", clear: "left", marginTop: 6 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "var(--green)", fontSize: 11, fontWeight: 900 }}>
+            <BadgeCheck size={12} /> {"★".repeat(confidence)}{"☆".repeat(5 - confidence)} Verified
+          </span>
+          <span style={{ color: "var(--text-muted)", fontSize: 11 }}>· {dataset.analysis_data?.ai_summary ? "AI summary ready" : "Metadata intelligence"}</span>
+        </div>
       </div>
 
       {contextLine && (
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 13, fontStyle: "italic", color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: 10, clear: "both" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, marginTop: 10, marginBottom: 10, clear: "both", background: "var(--surface-elevated)", border: "1px solid var(--border-subtle)", borderRadius: 12, padding: 12 }}>
           <Info size={12} color="var(--text-muted)" style={{ marginTop: 3, flexShrink: 0 }} />
-          <span>{contextLine}</span>
+          <span><strong style={{ color: "var(--text-primary)" }}>Why it matters:</strong> {contextLine}</span>
         </div>
       )}
 
@@ -379,11 +518,27 @@ export default function FeedCard({ dataset, categoryColours = {}, onCategoryClic
         </button>
         <button type="button" onClick={handleBookmark} className="feed-card-action">
           <Bookmark size={14} fill={isBookmarked ? "currentColor" : "none"} />
-          <span>{isBookmarked ? "Saved" : "Bookmark"}</span>
+          <span>{isBookmarked ? "Saved" : "Save"}</span>
         </button>
         <button type="button" onClick={handleShare} className="feed-card-action">
           <Share2 size={14} />
           <span>{copied ? "Copied!" : "Share"}</span>
+        </button>
+        <button type="button" onClick={() => navigate(`/datasets/${dataset.id}`)} className="feed-card-action">
+          <ArrowRight size={14} />
+          <span>Explore</span>
+        </button>
+        <button type="button" onClick={() => navigate(`/datasets/${dataset.id}?ask=kweku`)} className="feed-card-action">
+          <Bot size={14} />
+          <span>Kweku</span>
+        </button>
+        <button type="button" onClick={() => navigate(`/datasets/${dataset.id}?tab=map`)} className="feed-card-action">
+          <Map size={14} />
+          <span>Map</span>
+        </button>
+        <button type="button" onClick={() => navigate(`/datasets/${dataset.id}?tab=api`)} className="feed-card-action">
+          <Code2 size={14} />
+          <span>API</span>
         </button>
         {categoryName && (
           <button

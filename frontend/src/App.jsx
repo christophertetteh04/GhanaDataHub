@@ -55,6 +55,7 @@ function AppContent() {
           <Route path="/insights/:slug" element={<PrivateRoute><Layout><BlogPostPage /></Layout></PrivateRoute>} />
           <Route path="/blog" element={<PrivateRoute><Layout><BlogPage /></Layout></PrivateRoute>} />
           <Route path="/blog/:slug" element={<PrivateRoute><Layout><BlogPostPage /></Layout></PrivateRoute>} />
+          <Route path="/pulse" element={<PrivateRoute><Layout><NewsFeedPage /></Layout></PrivateRoute>} />
           <Route path="/news" element={<PrivateRoute><Layout><NewsFeedPage /></Layout></PrivateRoute>} />
           <Route path="/search" element={<PrivateRoute><Layout><SearchPage /></Layout></PrivateRoute>} />
           <Route path="/notifications" element={<PrivateRoute><Layout><NotificationsPage /></Layout></PrivateRoute>} />
