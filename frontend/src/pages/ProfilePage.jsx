@@ -3,7 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { usersApi, datasetsApi, apiKeysApi, authApi } from "../services/api";
 import toast from "react-hot-toast";
-import { Database, Bookmark, Download, Settings, Key, Edit3, Copy, ChevronRight, ExternalLink } from "lucide-react";
+import {
+  Bookmark,
+  Copy,
+  Database,
+  Download,
+  Edit3,
+  Globe,
+  Key,
+  Search,
+  Settings,
+  TrendingUp,
+  Upload,
+} from "lucide-react";
+import ActivityHeatmap from "../components/ActivityHeatmap";
+import DataRadar from "../components/DataRadar";
+import QualityBadge from "../components/QualityBadge";
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "";
@@ -20,6 +35,85 @@ function timeAgo(value) {
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
 }
+
+function pad(value) {
+  return String(value).padStart(2, "0");
+}
+
+function getISOWeekKey(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-${pad(weekNo)}`;
+}
+
+function buildWeekCounts(items, dateKey = "created_at") {
+  return items.reduce((acc, item) => {
+    const key = getISOWeekKey(item?.[dateKey]);
+    if (!key) return acc;
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+}
+
+function truncate(text, max) {
+  if (!text) return "No description provided.";
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+function MiniDatasetSparkline({ dataset }) {
+  const raw = Array.isArray(dataset?.preview_data)
+    ? dataset.preview_data
+    : Array.isArray(dataset?.preview_data?.values)
+      ? dataset.preview_data.values
+      : [];
+  const values = raw.map((value) => Number(value)).filter((value) => !Number.isNaN(value));
+
+  if (values.length < 2) {
+    return (
+      <div style={{ width: 70, height: 42, borderRadius: 10, background: "var(--green-pale)", display: "grid", placeItems: "center", color: "var(--green)", fontSize: 12, fontWeight: 900 }}>
+        {dataset.file_type?.slice(0, 2).toUpperCase() || "DS"}
+      </div>
+    );
+  }
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const points = values.map((value, index) => {
+    const x = (index / (values.length - 1)) * 68;
+    const y = 36 - ((value - min) / range) * 28;
+    return `${x},${y}`;
+  }).join(" ");
+
+  return (
+    <svg width="70" height="42" viewBox="0 0 70 42" aria-label="Dataset sparkline">
+      <polyline points={points} fill="none" stroke="var(--green)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+const ACHIEVEMENT_ICONS = {
+  Upload,
+  TrendingUp,
+  Database,
+  Bookmark,
+  Globe,
+  Search,
+};
+
+const ACHIEVEMENTS = [
+  { id: "first_upload", icon: "Upload", label: "First Upload", desc: "Uploaded your first dataset", colour: "#006B3F", earned: (stats) => stats.datasetCount >= 1 },
+  { id: "downloads_100", icon: "TrendingUp", label: "100 Downloads Club", desc: "Your datasets received 100+ downloads", colour: "#1D4ED8", earned: (stats) => stats.totalDownloadsReceived >= 100 },
+  { id: "prolific", icon: "Database", label: "Prolific Contributor", desc: "Uploaded 10 or more datasets", colour: "#7C3AED", earned: (stats) => stats.datasetCount >= 10 },
+  { id: "curator", icon: "Bookmark", label: "Data Curator", desc: "Bookmarked 20 or more datasets", colour: "#0369A1", earned: (stats) => stats.bookmarkCount >= 20 },
+  { id: "open_advocate", icon: "Globe", label: "Open Data Advocate", desc: "All your datasets are public", colour: "#059669", earned: (stats) => stats.datasetCount > 0 && stats.privateCount === 0 },
+  { id: "explorer", icon: "Search", label: "Explorer", desc: "Downloaded 10 or more datasets", colour: "#D97706", earned: (stats) => stats.downloadHistoryCount >= 10 },
+];
 
 function Badge({ label }) {
   return (
@@ -88,6 +182,29 @@ export default function ProfilePage() {
   }, [notifications]);
 
   const totalDownloads = useMemo(() => datasets.reduce((sum, item) => sum + (item.download_count || 0), 0), [datasets]);
+  const uploadWeeks = useMemo(() => buildWeekCounts(datasets, "created_at"), [datasets]);
+  const downloadWeeks = useMemo(() => buildWeekCounts(history, "created_at"), [history]);
+  const profileStats = useMemo(() => ({
+    datasetCount: datasets.length,
+    totalDownloadsReceived: totalDownloads,
+    bookmarkCount: bookmarks.length,
+    privateCount: datasets.filter((item) => item.visibility !== "public").length,
+    downloadHistoryCount: history.length,
+  }), [datasets, totalDownloads, bookmarks, history]);
+  const earnedAchievements = useMemo(
+    () => ACHIEVEMENTS.filter((achievement) => achievement.earned(profileStats)),
+    [profileStats],
+  );
+
+  const getAchievementProgress = (achievementId) => {
+    if (achievementId === "first_upload") return Math.min(1, profileStats.datasetCount / 1);
+    if (achievementId === "downloads_100") return Math.min(1, profileStats.totalDownloadsReceived / 100);
+    if (achievementId === "prolific") return Math.min(1, profileStats.datasetCount / 10);
+    if (achievementId === "curator") return Math.min(1, profileStats.bookmarkCount / 20);
+    if (achievementId === "open_advocate") return profileStats.datasetCount > 0 ? Math.max(0, 1 - profileStats.privateCount / profileStats.datasetCount) : 0;
+    if (achievementId === "explorer") return Math.min(1, profileStats.downloadHistoryCount / 10);
+    return 0;
+  };
 
   const handleProfileSave = async () => {
     try {
@@ -225,6 +342,71 @@ export default function ProfilePage() {
         <StatCard icon={Settings} label="Member Since" value={formatDate(user.created_at)} />
       </div>
 
+      <div className="profile-insights-grid" style={{ marginTop: 24, display: "grid", gridTemplateColumns: "minmax(0, 1fr) 300px", gap: 16 }}>
+        <div className="card" style={{ padding: 20, overflow: "hidden" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)", marginBottom: 14 }}>Activity</div>
+          <ActivityHeatmap uploadWeeks={uploadWeeks} downloadWeeks={downloadWeeks} />
+        </div>
+        <div className="card" style={{ padding: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)", marginBottom: 10 }}>Data Interests</div>
+          <DataRadar datasets={datasets} downloadHistory={history} />
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: 20, marginTop: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>Achievements</div>
+          <div style={{ fontSize: 12, color: "var(--green)", fontWeight: 800 }}>
+            {earnedAchievements.length}/{ACHIEVEMENTS.length}
+          </div>
+        </div>
+        <div className="profile-achievements-grid" style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(80px, 1fr))", gap: 12 }}>
+          {ACHIEVEMENTS.map((achievement) => {
+            const earned = achievement.earned(profileStats);
+            const Icon = ACHIEVEMENT_ICONS[achievement.icon] || Database;
+            const progress = getAchievementProgress(achievement.id);
+            return (
+              <div
+                key={achievement.id}
+                title={earned ? achievement.desc : `Locked: ${achievement.desc}`}
+                style={{
+                  minWidth: 80,
+                  textAlign: "center",
+                  padding: "12px 8px",
+                  borderRadius: 12,
+                  border: "1px solid var(--border-subtle)",
+                  background: "var(--surface-elevated)",
+                  opacity: earned ? 1 : 0.72,
+                }}
+              >
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "50%",
+                    background: earned ? achievement.colour : "#D1D5DB",
+                    color: "white",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Icon size={18} />
+                </div>
+                <div style={{ marginTop: 8, fontSize: 11, fontWeight: 800, color: earned ? "var(--text-primary)" : "var(--text-muted)", lineHeight: 1.25 }}>
+                  {achievement.label}
+                </div>
+                {!earned && (
+                  <div style={{ marginTop: 9, width: "100%", height: 4, borderRadius: 99, background: "var(--gray-300)", overflow: "hidden" }}>
+                    <div style={{ width: `${Math.round(progress * 100)}%`, height: "100%", background: "var(--green)", borderRadius: 99 }} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div style={{ marginTop: 26, display: "flex", gap: 10, flexWrap: "wrap" }}>
         {[
           { key: "datasets", label: "My Datasets" },
@@ -262,17 +444,64 @@ export default function ProfilePage() {
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
                 {datasets.map((item) => (
-                  <div key={item.id} className="list-row">
-                    <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                      <div className="file-icon">{item.file_type?.slice(0, 2).toUpperCase() || "DS"}</div>
-                      <div>
-                        <a href={`/datasets/${item.id}`} style={{ fontWeight: 700, color: "var(--gray-900)" }}>{item.title}</a>
-                        <div style={{ fontSize: 12, color: "var(--gray-500)", marginTop: 3 }}>
-                          {item.visibility} · {item.download_count} downloads · uploaded {formatDate(item.created_at)}
-                        </div>
+                  <div
+                    key={item.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: 16,
+                      borderRadius: 12,
+                      background: "var(--surface-card)",
+                      border: "1px solid var(--border-subtle)",
+                      boxShadow: "var(--shadow-sm)",
+                    }}
+                  >
+                    <div style={{ flexShrink: 0 }}>
+                      <MiniDatasetSparkline dataset={item} />
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <a
+                        href={`/datasets/${item.id}`}
+                        style={{
+                          fontWeight: 800,
+                          fontSize: 14,
+                          color: "var(--text-primary)",
+                          display: "block",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {item.title}
+                      </a>
+                      <div style={{ fontSize: 12, color: "var(--green)", fontWeight: 700, marginTop: 4 }}>
+                        {item.category?.name || "Uncategorized"}
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4, lineHeight: 1.45 }}>
+                        {truncate(item.description, 60)}
                       </div>
                     </div>
-                    <a href={`/datasets/${item.id}`} className="text-link">Edit <ChevronRight size={14} /></a>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+                      <div
+                        title={`${item.download_count || 0} downloads`}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 5,
+                          color: (item.download_count || 0) > 10 ? "var(--green)" : "var(--text-muted)",
+                          fontSize: 12,
+                          fontWeight: 800,
+                        }}
+                      >
+                        <TrendingUp size={14} />
+                        {item.download_count || 0}
+                      </div>
+                      <QualityBadge dataset={item} size="sm" />
+                      <a href={`/datasets/${item.id}`} className="text-link" style={{ whiteSpace: "nowrap" }}>
+                        <Edit3 size={14} /> Edit
+                      </a>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -451,6 +680,23 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+      <style>{`
+        @media (max-width: 900px) {
+          .profile-insights-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .profile-achievements-grid {
+            grid-template-columns: repeat(3, minmax(80px, 1fr)) !important;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .profile-achievements-grid {
+            grid-template-columns: repeat(2, minmax(80px, 1fr)) !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

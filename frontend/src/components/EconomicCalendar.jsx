@@ -11,6 +11,7 @@ const MONTH_ABBR = [
 
 function getDaysUntil(dateStr) {
   const eventDate = new Date(dateStr + "T00:00:00");
+  if (Number.isNaN(eventDate.getTime())) return null;
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   return Math.ceil((eventDate - today) / 86400000);
@@ -18,16 +19,18 @@ function getDaysUntil(dateStr) {
 
 function DaysUntilBadge({ daysUntil }) {
   let bg, color, text;
-  if (daysUntil === 0) {
+  if (daysUntil === null) {
+    bg = "var(--surface-elevated)"; color = "var(--text-muted)"; text = "TBA";
+  } else if (daysUntil === 0) {
     bg = "var(--green)"; color = "#fff"; text = "Today";
   } else if (daysUntil === 1) {
-    bg = "#fef08a"; color = "#854d0e"; text = "Tomorrow";
+    bg = "rgba(252, 209, 22, 0.18)"; color = "var(--gold, #D97706)"; text = "Tomorrow";
   } else if (daysUntil < 0) {
     bg = "var(--surface-base)"; color = "var(--text-muted)"; text = "Past";
   } else if (daysUntil <= 7) {
-    bg = "#fed7aa"; color = "#9a3412"; text = `${daysUntil} days`;
+    bg = "rgba(217, 119, 6, 0.14)"; color = "#D97706"; text = `${daysUntil} days`;
   } else {
-    bg = "#e5e7eb"; color = "#6b7280"; text = `${daysUntil} days`;
+    bg = "var(--surface-elevated)"; color = "var(--text-secondary)"; text = `${daysUntil} days`;
   }
   return (
     <span style={{
@@ -47,9 +50,9 @@ function DaysUntilBadge({ daysUntil }) {
 
 function ImportanceBadge({ importance }) {
   const map = {
-    high: { bg: "#fee2e2", color: "#b91c1c", label: "HIGH" },
-    medium: { bg: "#fef9c3", color: "#a16207", label: "MED" },
-    low: { bg: "#dcfce7", color: "#15803d", label: "LOW" },
+    high: { bg: "rgba(220, 38, 38, 0.12)", color: "#DC2626", label: "HIGH" },
+    medium: { bg: "rgba(217, 119, 6, 0.14)", color: "#D97706", label: "MED" },
+    low: { bg: "rgba(0, 163, 92, 0.12)", color: "var(--green)", label: "LOW" },
   };
   const { bg, color, label } = map[importance] || map.low;
   return (
@@ -73,12 +76,12 @@ function SkeletonRow() {
       display: "flex",
       alignItems: "center",
       padding: "12px 18px",
-      borderBottom: "1px solid rgba(0,0,0,0.04)",
+      borderBottom: "1px solid var(--border-subtle)",
       gap: 12,
     }}>
       <div style={{
         width: 40, height: 46, borderRadius: 8,
-        background: "linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%)",
+        background: "linear-gradient(90deg,var(--surface-base) 25%,var(--surface-elevated) 50%,var(--surface-base) 75%)",
         backgroundSize: "200% 100%",
         animation: "ec-shimmer 1.4s infinite",
         flexShrink: 0,
@@ -86,13 +89,13 @@ function SkeletonRow() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{
           height: 12, borderRadius: 4, width: "70%",
-          background: "linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%)",
+          background: "linear-gradient(90deg,var(--surface-base) 25%,var(--surface-elevated) 50%,var(--surface-base) 75%)",
           backgroundSize: "200% 100%",
           animation: "ec-shimmer 1.4s infinite",
         }} />
         <div style={{
           height: 10, borderRadius: 4, width: "45%",
-          background: "linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%)",
+          background: "linear-gradient(90deg,var(--surface-base) 25%,var(--surface-elevated) 50%,var(--surface-base) 75%)",
           backgroundSize: "200% 100%",
           animation: "ec-shimmer 1.4s infinite 0.1s",
         }} />
@@ -107,8 +110,8 @@ export default function EconomicCalendar() {
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
 
-  const fetchEvents = async (upcomingOnly = true) => {
-    setLoading(true);
+  const fetchEvents = async (upcomingOnly = true, { silent = false } = {}) => {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(
         `${API_BASE}/calendar/events?upcoming_only=${upcomingOnly}`
@@ -119,13 +122,27 @@ export default function EconomicCalendar() {
     } catch {
       setEvents([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchEvents(true);
   }, []);
+
+  useEffect(() => {
+    const refreshId = window.setInterval(() => {
+      fetchEvents(!showAll, { silent: true });
+    }, 30 * 60 * 1000);
+
+    const handleFocus = () => fetchEvents(!showAll, { silent: true });
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.clearInterval(refreshId);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [showAll]);
 
   const handleViewAll = () => {
     setShowAll(true);
@@ -154,6 +171,7 @@ export default function EconomicCalendar() {
         background: "var(--surface-card)",
         borderRadius: 14,
         boxShadow: "0 1px 4px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05)",
+        border: "1px solid var(--border-subtle)",
         padding: 0,
         overflow: "hidden",
       }}>
@@ -163,11 +181,11 @@ export default function EconomicCalendar() {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "16px 18px 12px",
-          borderBottom: "1px solid var(--gray-100)",
+          borderBottom: "1px solid var(--border-subtle)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <CalendarDays size={16} color="var(--green)" strokeWidth={2.2} />
-            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--gray-900)" }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
               Economic Calendar
             </span>
           </div>
@@ -179,7 +197,7 @@ export default function EconomicCalendar() {
               border: "none",
               padding: 0,
               fontSize: 12,
-              color: showAll ? "var(--gray-300)" : "var(--green)",
+              color: showAll ? "var(--text-muted)" : "var(--green)",
               cursor: showAll ? "default" : "pointer",
               fontWeight: 500,
             }}
@@ -203,11 +221,11 @@ export default function EconomicCalendar() {
             justifyContent: "center",
             padding: "32px 18px",
             gap: 10,
-            color: "var(--gray-500)",
+            color: "var(--text-secondary)",
           }}>
-            <CalendarDays size={32} color="var(--gray-300)" />
+            <CalendarDays size={32} color="var(--text-muted)" />
             <span style={{ fontSize: 12, textAlign: "center" }}>
-              No upcoming events in the next 90 days.
+              No scheduled economic events available.
             </span>
           </div>
         ) : (
@@ -228,7 +246,7 @@ export default function EconomicCalendar() {
                   display: "flex",
                   alignItems: "center",
                   padding: "12px 18px",
-                  borderBottom: "1px solid rgba(0,0,0,0.04)",
+                  borderBottom: "1px solid var(--border-subtle)",
                   gap: 0,
                   transition: "background 0.15s",
                 }}
@@ -242,7 +260,7 @@ export default function EconomicCalendar() {
                   <div style={{
                     fontSize: 20,
                     fontWeight: 700,
-                    color: "var(--gray-900)",
+                    color: "var(--text-primary)",
                     lineHeight: 1.1,
                   }}>
                     {day}
@@ -267,7 +285,7 @@ export default function EconomicCalendar() {
                   <div style={{
                     fontSize: 13,
                     fontWeight: 700,
-                    color: "var(--gray-900)",
+                    color: "var(--text-primary)",
                     whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -284,7 +302,7 @@ export default function EconomicCalendar() {
                   }}>
                     <span style={{
                       fontSize: 11,
-                      color: "var(--gray-500)",
+                      color: "var(--text-secondary)",
                       whiteSpace: "nowrap",
                     }}>
                       {event.source}&nbsp;·&nbsp;{event.category}

@@ -126,7 +126,7 @@ function useCountUpValue(value) {
 }
 
 function FileTypeIcon() {
-  return <FileText size={16} color="var(--gray-500)" />;
+  return <FileText size={16} color="var(--text-muted)" />;
 }
 
 export default function ObservanceBanner({ observance, variant = "dashboard", totalDatasets }) {
@@ -177,10 +177,10 @@ export default function ObservanceBanner({ observance, variant = "dashboard", to
           <Icon size={20} color={style.color} />
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 11, textTransform: "uppercase", color: "var(--gray-500)", fontWeight: 800, letterSpacing: 0.4 }}>
+          <div style={{ fontSize: 11, textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 800, letterSpacing: 0.4 }}>
             {observance.observance_name}
           </div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--gray-900)", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
             {observance.headline}
           </div>
           {relatedDatasets[0]?.title && (
@@ -193,7 +193,7 @@ export default function ObservanceBanner({ observance, variant = "dashboard", to
           <span style={{ position: "absolute", top: 8, right: 10, fontSize: 10, fontWeight: 900, color: "#fff", background: style.color, borderRadius: 4, padding: "2px 6px" }}>
             OBSERVANCE
           </span>
-          <span style={{ fontSize: 11, color: "var(--gray-500)", marginTop: 14 }}>Today</span>
+          <span style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 14 }}>Today</span>
           <Link
             to={primaryLink}
             aria-label="View observance data"
@@ -220,11 +220,11 @@ export default function ObservanceBanner({ observance, variant = "dashboard", to
           padding: "0 24px",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, color: "var(--gray-900)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, color: "var(--text-primary)" }}>
           <Icon size={16} color={style.color} />
           <span style={{ fontSize: 13, fontWeight: 800, whiteSpace: "nowrap" }}>{observance.observance_name}</span>
-          <span style={{ color: "var(--gray-500)" }}>-</span>
-          <span style={{ fontSize: 13, color: "var(--gray-700)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <span style={{ color: "var(--text-muted)" }}>-</span>
+          <span style={{ fontSize: 13, color: "var(--text-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {(observance.headline || "").slice(0, 60)}
           </span>
         </div>
@@ -236,7 +236,7 @@ export default function ObservanceBanner({ observance, variant = "dashboard", to
             type="button"
             aria-label="Dismiss observance banner"
             onClick={() => setIsDismissed(true)}
-            style={{ border: 0, background: "transparent", color: "var(--gray-500)", width: 24, height: 24, display: "grid", placeItems: "center", cursor: "pointer" }}
+            style={{ border: 0, background: "transparent", color: "var(--text-muted)", width: 24, height: 24, display: "grid", placeItems: "center", cursor: "pointer" }}
           >
             <X size={16} />
           </button>
@@ -289,7 +289,7 @@ export default function ObservanceBanner({ observance, variant = "dashboard", to
             <div style={{ marginTop: 18, fontSize: 48, lineHeight: 1, fontWeight: 900, color: "var(--dark)" }}>
               {animatedValue}
             </div>
-            <div style={{ marginTop: 8, fontSize: 14, color: "var(--gray-500)" }}>
+            <div style={{ marginTop: 8, fontSize: 14, color: "var(--text-secondary)" }}>
               {observance.key_datapoint_label}
             </div>
           </>
@@ -299,8 +299,8 @@ export default function ObservanceBanner({ observance, variant = "dashboard", to
           </div>
         )}
 
-        <div style={{ height: 1, background: "var(--gray-100)", margin: "24px 0 18px" }} />
-        <div style={{ fontSize: 12, fontWeight: 900, color: "var(--gray-500)", textTransform: "uppercase", marginBottom: 10 }}>
+        <div style={{ height: 1, background: "var(--border-subtle)", margin: "24px 0 18px" }} />
+        <div style={{ fontSize: 12, fontWeight: 900, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 10 }}>
           Related datasets
         </div>
 
@@ -312,10 +312,10 @@ export default function ObservanceBanner({ observance, variant = "dashboard", to
               style={{ display: "grid", gridTemplateColumns: "16px 1fr auto", gap: 8, alignItems: "center", color: "inherit" }}
             >
               <FileTypeIcon />
-              <span style={{ fontSize: 12, fontWeight: 800, color: "var(--gray-900)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {dataset.title}
               </span>
-              <span style={{ fontSize: 11, color: "var(--gray-500)" }}>
+              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
                 {dataset.download_count || 0}
               </span>
             </Link>

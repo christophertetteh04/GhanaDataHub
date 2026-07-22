@@ -3,13 +3,14 @@ from typing import Any, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import require_roles
 from app.core.database import get_db
 from app.models.models import Dataset, ObservanceFeature, User, UserRole
 from app.schemas.schemas import DatasetOut
+from app.services.observance_fetcher import fetch_todays_observances
 
 router = APIRouter()
 
@@ -23,7 +24,7 @@ class ObservancePublicOut(BaseModel):
     narrative: Optional[str] = None
     key_datapoint: Optional[str] = None
     key_datapoint_label: Optional[str] = None
-    related_datasets: List[DatasetOut] = []
+    related_datasets: List[DatasetOut] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
@@ -79,7 +80,15 @@ def _related_datasets(db: Session, related_dataset_ids: Optional[list]) -> List[
     if not related_dataset_ids:
         return []
 
-    ids = [UUID(str(dataset_id)) for dataset_id in related_dataset_ids]
+    ids = []
+    for dataset_id in related_dataset_ids:
+        try:
+            ids.append(UUID(str(dataset_id)))
+        except (TypeError, ValueError):
+            continue
+    if not ids:
+        return []
+
     datasets = db.query(Dataset).filter(Dataset.id.in_(ids)).all()
     by_id = {str(dataset.id): dataset for dataset in datasets}
     ordered = [by_id[str(dataset_id)] for dataset_id in ids if str(dataset_id) in by_id]
@@ -131,6 +140,17 @@ def get_upcoming_observances(
         .order_by(ObservanceFeature.observance_date.asc())
         .all()
     )
+
+
+@router.post("/fetch-today")
+def fetch_observances_for_admin(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(UserRole.super_admin, UserRole.org_admin)),
+):
+    before_count = db.query(ObservanceFeature).count()
+    fetch_todays_observances(db)
+    after_count = db.query(ObservanceFeature).count()
+    return {"created": max(after_count - before_count, 0)}
 
 
 @router.patch("/{id}", response_model=ObservanceFeatureOut)

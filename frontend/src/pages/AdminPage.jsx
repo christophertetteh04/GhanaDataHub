@@ -2,16 +2,31 @@ import { useEffect, useMemo, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { adminApi, usersApi } from "../services/api";
+import api, { adminApi, usersApi, datasetsApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import {
+  Activity,
+  AlertCircle,
+  AlertTriangle,
+  Calendar,
+  CheckCircle2,
+  Database,
+  Download,
+  ShieldAlert,
+  Upload,
+  UserPlus,
+  Users,
+} from "lucide-react";
+import { computeQuality } from "../components/QualityBadge";
 
 const SECTIONS = [
-  "overview",
-  "users",
-  "datasets",
-  "audit",
-  "storage",
-  "settings",
+  { key: "queue", label: "Needs Attention", icon: AlertCircle },
+  { key: "overview", label: "Overview", icon: Activity },
+  { key: "users", label: "Users", icon: Users },
+  { key: "datasets", label: "Datasets", icon: Database },
+  { key: "audit", label: "Audit Log", icon: ShieldAlert },
+  { key: "storage", label: "Storage", icon: Download },
+  { key: "settings", label: "Settings", icon: AlertCircle },
 ];
 
 const ROLE_OPTIONS = [
@@ -39,13 +54,15 @@ const STORAGE_TOGGLES = [
   },
 ];
 
-function SectionTab({ label, active, onClick }) {
+function SectionTab({ label, icon: Icon, active, onClick }) {
   return (
     <button
       className={`admin-tab${active ? " active" : ""}`}
       onClick={onClick}
       type="button"
+      style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
     >
+      {Icon && <Icon size={15} />}
       {label}
     </button>
   );
@@ -59,13 +76,129 @@ function formatDate(value) {
   });
 }
 
+function timeAgo(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "unknown time";
+  const diff = Date.now() - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return days < 30 ? `${days}d ago` : `${Math.floor(days / 30)}mo ago`;
+}
+
+function daysUntil(value) {
+  const eventDate = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(eventDate.getTime())) return null;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.ceil((eventDate - today) / 86400000);
+}
+
+function formatBytes(value = 0) {
+  if (value >= 1024 ** 3) return `${(value / 1024 ** 3).toFixed(1)} GB`;
+  if (value >= 1024 ** 2) return `${(value / 1024 ** 2).toFixed(1)} MB`;
+  if (value >= 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${value || 0} B`;
+}
+
+function getItems(payload) {
+  return Array.isArray(payload) ? payload : payload?.items || [];
+}
+
+function MiniBars({ values = [], colour = "var(--green)", gradient = false }) {
+  const safeValues = values.length ? values : [1, 2, 1, 3, 2, 4];
+  const max = Math.max(...safeValues, 1);
+  return (
+    <svg width="60" height="24" viewBox="0 0 60 24" aria-hidden="true">
+      {gradient ? (
+        <defs>
+          <linearGradient id="adminStorageBars" x1="0" x2="1">
+            <stop offset="0%" stopColor="#006B3F" />
+            <stop offset="100%" stopColor="#00A35C" />
+          </linearGradient>
+        </defs>
+      ) : null}
+      {safeValues.slice(0, 6).map((value, index) => {
+        const height = Math.max(4, (value / max) * 22);
+        return (
+          <rect
+            key={index}
+            x={index * 10}
+            y={24 - height}
+            width="7"
+            height={height}
+            rx="2"
+            fill={gradient ? "url(#adminStorageBars)" : colour}
+            opacity={0.9}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+function computeMilestones(overview) {
+  const milestones = [];
+  if (!overview) return milestones;
+  if (overview.total_datasets > 0) {
+    milestones.push({
+      icon: Database,
+      colour: "#006B3F",
+      text: `Platform hosts ${overview.total_datasets} datasets`,
+      sub: "Total platform dataset count",
+      ts: "now",
+    });
+  }
+  if (overview.new_datasets_today > 0) {
+    milestones.push({
+      icon: Upload,
+      colour: "#059669",
+      text: `${overview.new_datasets_today} new dataset${overview.new_datasets_today > 1 ? "s" : ""} today`,
+      sub: "Published today",
+      ts: "today",
+    });
+  }
+  if (overview.new_users_this_week > 0) {
+    milestones.push({
+      icon: UserPlus,
+      colour: "#1D4ED8",
+      text: `${overview.new_users_this_week} new users this week`,
+      sub: "Platform is growing",
+      ts: "this week",
+    });
+  }
+  if (overview.active_users_last_30_days > 5) {
+    milestones.push({
+      icon: Activity,
+      colour: "#7C3AED",
+      text: `${overview.active_users_last_30_days} active users in 30 days`,
+      sub: "Monthly active users",
+      ts: "last 30 days",
+    });
+  }
+  return milestones;
+}
+
+function heatCellStyle(score) {
+  if (score >= 70) return { background: "var(--green-pale)", color: "var(--green)" };
+  if (score >= 50) return { background: "#FEF9C3", color: "#854D0E" };
+  return { background: "#FEF2F2", color: "#991B1B" };
+}
+
 export default function AdminPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState("overview");
+  const [activeSection, setActiveSection] = useState("queue");
   const [overview, setOverview] = useState(null);
   const [users, setUsers] = useState([]);
   const [datasets, setDatasets] = useState([]);
+  const [queueAlerts, setQueueAlerts] = useState([]);
+  const [queueObservances, setQueueObservances] = useState([]);
+  const [queueDatasets, setQueueDatasets] = useState([]);
+  const [overviewDatasets, setOverviewDatasets] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [storageRows, setStorageRows] = useState([]);
   const [usersMeta, setUsersMeta] = useState({ page: 1, per_page: 20, total: 0, pages: 1 });
@@ -97,8 +230,31 @@ export default function AdminPage() {
   }, [user, isAdmin, navigate]);
 
   useEffect(() => {
-    if (activeSection !== "overview") return;
+    if (activeSection !== "overview" && activeSection !== "queue") return;
     adminApi.overview().then((res) => setOverview(res.data)).catch((err) => toast.error("Unable to load overview"));
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (activeSection !== "queue" && activeSection !== "overview") return;
+    datasetsApi
+      .list({ per_page: activeSection === "overview" ? 100 : 50 })
+      .then((res) => {
+        const items = getItems(res.data);
+        if (activeSection === "overview") setOverviewDatasets(items);
+        else setQueueDatasets(items);
+      })
+      .catch(() => toast.error("Unable to load dataset queue"));
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (activeSection !== "queue") return;
+    Promise.all([
+      api.get("/admin/security/alerts", { params: { is_resolved: false, per_page: 5 } }).catch(() => ({ data: [] })),
+      api.get("/observances/upcoming", { params: { days: 7 } }).catch(() => ({ data: [] })),
+    ]).then(([alertsRes, observancesRes]) => {
+      setQueueAlerts(getItems(alertsRes.data));
+      setQueueObservances(getItems(observancesRes.data).filter((item) => item.status === "pending"));
+    });
   }, [activeSection]);
 
   useEffect(() => {
@@ -175,17 +331,95 @@ export default function AdminPage() {
     }
   };
 
-  const overviewStats = useMemo(() => {
-    if (!overview) return [];
+  const uncategorisedDatasets = useMemo(
+    () => queueDatasets.filter((item) => !item.category && !item.category_id).slice(0, 5),
+    [queueDatasets],
+  );
+
+  const dQualityDatasets = useMemo(() => {
+    const cutoff = Date.now() - 7 * 86400000;
+    return queueDatasets
+      .map((dataset) => ({ dataset, quality: computeQuality(dataset) }))
+      .filter(({ dataset, quality }) => quality.grade === "D" && new Date(dataset.created_at).getTime() < cutoff)
+      .slice(0, 3);
+  }, [queueDatasets]);
+
+  const milestones = useMemo(() => computeMilestones(overview), [overview]);
+
+  const vitalSigns = useMemo(() => {
+    const visibilityCounts = Object.values(overview?.datasets_by_status || {});
+    const downloadCounts = overviewDatasets
+      .map((item) => item.download_count || 0)
+      .sort((a, b) => b - a)
+      .slice(0, 6);
+    const errors = overview?.error_events_last_24h || 0;
     return [
-      { label: "Total Users", value: overview.total_users },
-      { label: "New Today", value: overview.new_users_today },
-      { label: "Total Datasets", value: overview.total_datasets },
-      { label: "New This Week", value: overview.new_datasets_this_week },
-      { label: "Total Downloads", value: overview.total_downloads_all_time },
-      { label: "Active Users 30d", value: overview.active_users_last_30_days },
+      {
+        label: "Datasets",
+        value: overview?.total_datasets ?? 0,
+        colour: "#006B3F",
+        icon: Database,
+        bars: visibilityCounts.length ? visibilityCounts : [overview?.new_datasets_today || 0, overview?.new_datasets_this_week || 0, overview?.total_datasets || 0],
+        trend: `+${overview?.new_datasets_today || 0} today`,
+      },
+      {
+        label: "Users",
+        value: overview?.total_users ?? 0,
+        colour: "#1D4ED8",
+        icon: Users,
+        bars: [overview?.new_users_today || 0, overview?.new_users_this_week || 0, overview?.active_users_last_30_days || 0, overview?.total_users || 0],
+        trend: `+${overview?.new_users_today || 0} today, +${overview?.new_users_this_week || 0} this week`,
+      },
+      {
+        label: "Downloads",
+        value: overview?.total_downloads_all_time ?? 0,
+        colour: "#D97706",
+        icon: Download,
+        bars: downloadCounts.length ? downloadCounts : [0, 1, 0, 2, 1, 3],
+        trend: `${formatBytes(overview?.total_storage_bytes || 0)} stored`,
+      },
+      {
+        label: "Errors",
+        value: errors,
+        colour: "#DC2626",
+        icon: ShieldAlert,
+        bars: [0, Math.max(1, errors * 0.25), Math.max(1, errors * 0.4), Math.max(1, errors * 0.7), Math.max(1, errors), errors],
+        trend: `${errors} events in last 24h`,
+      },
     ];
-  }, [overview]);
+  }, [overview, overviewDatasets]);
+
+  const qualityHeatmapRows = useMemo(() => {
+    const grouped = overviewDatasets.reduce((acc, dataset) => {
+      const category = dataset.category?.name || "Uncategorised";
+      acc[category] = acc[category] || [];
+      acc[category].push(dataset);
+      return acc;
+    }, {});
+
+    return Object.entries(grouped).map(([category, rows]) => {
+      if (rows.length < 3) {
+        return { category, insufficient: true };
+      }
+
+      const completeness = Math.round(
+        rows.reduce((sum, dataset) => {
+          const profiles = dataset.analysis_data?.column_profiles || [];
+          if (!profiles.length) return sum + 50;
+          const avgNull = profiles.reduce((profileSum, profile) => profileSum + (profile.null_rate_pct || 0), 0) / profiles.length;
+          return sum + Math.max(0, 100 - avgNull);
+        }, 0) / rows.length,
+      );
+      const freshness = Math.round(
+        (rows.filter((dataset) => Date.now() - new Date(dataset.updated_at || dataset.created_at).getTime() <= 90 * 86400000).length / rows.length) * 100,
+      );
+      const maxDownloads = Math.max(...rows.map((dataset) => dataset.download_count || 0), 1);
+      const engagement = Math.round(
+        rows.reduce((sum, dataset) => sum + ((dataset.download_count || 0) / maxDownloads) * 100, 0) / rows.length,
+      );
+      return { category, completeness, freshness, engagement };
+    });
+  }, [overviewDatasets]);
 
   if (!isAdmin) {
     return null;
@@ -200,10 +434,11 @@ export default function AdminPage() {
         </div>
         {SECTIONS.map((section) => (
           <SectionTab
-            key={section}
-            label={section.replace(/\b\w/g, (c) => c.toUpperCase())}
-            active={activeSection === section}
-            onClick={() => setActiveSection(section)}
+            key={section.key}
+            label={section.label}
+            icon={section.icon}
+            active={activeSection === section.key}
+            onClick={() => setActiveSection(section.key)}
           />
         ))}
       </div>
@@ -216,16 +451,150 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {activeSection === "queue" && (
+          <div style={{ display: "grid", gap: 14 }}>
+            {queueAlerts.map((alert) => (
+              <div key={alert.id} style={{ background: "var(--surface-card)", border: "1px solid rgba(220,38,38,0.28)", borderLeft: "4px solid #DC2626", borderRadius: 14, padding: 18, boxShadow: "var(--shadow-sm)" }}>
+                <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                  <AlertTriangle size={22} color="#DC2626" />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 800, color: "var(--text-primary)" }}>{alert.alert_type || "Security alert"}</div>
+                    <div style={{ color: "var(--text-secondary)", fontSize: 13, lineHeight: 1.6, marginTop: 4 }}>{alert.description || "Unresolved security alert needs review."}</div>
+                    <div style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 8 }}>
+                      IP {alert.ip_address || alert.ip || "unknown"} · {timeAgo(alert.created_at)}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    style={{ ...buttonStyle, background: "#DC2626", color: "#fff" }}
+                    onClick={async () => {
+                      try {
+                        await api.patch(`/admin/security/alerts/${alert.id}/resolve`);
+                        setQueueAlerts((prev) => prev.filter((item) => item.id !== alert.id));
+                        toast.success("Alert resolved");
+                      } catch {
+                        toast.error("Unable to resolve alert");
+                      }
+                    }}
+                  >
+                    Resolve
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {queueObservances.map((observance) => {
+              const due = daysUntil(observance.observance_date);
+              return (
+                <div key={observance.id} style={{ background: "var(--surface-card)", border: "1px solid rgba(217,119,6,0.26)", borderLeft: "4px solid #D97706", borderRadius: 14, padding: 18, boxShadow: "var(--shadow-sm)" }}>
+                  <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                    <Calendar size={22} color="#D97706" />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontWeight: 800, color: "var(--text-primary)" }}>{observance.observance_name}</div>
+                      <div style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 4 }}>{formatDate(observance.observance_date)}</div>
+                      <span style={{ display: "inline-flex", marginTop: 8, borderRadius: 99, padding: "3px 8px", background: "rgba(217,119,6,0.14)", color: "#D97706", fontSize: 11, fontWeight: 800 }}>
+                        {due === 0 ? "Due today" : due === 1 ? "Due tomorrow" : due === null ? "Date pending" : `${due} days`}
+                      </span>
+                    </div>
+                    <button type="button" style={buttonStyle} onClick={() => setActiveSection("observances")}>
+                      Review
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {uncategorisedDatasets.map((dataset) => (
+              <div key={dataset.id} style={{ background: "var(--surface-card)", border: "1px solid rgba(252,209,22,0.35)", borderLeft: "4px solid #FCD116", borderRadius: 14, padding: 18, boxShadow: "var(--shadow-sm)" }}>
+                <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                  <Database size={22} color="#D97706" />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 800, color: "var(--text-primary)" }}>{dataset.title}</div>
+                    <div style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 6 }}>No category assigned</div>
+                  </div>
+                  <button
+                    type="button"
+                    style={buttonStyle}
+                    onClick={() => {
+                      setDatasetsSearch(dataset.title);
+                      setActiveSection("datasets");
+                    }}
+                  >
+                    Assign Category
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {dQualityDatasets.map(({ dataset, quality }) => (
+              <div key={dataset.id} style={{ background: "var(--surface-card)", border: "1px solid var(--border-default)", borderLeft: "4px solid var(--text-muted)", borderRadius: 14, padding: 18, boxShadow: "var(--shadow-sm)" }}>
+                <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                  <ShieldAlert size={22} color="var(--text-muted)" />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 800, color: "var(--text-primary)" }}>{dataset.title}</div>
+                    <div style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 5 }}>Quality grade {quality.grade} · score {quality.score}/100</div>
+                  </div>
+                  <button type="button" style={buttonStyle} onClick={() => navigate(`/datasets/${dataset.id}`)}>
+                    Improve Metadata
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {queueAlerts.length === 0 && queueObservances.length === 0 && uncategorisedDatasets.length === 0 && dQualityDatasets.length === 0 && (
+              <div style={{ background: "var(--surface-card)", border: "1px solid rgba(0,163,92,0.22)", borderLeft: "4px solid var(--green)", borderRadius: 16, padding: 34, textAlign: "center", boxShadow: "var(--shadow-sm)" }}>
+                <CheckCircle2 size={48} color="var(--green)" />
+                <div style={{ marginTop: 14, fontSize: 18, fontWeight: 900, color: "var(--text-primary)" }}>Everything looks good!</div>
+                <div style={{ marginTop: 6, fontSize: 13, color: "var(--text-secondary)" }}>No alerts, no pending observances, no uncategorised datasets.</div>
+              </div>
+            )}
+          </div>
+        )}
+
         {activeSection === "overview" && (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 16, marginBottom: 20 }}>
-              {overviewStats.map((item) => (
-                <div key={item.label} style={{ background: "var(--surface-card)", padding: 18, borderRadius: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
-                  <div style={{ color: "var(--gray-500)", fontSize: 12, marginBottom: 10 }}>{item.label}</div>
-                  <div style={{ fontSize: 24, fontWeight: 800 }}>{item.value}</div>
-                </div>
-              ))}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16, marginBottom: 20 }}>
+              {vitalSigns.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.label} style={{ background: "var(--surface-card)", padding: 20, borderRadius: 14, borderLeft: `4px solid ${item.colour}`, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                      <div style={{ color: "var(--text-muted)", fontSize: 11, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>{item.label}</div>
+                      <Icon size={18} color={item.colour} />
+                    </div>
+                    <div style={{ marginTop: 12, fontSize: 32, fontWeight: 900, color: "var(--text-primary)", lineHeight: 1 }}>
+                      {item.value}
+                    </div>
+                    <div style={{ marginTop: 14 }}>
+                      <MiniBars values={item.bars} colour={item.colour} gradient={item.label === "Storage"} />
+                    </div>
+                    <div style={{ marginTop: 8, color: "var(--text-secondary)", fontSize: 11 }}>
+                      {item.trend}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+
+            {milestones.length > 0 && (
+              <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8, marginBottom: 20 }}>
+                {milestones.map((milestone, index) => {
+                  const Icon = milestone.icon;
+                  return (
+                    <div key={`${milestone.text}-${index}`} style={{ minWidth: 200, flexShrink: 0, background: "var(--surface-card)", borderRadius: 12, boxShadow: "0 10px 30px rgba(15,23,42,0.04)", padding: "14px 16px", border: "1px solid var(--border-subtle)" }}>
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: milestone.colour, color: "#fff", display: "grid", placeItems: "center", marginBottom: 12 }}>
+                        <Icon size={17} />
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.35 }}>{milestone.text}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>{milestone.sub}</div>
+                      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+                        <span style={{ borderRadius: 99, padding: "2px 7px", background: "var(--green-pale)", color: "var(--green)", fontSize: 10, fontWeight: 800 }}>{milestone.ts}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1.2fr", gap: 16, marginBottom: 20 }}>
               <div style={{ background: "var(--surface-card)", borderRadius: 18, padding: 20, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
@@ -267,6 +636,47 @@ export default function AdminPage() {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
+              </div>
+            </div>
+
+            <div style={{ background: "var(--surface-card)", borderRadius: 18, padding: 24, boxShadow: "0 10px 30px rgba(15,23,42,0.04)", marginBottom: 20 }}>
+              <div style={{ fontWeight: 800, marginBottom: 14, color: "var(--text-primary)" }}>Content Quality by Category</div>
+              <div style={{ display: "grid", gap: 8 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1.2fr repeat(3, 1fr)", gap: 8, color: "var(--text-muted)", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  <div>Category</div>
+                  <div>Completeness</div>
+                  <div>Freshness</div>
+                  <div>Engagement</div>
+                </div>
+                {qualityHeatmapRows.length === 0 ? (
+                  <div style={{ color: "var(--text-secondary)", fontSize: 13, padding: "18px 0" }}>No dataset quality data available yet.</div>
+                ) : (
+                  qualityHeatmapRows.map((row) => (
+                    <div key={row.category} style={{ display: "grid", gridTemplateColumns: "1.2fr repeat(3, 1fr)", gap: 8, alignItems: "stretch" }}>
+                      <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--surface-base)", fontWeight: 800, color: "var(--text-primary)", fontSize: 13 }}>
+                        {row.category}
+                      </div>
+                      {row.insufficient ? (
+                        <div style={{ gridColumn: "span 3", padding: "10px 12px", borderRadius: 10, background: "var(--surface-base)", color: "var(--text-muted)", fontSize: 12 }}>
+                          Insufficient data
+                        </div>
+                      ) : (
+                        ["completeness", "freshness", "engagement"].map((key) => {
+                          const score = row[key];
+                          const style = heatCellStyle(score);
+                          return (
+                            <div key={key} style={{ padding: "9px 10px", borderRadius: 10, background: style.background, color: style.color, fontSize: 12, fontWeight: 900 }}>
+                              <div>{score}%</div>
+                              <div style={{ marginTop: 6, height: 4, borderRadius: 99, background: "rgba(255,255,255,0.65)", overflow: "hidden" }}>
+                                <div style={{ width: `${score}%`, height: "100%", background: style.color, borderRadius: 99 }} />
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
