@@ -113,7 +113,7 @@ export default function UsersPage() {
                       <span className={`badge ${ROLE_COLORS[u.role]}`}>{u.role.replace("_", " ")}</span>
                     ) : (
                       <select
-                        style={{ fontSize: 12, padding: "3px 6px", borderRadius: 5, border: "1px solid var(--gray-300)", background: "white" }}
+                        style={{ fontSize: 12, padding: "3px 6px", borderRadius: 5, border: "1px solid var(--gray-300)", background: "var(--surface-card)" }}
                         value={u.role}
                         onChange={e => updateRole(u.id, e.target.value)}
                         disabled={me?.role !== "super_admin" && u.role === "super_admin"}

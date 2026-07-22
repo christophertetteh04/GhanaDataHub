@@ -228,7 +228,7 @@ export default function SinceLastVisit() {
 
 const slvStyles = `
   .slv-card {
-    background: #fff;
+    background: var(--surface-card);
     border-radius: 14px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
     padding: 16px 20px;
@@ -332,7 +332,7 @@ const slvStyles = `
     top: calc(100% + 6px);
     left: 0;
     z-index: 100;
-    background: #ffffff;
+    background: var(--surface-card);
     border-radius: 10px;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     border: 1px solid var(--gray-200, #E5E7EB);

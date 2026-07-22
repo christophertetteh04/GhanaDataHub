@@ -163,7 +163,7 @@ export default function ProfilePage() {
       <div className="card" style={{ position: "relative", overflow: "visible", padding: 0 }}>
         <div style={{ height: 120, background: "linear-gradient(90deg, var(--green), #004D2C)" }} />
         <div style={{ position: "absolute", left: 28, bottom: -36 }}>
-          <div style={{ width: 72, height: 72, borderRadius: "50%", background: "var(--green)", border: "3px solid white", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 24, fontWeight: 800 }}>
+          <div style={{ width: 72, height: 72, borderRadius: "50%", background: "var(--green)", border: "3px solid var(--surface-card)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 24, fontWeight: 800 }}>
             {user.full_name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
           </div>
         </div>
@@ -254,7 +254,7 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => navigate("/datasets")}
-                  style={{ borderRadius: 10, border: "1px solid var(--green)", background: "white", color: "var(--green)", padding: "10px 18px", cursor: "pointer" }}
+                  style={{ borderRadius: 10, border: "1px solid var(--green)", background: "var(--surface-card)", color: "var(--green)", padding: "10px 18px", cursor: "pointer" }}
                 >
                   Upload Your First Dataset
                 </button>
@@ -419,7 +419,7 @@ export default function ProfilePage() {
                 {newKey && (
                   <div style={{ padding: 18, borderRadius: 14, background: "rgba(254,243,235,0.95)", border: "1px solid rgba(249,115,22,0.3)", marginBottom: 18 }}>
                     <div style={{ fontWeight: 700, marginBottom: 8 }}>Save this key now. You will never see it again.</div>
-                    <div style={{ fontFamily: "monospace", background: "white", padding: 12, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                    <div style={{ fontFamily: "monospace", background: "var(--surface-card)", padding: 12, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                       <span style={{ overflowWrap: "anywhere" }}>{newKey.key}</span>
                       <button
                         type="button"

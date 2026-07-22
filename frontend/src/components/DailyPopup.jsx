@@ -314,7 +314,7 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          color: #111827;
+          color: var(--text-primary);
           flex-shrink: 0;
           transition: background 0.15s;
         }
@@ -350,7 +350,7 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
           margin-top: 10px;
           font-size: 22px;
           font-weight: 700;
-          color: #111827;
+          color: var(--text-primary);
           font-family: "Sora", sans-serif;
           line-height: 1.3;
         }
@@ -359,7 +359,7 @@ export default function DailyPopup({ isVisible, dismiss, neverShow }) {
           margin-top: 12px;
           font-size: 14px;
           line-height: 1.75;
-          color: #374151;
+          color: var(--text-secondary);
         }
 
         .gdh-tip-box {

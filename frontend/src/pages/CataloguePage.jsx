@@ -261,7 +261,7 @@ export default function CataloguePage() {
     <div style={{ minHeight: "100vh", background: "var(--gray-100)", padding: 24 }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "220px 1fr", gap: 20 }}>
         <aside style={{ position: "sticky", top: 80, alignSelf: "start" }}>
-          <div style={{ background: "white", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 16 }}>
+          <div style={{ background: "var(--surface-card)", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 16 }}>
             <div style={{ fontSize: 10, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--gray-500)", marginBottom: 12 }}>Browse By</div>
             <button
               type="button"
@@ -334,7 +334,7 @@ export default function CataloguePage() {
                           <span style={{ width: 10, height: 10, borderRadius: 4, background: color }} />
                           {category.name}
                         </span>
-                        <span style={{ minWidth: 30, textAlign: "center", background: isActive ? "rgba(255,255,255,0.2)" : "white", borderRadius: 999, padding: "2px 8px", fontSize: 12, color: isActive ? "white" : "var(--gray-700)" }}>
+                        <span style={{ minWidth: 30, textAlign: "center", background: isActive ? "rgba(255,255,255,0.2)" : "var(--surface-card)", borderRadius: 999, padding: "2px 8px", fontSize: 12, color: isActive ? "white" : "var(--gray-700)" }}>
                           {categoryCounts[category.id] ?? 0}
                         </span>
                       </button>
@@ -387,7 +387,7 @@ export default function CataloguePage() {
                         }}
                       >
                         <span>{type.label}</span>
-                        <span style={{ width: 14, height: 14, borderRadius: 999, background: isActive ? "white" : "var(--gray-200)", border: isActive ? "1px solid transparent" : "1px solid var(--gray-300)" }} />
+                        <span style={{ width: 14, height: 14, borderRadius: 999, background: isActive ? "var(--surface-card)" : "var(--gray-200)", border: isActive ? "1px solid transparent" : "1px solid var(--gray-300)" }} />
                       </button>
                     );
                   })}
@@ -411,7 +411,7 @@ export default function CataloguePage() {
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: -10 }}>
                 {visibleOwners.map((owner) => (
-                  <div key={owner.id} style={{ width: 34, height: 34, borderRadius: "50%", border: "2px solid white", background: getOwnerColor(owner.full_name), color: "var(--gray-900)", display: "grid", placeItems: "center", fontSize: 12, fontWeight: 700, zIndex: 1 }}>
+                  <div key={owner.id} style={{ width: 34, height: 34, borderRadius: "50%", border: "2px solid var(--surface-card)", background: getOwnerColor(owner.full_name), color: "var(--gray-900)", display: "grid", placeItems: "center", fontSize: 12, fontWeight: 700, zIndex: 1 }}>
                     {getInitials(owner.full_name)}
                   </div>
                 ))}
@@ -511,7 +511,7 @@ export default function CataloguePage() {
                     + More
                   </button>
                   {showMoreTabs && (
-                    <div style={{ position: "absolute", top: "110%", left: 0, width: 220, background: "white", borderRadius: 12, boxShadow: "var(--shadow-md)", padding: 10, zIndex: 20 }}>
+                    <div style={{ position: "absolute", top: "110%", left: 0, width: 220, background: "var(--surface-card)", borderRadius: 12, boxShadow: "var(--shadow-md)", padding: 10, zIndex: 20 }}>
                       {extraCategories.map((category) => (
                         <button
                           key={category.id}
@@ -552,7 +552,7 @@ export default function CataloguePage() {
                     padding: "10px 14px",
                     borderRadius: 10,
                     border: "1px solid var(--gray-300)",
-                    background: "white",
+                    background: "var(--surface-card)",
                     color: "var(--gray-700)",
                     cursor: "pointer",
                   }}
@@ -581,7 +581,7 @@ export default function CataloguePage() {
                   padding: "10px 14px",
                   borderRadius: 10,
                   border: "1px solid var(--gray-300)",
-                  background: "white",
+                  background: "var(--surface-card)",
                   color: "var(--gray-700)",
                 }}
               >
@@ -620,7 +620,7 @@ export default function CataloguePage() {
           {loading ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
               {Array.from({ length: 8 }).map((_, index) => (
-                <div key={index} style={{ padding: 18, borderRadius: 14, background: "white", boxShadow: "var(--shadow-md)", minHeight: 220, animation: "fadeUp 0.3s ease forwards", animationDelay: `${index * 0.03}s` }}>
+                <div key={index} style={{ padding: 18, borderRadius: 14, background: "var(--surface-card)", boxShadow: "var(--shadow-md)", minHeight: 220, animation: "fadeUp 0.3s ease forwards", animationDelay: `${index * 0.03}s` }}>
                   <div style={{ width: 100, height: 14, background: "var(--gray-200)", borderRadius: 8, marginBottom: 16 }} />
                   <div style={{ width: "80%", height: 20, background: "var(--gray-200)", borderRadius: 8, marginBottom: 12 }} />
                   <div style={{ width: "100%", height: 12, background: "var(--gray-200)", borderRadius: 8, marginBottom: 8 }} />
@@ -633,7 +633,7 @@ export default function CataloguePage() {
               ))}
             </div>
           ) : filteredDatasets.length === 0 ? (
-            <div style={{ minHeight: 320, borderRadius: 14, background: "white", boxShadow: "var(--shadow-md)", display: "grid", placeItems: "center", textAlign: "center", padding: 40 }}>
+            <div style={{ minHeight: 320, borderRadius: 14, background: "var(--surface-card)", boxShadow: "var(--shadow-md)", display: "grid", placeItems: "center", textAlign: "center", padding: 40 }}>
               <BookOpen size={48} color="var(--green)" />
               <div style={{ fontSize: 20, fontWeight: 700, color: "var(--gray-900)", marginTop: 18 }}>No datasets in this category yet</div>
               <button
@@ -663,8 +663,8 @@ export default function CataloguePage() {
                       navigate(`/datasets/${item.id}`);
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, position: "relative" }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 999, background: categoryColor, color: "var(--gray-900)", fontSize: 11, fontWeight: 700 }}>
+                    <div className="catalogue-card-top-row" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, position: "relative" }}>
+                      <span className="catalogue-category-pill" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 999, background: categoryColor, color: "var(--gray-900)", fontSize: 11, fontWeight: 700 }}>
                         <span style={{ width: 8, height: 8, borderRadius: 4, background: "var(--green)" }} />
                         {category?.name || "Uncategorized"}
                       </span>
@@ -676,12 +676,12 @@ export default function CataloguePage() {
                             event.stopPropagation();
                             setActiveMenu((prev) => (prev === item.id ? null : item.id));
                           }}
-                          style={{ width: 32, height: 32, display: "grid", placeItems: "center", borderRadius: 10, border: "1px solid var(--gray-200)", background: "white", cursor: "pointer" }}
+                          style={{ width: 32, height: 32, display: "grid", placeItems: "center", borderRadius: 10, border: "1px solid var(--border-default)", background: "var(--surface-card)", color: "var(--text-secondary)", cursor: "pointer" }}
                         >
                           <MoreHorizontal size={18} />
                         </button>
                         {activeMenuOpen && (
-                          <div style={{ position: "absolute", top: 40, right: 0, width: 150, borderRadius: 12, background: "white", boxShadow: "var(--shadow-md)", zIndex: 15, padding: 8 }}>
+                          <div className="catalogue-card-menu-popover" style={{ position: "absolute", top: 40, right: 0, width: 150, borderRadius: 12, background: "var(--surface-card)", boxShadow: "var(--shadow-md)", zIndex: 15, padding: 8 }}>
                             <button
                               type="button"
                               className="catalogue-card-menu-item"
@@ -690,7 +690,7 @@ export default function CataloguePage() {
                                 navigate(`/datasets/${item.id}`);
                                 setActiveMenu(null);
                               }}
-                              style={{ width: "100%", padding: "10px 12px", textAlign: "left", border: "none", background: "transparent", color: "var(--gray-700)", cursor: "pointer" }}
+                              style={{ width: "100%", padding: "10px 12px", textAlign: "left", border: "none", background: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
                             >
                               View Details
                             </button>
@@ -702,7 +702,7 @@ export default function CataloguePage() {
                                 navigator.clipboard.writeText(`${window.location.origin}/datasets/${item.id}`);
                                 setActiveMenu(null);
                               }}
-                              style={{ width: "100%", padding: "10px 12px", textAlign: "left", border: "none", background: "transparent", color: "var(--gray-700)", cursor: "pointer" }}
+                              style={{ width: "100%", padding: "10px 12px", textAlign: "left", border: "none", background: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
                             >
                               Copy Link
                             </button>
@@ -710,7 +710,7 @@ export default function CataloguePage() {
                         )}
                       </div>
                       {item.visibility === "public" && (
-                        <span style={{ position: "absolute", top: -8, right: -8, display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: "50%", background: "white", border: "1px solid var(--gray-200)", color: "var(--green)" }}>
+                        <span className="catalogue-public-badge" style={{ position: "absolute", top: -8, right: -8, display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: "50%", background: "var(--surface-card)", border: "1px solid var(--border-default)", color: "var(--green)" }}>
                           <CheckCircle2 size={16} />
                         </span>
                       )}
@@ -732,7 +732,7 @@ export default function CataloguePage() {
                           const initials = getInitials(owner.owner?.full_name || "?");
                           const color = getOwnerColor(owner.owner?.full_name || "?");
                           return (
-                            <div key={owner.id} style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid white", background: color, color: "var(--gray-900)", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700, marginLeft: idx === 0 ? 0 : -8, zIndex: 10 - idx }}>
+                            <div key={owner.id} style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid var(--surface-card)", background: color, color: "var(--gray-900)", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700, marginLeft: idx === 0 ? 0 : -8, zIndex: 10 - idx }}>
                               {initials}
                             </div>
                           );
@@ -758,7 +758,7 @@ export default function CataloguePage() {
       <style>{`
         .catalogue-card {
           position: relative;
-          background: white;
+          background: var(--surface-card);
           border-radius: 14px;
           box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
           padding: 18px;
@@ -771,6 +771,47 @@ export default function CataloguePage() {
         .catalogue-card:hover {
           transform: translateY(-3px);
           box-shadow: 0 10px 22px rgba(0,0,0,0.08);
+        }
+        .catalogue-card-top-row {
+          min-height: 34px;
+          isolation: isolate;
+        }
+        .catalogue-category-pill {
+          border: 1px solid rgba(255,255,255,0.55);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.45);
+          max-width: calc(100% - 44px);
+        }
+        .catalogue-card-menu {
+          transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+        }
+        .catalogue-card-menu:hover {
+          background: var(--green-pale) !important;
+          border-color: rgba(0,107,63,0.22) !important;
+          color: var(--green) !important;
+        }
+        .catalogue-card-menu-popover {
+          border: 1px solid var(--border-default);
+          overflow: hidden;
+        }
+        .catalogue-card-menu-item {
+          border-radius: 8px;
+          transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .catalogue-card-menu-item:hover {
+          background: var(--green-pale) !important;
+          color: var(--green) !important;
+        }
+        .catalogue-public-badge {
+          box-shadow: 0 8px 18px rgba(17,24,39,0.10);
+        }
+        [data-theme='dark'] .catalogue-category-pill {
+          border-color: rgba(255,255,255,0.16);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 20px rgba(0,0,0,0.22);
+        }
+        [data-theme='dark'] .catalogue-card-menu-popover,
+        [data-theme='dark'] .catalogue-public-badge {
+          border-color: var(--border-default);
+          box-shadow: var(--shadow-md);
         }
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(12px); }

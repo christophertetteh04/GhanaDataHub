@@ -138,7 +138,7 @@ export default function Sidebar() {
       {isMobile && !mobileOpen && (
         <button 
           onClick={() => setMobileOpen(true)}
-          style={{ position: 'fixed', top: 12, left: 16, zIndex: 101, background: 'transparent', border: 'none', color: 'var(--gray-900)' }}
+          style={{ position: 'fixed', top: 12, left: 16, zIndex: 101, background: 'transparent', border: 'none', color: 'var(--text-primary)' }}
         >
           <Menu size={24} />
         </button>
@@ -164,9 +164,9 @@ export default function Sidebar() {
       >
         <style>{`
           .sidebar-premium {
-            background: var(--white);
-            color: var(--gray-900);
-            border-right: 1px solid var(--gray-300);
+            background: var(--surface-sidebar);
+            color: var(--text-primary);
+            border-right: 1px solid var(--border-subtle);
             padding: 14px 0;
             width: 240px;
           }
@@ -211,7 +211,7 @@ export default function Sidebar() {
             opacity: 0.65;
             font-weight: 500;
             margin-top: 2px;
-            color: var(--gray-700);
+            color: var(--text-secondary);
           }
 
           .sidebar-nav {
@@ -232,7 +232,7 @@ export default function Sidebar() {
             text-transform: uppercase;
             letter-spacing: 0.12em;
             font-weight: 900;
-            color: var(--gray-500);
+            color: var(--text-muted);
           }
 
           .sidebar-nav-list {
@@ -244,7 +244,7 @@ export default function Sidebar() {
             min-height: 44px;
             width: 100%;
             border-radius: 12px;
-            color: var(--gray-700);
+            color: var(--text-secondary);
             margin: 0;
             padding: 0 12px;
             display: flex;
@@ -267,22 +267,22 @@ export default function Sidebar() {
           }
 
           .nav-item svg {
-            color: #9CA3AF;
+            color: var(--text-secondary);
             transition: color 0.15s ease;
           }
 
           .nav-item span {
-            color: #9CA3AF;
+            color: var(--text-secondary);
           }
 
           .nav-item:hover {
-            background: var(--green-pale);
+            background: rgba(0,163,92,0.08);
             transform: translateX(2px);
           }
 
           .nav-item:hover svg,
           .nav-item:hover span {
-            color: var(--green);
+            color: var(--text-primary);
           }
 
           .nav-item.active {
@@ -309,15 +309,15 @@ export default function Sidebar() {
 
           .sidebar-footer {
             padding: 12px 10px 0;
-            border-top: 0;
+            border-top: 1px solid var(--border-subtle);
             margin-top: auto;
           }
 
           .upgrade-card {
             border-radius: 16px;
             padding: 14px 14px;
-            background: linear-gradient(135deg, var(--green-pale), var(--white));
-            border: 1px solid rgba(0,107,63,0.12);
+            background: linear-gradient(135deg, var(--green-pale), var(--surface-elevated));
+            border: 1px solid var(--border-subtle);
             box-shadow: 0 18px 40px rgba(0,0,0,0.06);
             margin-bottom: 14px;
             position: relative;
@@ -347,7 +347,7 @@ export default function Sidebar() {
 
           .upgrade-sub {
             font-size: 12.5px;
-            color: var(--gray-700);
+            color: var(--text-secondary);
             font-weight: 600;
             opacity: 0.9;
             position: relative;
@@ -358,7 +358,7 @@ export default function Sidebar() {
 
           .upgrade-btn {
             background: var(--green);
-            color: var(--white);
+            color: var(--text-on-accent);
             border: 0;
             border-radius: 12px;
             padding: 10px 12px;
@@ -385,8 +385,8 @@ export default function Sidebar() {
             gap: 10px;
             border-radius: 16px;
             padding: 12px 12px;
-            background: var(--green-pale);
-            border: 1px solid rgba(0,107,63,0.12);
+            background: var(--surface-elevated);
+            border: 1px solid var(--border-subtle);
           }
 
           .user-left {
@@ -417,7 +417,7 @@ export default function Sidebar() {
           .user-name {
             font-size: 13px;
             font-weight: 900;
-            color: var(--gray-900);
+            color: var(--text-primary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -427,7 +427,7 @@ export default function Sidebar() {
           .user-role {
             font-size: 11px;
             font-weight: 700;
-            color: var(--gray-500);
+            color: var(--text-secondary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -439,7 +439,7 @@ export default function Sidebar() {
             height: 36px;
             border-radius: 12px;
             border: 0;
-            background: rgba(255,255,255,0.7);
+            background: var(--surface-card);
             color: var(--green);
             display: inline-flex;
             align-items: center;
@@ -448,7 +448,7 @@ export default function Sidebar() {
           }
 
           .logout-btn:hover {
-            background: rgba(232,245,239,1);
+            background: var(--green-pale);
             transform: translateY(-1px);
           }
 
@@ -519,8 +519,8 @@ export default function Sidebar() {
           <div className="user-row" style={{ 
             padding: isExpanded ? '12px' : '12px 0', 
             justifyContent: isExpanded ? 'space-between' : 'center', 
-            background: isExpanded ? 'var(--green-pale)' : 'transparent', 
-            border: isExpanded ? '1px solid rgba(0,107,63,0.12)' : 'none' 
+            background: isExpanded ? 'var(--surface-elevated)' : 'transparent', 
+            border: isExpanded ? '1px solid var(--border-subtle)' : 'none' 
           }}>
             <div className="user-left" style={{ gap: isExpanded ? 10 : 0 }}>
               <div className="avatar">{initials}</div>

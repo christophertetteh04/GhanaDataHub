@@ -8,6 +8,9 @@ import {
   Briefcase, Scale
 } from "lucide-react";
 import { datasetsApi } from "../services/api";
+import ObservanceBanner from "./ObservanceBanner";
+
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
 // ─────────────────────────────────────────────
 // 30 Daily Highlights
@@ -438,6 +441,23 @@ function useSimpleCountUp(target, duration = 1000) {
 export default function TodayHighlight() {
   const navigate = useNavigate();
 
+  const [observanceData, setObservanceData] = useState(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch(`${API_BASE}/observances/today`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setObservanceData(data);
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") setObservanceData(null);
+      });
+
+    return () => controller.abort();
+  }, []);
+
   const dayIdx = (new Date().getDate() - 1) % 30;
   const highlight = HIGHLIGHTS[dayIdx];
 
@@ -506,6 +526,14 @@ export default function TodayHighlight() {
 
   // Navigation dots: 6 groups of 5 days
   const groupIdx = Math.floor(dayIdx / 5);
+
+  if (observanceData) {
+    return (
+      <div className="th-outer fade-in-up">
+        <ObservanceBanner variant="dashboard" observance={observanceData} />
+      </div>
+    );
+  }
 
   return (
     <div className="th-outer fade-in-up">
@@ -736,7 +764,7 @@ const highlightStyles = `
 
   /* RIGHT */
   .th-right {
-    background: #fff;
+    background: var(--surface-card);
     padding: 32px 28px;
     display: flex;
     flex-direction: column;

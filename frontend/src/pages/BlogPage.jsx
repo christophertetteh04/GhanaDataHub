@@ -80,6 +80,28 @@ export const BLOG_POSTS = [
       "Ghana’s 2021 population figures confirm continued growth, with the national population now exceeding 32 million. Major urban centres like Greater Accra and Ashanti continue to grow fastest, while the northern regions expand from smaller bases. The data reveal a clear trend of internal migration toward economic opportunity.\n\nYouth cohorts remain the largest segment of the population, with nearly half of Ghanaians under age 25. That demographic momentum creates both promise and pressure: schools, health facilities, and jobs must keep pace with a rapid entry of new workers. Data on age structure is therefore essential for planning education and social services.\n\nRegional variation is striking. Greater Accra has the highest population density and growth rate, while Savannah and Upper West regions have the lowest density but steady increases in rural population. Urbanization rates are rising in formerly agricultural districts, reflecting expanded road access and market linkages.\n\nThe demographic data also show changing household sizes and fertility patterns. As fertility rates decline gradually, the transition toward smaller family units is visible in both urban and peri-urban areas. This shift has implications for housing demand, utilities, and social policy across Ghana’s regions.",
     heroColor: "linear-gradient(135deg, #9333EA 0%, #A78BFA 100%)",
     relatedDatasetId: null,
+    regionMap: {
+      title: "Ghana Population by Region 2021",
+      rows: [
+        ["Region", "Population"],
+        ["Greater Accra", 5455692],
+        ["Ashanti", 5440463],
+        ["Western", 2060585],
+        ["Western North", 880921],
+        ["Central", 2859821],
+        ["Eastern", 2925455],
+        ["Volta", 1649555],
+        ["Oti", 747248],
+        ["Bono", 1208649],
+        ["Bono East", 1203306],
+        ["Ahafo", 564536],
+        ["Northern", 2310648],
+        ["Savannah", 653266],
+        ["North East", 658903],
+        ["Upper East", 1301226],
+        ["Upper West", 901502],
+      ],
+    },
     tags: ["population", "census", "regions"],
   },
   {
@@ -390,7 +412,7 @@ export default function BlogPage() {
           min-height: calc(100vh - 56px);
         }
         .blog-left-panel {
-          background: white;
+          background: var(--surface-card);
           border-right: 1px solid var(--gray-300);
           display: flex;
           flex-direction: column;
@@ -463,7 +485,7 @@ export default function BlogPage() {
           cursor: pointer;
         }
         .blog-centre-panel {
-          background: white;
+          background: var(--surface-card);
           border-right: 1px solid var(--gray-300);
           overflow-y: auto;
           padding: 20px;
@@ -517,7 +539,7 @@ export default function BlogPage() {
           height: 38px;
           border-radius: 12px;
           border: 1px solid var(--gray-200);
-          background: white;
+          background: var(--surface-card);
           color: var(--gray-600);
           cursor: pointer;
         }
@@ -620,7 +642,7 @@ export default function BlogPage() {
           width: 30px;
         }
         .blog-right-panel {
-          background: white;
+          background: var(--surface-card);
           overflow-y: auto;
           padding: 20px;
         }
@@ -691,7 +713,7 @@ export default function BlogPage() {
           left: 18px;
           padding: 6px 12px;
           border-radius: 999px;
-          background: white;
+          background: var(--surface-card);
           color: var(--green);
           font-size: 12px;
           font-weight: 700;
@@ -711,7 +733,7 @@ export default function BlogPage() {
           color: var(--gray-500);
         }
         .blog-right-article p {
-          color: #374151;
+          color: var(--text-secondary);
           font-size: 14px;
           line-height: 1.8;
           margin: 0;

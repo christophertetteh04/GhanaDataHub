@@ -1,5 +1,6 @@
 import Sidebar from "./Sidebar";
 import { useLocation } from "react-router-dom";
+import DarkModeToggle from "./DarkModeToggle";
 
 const TITLES = {
   "/": "Dashboard",
@@ -22,6 +23,9 @@ export default function Layout({ children }) {
       <div className="main" style={{ marginLeft: "var(--sidebar-width, 240px)", transition: "margin-left 0.25s ease" }}>
         <div className="topbar">
           <span className="topbar-title">{title}</span>
+          <div className="topbar-actions">
+            <DarkModeToggle />
+          </div>
         </div>
         <main className="page-content">{children}</main>
       </div>

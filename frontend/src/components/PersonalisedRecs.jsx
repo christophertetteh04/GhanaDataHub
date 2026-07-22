@@ -199,7 +199,7 @@ export default function PersonalisedRecs({ recentUploads = [], mostDownloaded = 
               className="rec-card-item"
               style={{
                 position: "relative",
-                background: "#ffffff",
+                background: "var(--surface-card)",
                 borderRadius: 14,
                 boxShadow: "var(--shadow)",
                 padding: "16px",

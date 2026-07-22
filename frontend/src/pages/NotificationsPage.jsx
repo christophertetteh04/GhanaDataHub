@@ -65,7 +65,7 @@ export default function NotificationsPage() {
               className="card"
               style={{
                 display: "flex", gap: 14, alignItems: "flex-start",
-                background: n.is_read ? "white" : "var(--green-pale)",
+                background: n.is_read ? "var(--surface-card)" : "var(--green-pale)",
                 borderLeft: n.is_read ? "3px solid transparent" : "3px solid var(--green)",
                 cursor: n.is_read ? "default" : "pointer",
               }}

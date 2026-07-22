@@ -5,6 +5,8 @@ import { useAuth } from "../context/AuthContext";
 import QualityBadge from "../components/QualityBadge";
 import { trackDatasetView } from "../components/PersonalisedRecs";
 import WatchButton from "../components/WatchButton";
+import GhanaRegionMap from "../components/GhanaRegionMap";
+import { detectRegionColumn } from "../utils/mapUtils";
 import toast from "react-hot-toast";
 import {
   ArrowLeft,
@@ -23,7 +25,8 @@ import {
   Shield,
   Code2,
   Dot,
-  Database
+  Database,
+  Map
 } from "lucide-react";
 
 const VIS_LABELS = {
@@ -206,6 +209,9 @@ export default function DatasetDetailPage() {
   const [versions, setVersions] = useState([]);
   const [related, setRelated] = useState([]);
   const [showShare, setShowShare] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [csvRows, setCsvRows] = useState(null);
+  const [hasRegionData, setHasRegionData] = useState(false);
   
   const [isScrolledPastHero, setIsScrolledPastHero] = useState(false);
   const [expandedDesc, setExpandedDesc] = useState(false);
@@ -233,6 +239,45 @@ export default function DatasetDetailPage() {
   useEffect(() => {
     if (dataset) {
       trackDatasetView(dataset);
+    }
+  }, [dataset]);
+
+  useEffect(() => {
+    if (!dataset) return;
+    // Check if preview_data exists and try to detect region column.
+    // preview_data is an array of numbers from the first numeric column.
+    // We cannot detect region column from preview_data alone since it
+    // is just numbers. Instead, check the dataset title and tags.
+    const titleLower = (dataset.title || "").toLowerCase();
+    const tagNames = (dataset.tags || []).map((t) => (t.name || t).toLowerCase());
+    const regionSignals = [
+      "region",
+      "regional",
+      "district",
+      "area",
+      "zone",
+      "constituency",
+      "northern",
+      "southern",
+      "ghana",
+    ];
+    const titleHasRegion = regionSignals.some((s) => titleLower.includes(s));
+    const tagsHaveRegion = tagNames.some((t) => regionSignals.some((s) => t.includes(s)));
+    const previewHeaders = Array.isArray(dataset.preview_data?.[0]) ? dataset.preview_data[0] : [];
+    const previewHasRegion = detectRegionColumn(previewHeaders) !== -1;
+    if (titleHasRegion || tagsHaveRegion || previewHasRegion) {
+      setHasRegionData(true);
+      // Build a sample rows array from dataset metadata for the map.
+      // For the MVP: show a placeholder map with Ghana regions coloured
+      // by a uniform value.
+      setCsvRows([
+        ["Region", "Download to view"],
+        ["Greater Accra", 1], ["Ashanti", 1], ["Western", 1],
+        ["Western North", 1], ["Central", 1], ["Eastern", 1],
+        ["Volta", 1], ["Oti", 1], ["Bono", 1], ["Bono East", 1],
+        ["Ahafo", 1], ["Northern", 1], ["Savannah", 1],
+        ["North East", 1], ["Upper East", 1], ["Upper West", 1],
+      ]);
     }
   }, [dataset]);
   
@@ -442,6 +487,37 @@ export default function DatasetDetailPage() {
         
         {/* LEFT COLUMN */}
         <div style={{ flex: '1 1 68%', minWidth: 0 }}>
+
+          {hasRegionData && (
+            <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
+              <button
+                onClick={() => setActiveTab("overview")}
+                className={activeTab === "overview" ? "tab-active" : "tab-inactive"}
+              >
+                <Database size={14} /> Overview
+              </button>
+              <button
+                onClick={() => setActiveTab("map")}
+                className={activeTab === "map" ? "tab-active" : "tab-inactive"}
+              >
+                <Map size={14} /> Regional Map
+              </button>
+            </div>
+          )}
+
+          {activeTab === "map" && hasRegionData && csvRows && (
+            <div style={{ padding: "20px 0" }}>
+              <GhanaRegionMap
+                rows={csvRows}
+                datasetTitle={dataset.title}
+                datasetId={dataset.id}
+                height={480}
+              />
+              <div style={{ marginTop: 16, padding: "14px 18px", background: "var(--green-pale)", borderRadius: 10, fontSize: 13, color: "var(--dark)", lineHeight: 1.6 }}>
+                <strong style={{ color: "var(--green)" }}>About this map:</strong> This map shows Ghana's 16 administrative regions. Download the full dataset and open it in Excel or Python to see regional values. Future versions of GhanaDataHub will parse and display the actual regional values automatically.
+              </div>
+            </div>
+          )}
           
           <div className="card" style={{ padding: 32, borderRadius: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginBottom: 24, border: 'none', transition: 'transform 0.2s ease' }}
                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
@@ -497,7 +573,7 @@ export default function DatasetDetailPage() {
                        <div style={{ position: 'absolute', left: 11, top: 28, bottom: -24, width: 2, background: 'var(--gray-200)' }} />
                     )}
                     <div style={{ width: 24, height: 24, borderRadius: '50%', background: i === 0 ? 'var(--green)' : 'var(--gray-300)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative', zIndex: 2 }}>
-                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'white' }} />
+                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--surface-card)' }} />
                     </div>
                     <div style={{ flex: 1, paddingBottom: i !== versions.length - 1 ? 16 : 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
@@ -594,7 +670,7 @@ export default function DatasetDetailPage() {
           <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24 }}>Related Datasets</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 24 }}>
             {related.map(d => (
-               <div key={d.id} className="card dataset-card" onClick={() => navigate(`/datasets/${d.id}`)} style={{ cursor: 'pointer', padding: 24, borderRadius: 16, transition: 'transform 0.2s, box-shadow 0.2s', border: '1px solid var(--gray-200)', background: 'white', display: 'flex', flexDirection: 'column' }} 
+               <div key={d.id} className="card dataset-card" onClick={() => navigate(`/datasets/${d.id}`)} style={{ cursor: 'pointer', padding: 24, borderRadius: 16, transition: 'transform 0.2s, box-shadow 0.2s', border: '1px solid var(--gray-200)', background: 'var(--surface-card)', display: 'flex', flexDirection: 'column' }} 
                     onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.06)'; }}
                     onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; }}>
                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>

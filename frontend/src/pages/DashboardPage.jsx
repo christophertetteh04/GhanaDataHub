@@ -5,6 +5,7 @@ import { dashboardApi, notifApi, categoriesApi } from "../services/api";
 import TodayHighlight from "../components/TodayHighlight";
 import EconomicPulse from "../components/EconomicPulse";
 import ActivityFeed from "../components/ActivityFeed";
+import GhanaRegionMap from "../components/GhanaRegionMap";
 import SinceLastVisit from "../components/SinceLastVisit";
 import EconomicCalendar from "../components/EconomicCalendar";
 import PersonalisedRecs from "../components/PersonalisedRecs";
@@ -32,7 +33,8 @@ import {
   SlidersHorizontal,
   Eye,
   Download,
-  ArrowRight
+  ArrowRight,
+  Map
 } from "lucide-react";
 
 import useCountUp from "../hooks/useCountUp";
@@ -100,18 +102,19 @@ function getFileTypeStyles(type) {
   return { grad: "linear-gradient(135deg, #6B7280 0%, #4B5563 100%)", icon: Database };
 }
 
-const CustomTooltip = ({ active, payload, label }) => {
+const CustomTooltip = ({ active, payload, label, chartColors }) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
-      background: 'white',
-      border: '1px solid var(--gray-300)',
+      background: chartColors.tooltip.bg,
+      border: `1px solid ${chartColors.tooltip.border}`,
+      color: chartColors.tooltip.text,
       borderRadius: 10,
       padding: '10px 14px',
       boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
       fontSize: 12,
     }}>
-      <p style={{ fontWeight: 700, marginBottom: 4, color: 'var(--dark)' }}>{label}</p>
+      <p style={{ fontWeight: 700, marginBottom: 4, color: chartColors.tooltip.text }}>{label}</p>
       <p style={{ color: 'var(--green)', margin: 0 }}>
         {payload[0].name}: <strong>{payload[0].value}</strong>
       </p>
@@ -119,9 +122,26 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
+function useDarkMode() {
+  const [isDark, setIsDark] = useState(
+    document.documentElement.getAttribute('data-theme') === 'dark'
+  );
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(
+        document.documentElement.getAttribute('data-theme') === 'dark'
+      );
+    });
+    observer.observe(document.documentElement, { attributes: true });
+    return () => observer.disconnect();
+  }, []);
+  return isDark;
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isDark = useDarkMode();
 
   const [stats, setStats] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -129,6 +149,19 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("Trending");
   const [activeCategory, setActiveCategory] = useState(null);
   const [period, setPeriod] = useState('month');
+
+  const chartColors = {
+    axis: isDark ? '#6B7280' : '#9CA3AF',
+    grid: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+    tooltip: {
+      bg: isDark ? '#1C2B21' : '#FFFFFF',
+      border: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB',
+      text: isDark ? '#F9FAFB' : '#111827',
+    },
+    line: '#00A35C',
+    area: isDark ? 'rgba(0,163,92,0.15)' : 'rgba(0,107,63,0.1)',
+    bar: '#00A35C',
+  };
 
   useEffect(() => {
     Promise.all([
@@ -427,6 +460,39 @@ export default function DashboardPage() {
             </div>
           </section>
 
+          <section style={{ marginBottom: 24, padding: "20px 28px 0" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Map size={16} color="var(--green)" />
+                <span style={{ fontSize: 14, fontWeight: 700 }}>Regional Ghana Data</span>
+              </div>
+              <a href="/catalogue" style={{ fontSize: 12, color: "var(--green)" }}>
+                Browse regional datasets
+              </a>
+            </div>
+            <div style={{ background: "var(--surface-card)", borderRadius: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", overflow: "hidden" }}>
+              <GhanaRegionMap
+                rows={[
+                  ["Region", "Electricity Access (%)"],
+                  ["Greater Accra", 97], ["Ashanti", 88], ["Western", 82],
+                  ["Western North", 71], ["Central", 79], ["Eastern", 77],
+                  ["Volta", 68], ["Oti", 52], ["Bono", 74], ["Bono East", 69],
+                  ["Ahafo", 72], ["Northern", 61], ["Savannah", 47],
+                  ["North East", 53], ["Upper East", 58], ["Upper West", 55],
+                ]}
+                datasetTitle="Ghana Electricity Access by Region"
+                datasetId=""
+                height={340}
+              />
+              <div style={{ padding: "10px 16px", borderTop: "1px solid var(--gray-100)", fontSize: 11, color: "var(--gray-400)" }}>
+                Sample data: Electricity access by region. Source: Ghana Energy Commission.
+                <a href="/datasets?search=electricity" style={{ color: "var(--green)", marginLeft: 6 }}>
+                  Find related datasets
+                </a>
+              </div>
+            </div>
+          </section>
+
           {/* SECTION 6 - MONTHLY UPLOADS CHART */}
           <section className="dash-v2-section pb-24">
             <div className="chart-card">
@@ -463,14 +529,14 @@ export default function DashboardPage() {
                   <AreaChart data={filteredData} margin={{ top: 10, right: 10, left: -18, bottom: 0 }}>
                     <defs>
                       <linearGradient id='uploadGradient' x1='0' y1='0' x2='0' y2='1'>
-                        <stop offset='5%' stopColor='var(--green)' stopOpacity={0.3} />
-                        <stop offset='95%' stopColor='var(--green)' stopOpacity={0} />
+                        <stop offset='5%' stopColor={chartColors.line} stopOpacity={isDark ? 0.28 : 0.3} />
+                        <stop offset='95%' stopColor={chartColors.line} stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid vertical={false} stroke="#F3F4F6" />
-                    <XAxis dataKey="month" tick={{ fontSize: 12, fill: "var(--gray-500)" }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,107,63,0.04)' }} />
-                    <Area type="monotone" dataKey="count" fill="url(#uploadGradient)" stroke="var(--green)" strokeWidth={2} dot={false} activeDot={{ r: 5, fill: 'var(--green)' }} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
+                    <CartesianGrid vertical={false} stroke={chartColors.grid} />
+                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: chartColors.axis }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CustomTooltip chartColors={chartColors} />} cursor={{ fill: chartColors.area }} />
+                    <Area type="monotone" dataKey="count" fill="url(#uploadGradient)" stroke={chartColors.line} strokeWidth={2} dot={false} activeDot={{ r: 5, fill: chartColors.line }} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
                   </AreaChart>
                 </ResponsiveContainer>
               )}
@@ -491,15 +557,15 @@ export default function DashboardPage() {
 
 const dashboardStyles = `
   .dashboard-v2 {
-    background: var(--gray-100);
+    background: var(--surface-base);
     min-height: 100vh;
     padding-bottom: 40px;
   }
 
   /* SECTION 1 */
   .dash-v2-greet-band {
-    background: #fff;
-    border-bottom: 1px solid var(--gray-300);
+    background: var(--surface-card);
+    border-bottom: 1px solid var(--border-default);
     padding: 20px 28px;
     margin-bottom: 40px;
     display: flex;
@@ -535,7 +601,7 @@ const dashboardStyles = `
   .dash-v2-tabs {
     display: flex;
     gap: 4px;
-    background: var(--gray-100);
+    background: var(--surface-base);
     padding: 4px;
     border-radius: 99px;
   }
@@ -572,8 +638,8 @@ const dashboardStyles = `
 
   /* SECTION 2 */
   .dash-v2-cat-strip {
-    background: #fff;
-    border-bottom: 1px solid var(--gray-300);
+    background: var(--surface-card);
+    border-bottom: 1px solid var(--border-default);
     padding: 16px 28px;
   }
   .cat-strip-head {
@@ -677,7 +743,8 @@ const dashboardStyles = `
 
   /* SECTION 3 - STATS */
   .dash-v2-stat-card {
-    background: #fff;
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
     border-radius: 14px;
     padding: 18px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -706,7 +773,8 @@ const dashboardStyles = `
 
   /* SECTION 4 - HEADLINES */
   .headline-card {
-    background: #fff;
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
     border-radius: 12px;
     padding: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -765,7 +833,8 @@ const dashboardStyles = `
 
   /* SECTION 5 - LATEST UPLOADS */
   .latest-card {
-    background: #fff;
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
     border-radius: 14px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     transition: transform 0.2s ease;
@@ -788,13 +857,13 @@ const dashboardStyles = `
     position: absolute;
     bottom: 12px;
     right: 12px;
-    background: #fff;
+    background: var(--surface-card);
     border: none;
     border-radius: 99px;
     padding: 4px 10px;
     font-size: 11px;
     font-weight: 600;
-    color: var(--gray-900);
+    color: var(--text-primary);
     display: flex;
     align-items: center;
     gap: 4px;
@@ -845,7 +914,8 @@ const dashboardStyles = `
 
   /* SECTION 6 - CHART */
   .chart-card {
-    background: #fff;
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
     border-radius: 14px;
     padding: 20px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);

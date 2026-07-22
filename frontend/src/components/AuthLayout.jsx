@@ -8,14 +8,14 @@ export default function AuthLayout({ icon: Icon = Database, title, subtitle, chi
           min-height: 100vh;
           display: grid;
           grid-template-columns: 45% 55%;
-          background: var(--white);
+          background: var(--surface-base);
           color: var(--gray-900);
           position: relative;
           overflow: hidden;
         }
 
         .authx-form-panel {
-          background: var(--white);
+          background: var(--surface-card);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -83,7 +83,7 @@ export default function AuthLayout({ icon: Icon = Database, title, subtitle, chi
           padding: 11px 13px;
           border: 1px solid var(--gray-300);
           border-radius: 10px;
-          background: var(--white);
+          background: var(--surface-elevated);
           color: var(--gray-900);
           outline: none;
           transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -171,7 +171,7 @@ export default function AuthLayout({ icon: Icon = Database, title, subtitle, chi
           border: 0;
           border-radius: 10px;
           background: var(--green);
-          color: var(--white);
+          color: var(--text-on-accent);
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -197,7 +197,7 @@ export default function AuthLayout({ icon: Icon = Database, title, subtitle, chi
           height: 17px;
           border-radius: 50%;
           border: 2px solid rgba(255,255,255,0.36);
-          border-top-color: var(--white);
+          border-top-color: var(--text-on-accent);
           animation: authx-spin 0.75s linear infinite;
         }
 
@@ -228,7 +228,7 @@ export default function AuthLayout({ icon: Icon = Database, title, subtitle, chi
         }
 
         .authx-visual-panel {
-          background: linear-gradient(135deg, var(--green-pale) 0%, var(--white) 78%);
+          background: linear-gradient(135deg, var(--green-pale) 0%, var(--surface-card) 78%);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -245,7 +245,7 @@ export default function AuthLayout({ icon: Icon = Database, title, subtitle, chi
           gap: 9px;
           min-height: 38px;
           border-radius: 999px;
-          background: var(--white);
+          background: var(--surface-card);
           color: var(--gray-700);
           padding: 8px 13px;
           font-size: 13px;
@@ -268,7 +268,7 @@ export default function AuthLayout({ icon: Icon = Database, title, subtitle, chi
           height: 22px;
           border-radius: 50%;
           background: var(--green);
-          color: var(--white);
+          color: var(--text-on-accent);
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -315,7 +315,7 @@ export default function AuthLayout({ icon: Icon = Database, title, subtitle, chi
         .authx-preview-card {
           border: 1px solid rgba(209, 213, 219, 0.9);
           border-radius: 16px;
-          background: var(--white);
+          background: var(--surface-card);
           padding: 18px;
           box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 24px 60px rgba(17, 24, 39, 0.12);
         }
@@ -376,7 +376,7 @@ export default function AuthLayout({ icon: Icon = Database, title, subtitle, chi
           position: absolute;
           z-index: 3;
           border-radius: 14px;
-          background: var(--white);
+          background: var(--surface-card);
           box-shadow: 0 16px 36px rgba(17, 24, 39, 0.13);
           padding: 12px 14px;
           animation: authx-float 5s ease-in-out infinite;

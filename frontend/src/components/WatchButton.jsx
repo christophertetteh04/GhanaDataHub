@@ -92,7 +92,7 @@ export default function WatchButton({ datasetId, datasetTitle }) {
     border: isWatching
       ? "1.5px solid var(--green)"
       : "1.5px solid var(--gray-300)",
-    background: isWatching ? "var(--green-pale, #e8f5ef)" : "#ffffff",
+    background: isWatching ? "var(--green-pale, #e8f5ef)" : "var(--surface-card)",
     color: isWatching ? "var(--green)" : "var(--gray-600)",
   };
 

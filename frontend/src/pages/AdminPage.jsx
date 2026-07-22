@@ -193,7 +193,7 @@ export default function AdminPage() {
 
   return (
     <div className="admin-page" style={{ display: "flex", minHeight: "100%" }}>
-      <div style={{ width: 200, background: "#fff", borderRight: "1px solid rgba(148,163,184,0.18)", padding: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ width: 200, background: "var(--surface-card)", borderRight: "1px solid rgba(148,163,184,0.18)", padding: 20, display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: "var(--green)", marginBottom: 4 }}>Admin Panel</div>
           <div style={{ fontSize: 12, color: "var(--gray-500)" }}>Control center</div>
@@ -220,7 +220,7 @@ export default function AdminPage() {
           <>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 16, marginBottom: 20 }}>
               {overviewStats.map((item) => (
-                <div key={item.label} style={{ background: "#fff", padding: 18, borderRadius: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
+                <div key={item.label} style={{ background: "var(--surface-card)", padding: 18, borderRadius: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
                   <div style={{ color: "var(--gray-500)", fontSize: 12, marginBottom: 10 }}>{item.label}</div>
                   <div style={{ fontSize: 24, fontWeight: 800 }}>{item.value}</div>
                 </div>
@@ -228,11 +228,11 @@ export default function AdminPage() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1.2fr", gap: 16, marginBottom: 20 }}>
-              <div style={{ background: "#fff", borderRadius: 18, padding: 20, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
+              <div style={{ background: "var(--surface-card)", borderRadius: 18, padding: 20, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
                 <div style={{ marginBottom: 14, fontWeight: 700 }}>Recent Signups</div>
                 <div style={{ display: "grid", gap: 12 }}>
                   {(overview?.recent_signups || []).map((item) => (
-                    <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, background: "#f8fafc" }}>
+                    <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, background: "var(--surface-base)" }}>
                       <div style={{ width: 36, height: 36, borderRadius: 12, background: "rgba(16,185,129,0.12)", color: "var(--green)", display: "grid", placeItems: "center", fontWeight: 800 }}>{item.full_name?.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</div>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontWeight: 700, fontSize: 13 }}>{item.full_name}</div>
@@ -247,7 +247,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div style={{ background: "#fff", borderRadius: 18, padding: 20, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
+              <div style={{ background: "var(--surface-card)", borderRadius: 18, padding: 20, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
                 <div style={{ marginBottom: 14, fontWeight: 700 }}>Dataset Status Breakdown</div>
                 <div style={{ width: "100%", height: 260 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -270,7 +270,7 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div style={{ background: "#fff", borderRadius: 18, padding: 24, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
+            <div style={{ background: "var(--surface-card)", borderRadius: 18, padding: 24, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
               <div style={{ fontWeight: 700, marginBottom: 12 }}>Security Events</div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <span style={{ fontSize: 34, fontWeight: 800, color: overview?.error_events_last_24h > 10 ? "#b91c1c" : "var(--gray-900)" }}>{overview?.error_events_last_24h ?? 0}</span>
@@ -290,7 +290,7 @@ export default function AdminPage() {
                 placeholder="Search users..."
                 value={usersSearch}
                 onChange={(e) => setUsersSearch(e.target.value)}
-                style={{ flex: 1, minWidth: 200, padding: 10, borderRadius: 14, border: "1px solid rgba(148,163,184,0.3)", background: "#fff" }}
+                style={{ flex: 1, minWidth: 200, padding: 10, borderRadius: 14, border: "1px solid rgba(148,163,184,0.3)", background: "var(--surface-card)" }}
               />
               <select value={userRoleFilter} onChange={(e) => setUserRoleFilter(e.target.value)} style={{ minWidth: 180, padding: 10, borderRadius: 14, border: "1px solid rgba(148,163,184,0.3)" }}>
                 <option value="">All roles</option>
@@ -304,9 +304,9 @@ export default function AdminPage() {
                 <option value="false">Suspended</option>
               </select>
             </div>
-            <div style={{ background: "#fff", borderRadius: 18, overflow: "hidden" }}>
+            <div style={{ background: "var(--surface-card)", borderRadius: 18, overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead style={{ background: "#f8fafc" }}>
+                <thead style={{ background: "var(--surface-base)" }}>
                   <tr>
                     <th style={tableHeaderStyle}>User</th>
                     <th style={tableHeaderStyle}>Username</th>
@@ -373,7 +373,7 @@ export default function AdminPage() {
                 placeholder="Search datasets..."
                 value={datasetsSearch}
                 onChange={(e) => setDatasetsSearch(e.target.value)}
-                style={{ flex: 1, minWidth: 200, padding: 10, borderRadius: 14, border: "1px solid rgba(148,163,184,0.3)", background: "#fff" }}
+                style={{ flex: 1, minWidth: 200, padding: 10, borderRadius: 14, border: "1px solid rgba(148,163,184,0.3)", background: "var(--surface-card)" }}
               />
               <select value={datasetsVisibility} onChange={(e) => setDatasetsVisibility(e.target.value)} style={{ minWidth: 180, padding: 10, borderRadius: 14, border: "1px solid rgba(148,163,184,0.3)" }}>
                 <option value="">All visibility</option>
@@ -382,9 +382,9 @@ export default function AdminPage() {
                 <option value="organization">Organization</option>
               </select>
             </div>
-            <div style={{ background: "#fff", borderRadius: 18, overflow: "hidden" }}>
+            <div style={{ background: "var(--surface-card)", borderRadius: 18, overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead style={{ background: "#f8fafc" }}>
+                <thead style={{ background: "var(--surface-base)" }}>
                   <tr>
                     <th style={tableHeaderStyle}>Title</th>
                     <th style={tableHeaderStyle}>Owner</th>
@@ -430,7 +430,7 @@ export default function AdminPage() {
 
         {selectedDelete && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.5)", display: "grid", placeItems: "center", zIndex: 200 }}>
-            <div style={{ background: "#fff", borderRadius: 18, padding: 28, width: 420, boxShadow: "0 28px 60px rgba(15,23,42,0.2)" }}>
+            <div style={{ background: "var(--surface-card)", borderRadius: 18, padding: 28, width: 420, boxShadow: "0 28px 60px rgba(15,23,42,0.2)" }}>
               <h2 style={{ margin: 0, fontSize: 20 }}>Confirm delete</h2>
               <p style={{ color: "var(--gray-600)", marginTop: 12 }}>This will permanently remove the dataset and all versions.</p>
               <div style={{ display: "flex", gap: 10, marginTop: 22, justifyContent: "flex-end" }}>
@@ -469,9 +469,9 @@ export default function AdminPage() {
               </select>
               <input type="date" value={auditDateFrom} onChange={(e) => setAuditDateFrom(e.target.value)} style={{ padding: 10, borderRadius: 14, border: "1px solid rgba(148,163,184,0.3)" }} />
             </div>
-            <div style={{ background: "#fff", borderRadius: 18, overflow: "hidden" }}>
+            <div style={{ background: "var(--surface-card)", borderRadius: 18, overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead style={{ background: "#f8fafc" }}>
+                <thead style={{ background: "var(--surface-base)" }}>
                   <tr>
                     <th style={tableHeaderStyle}>Action</th>
                     <th style={tableHeaderStyle}>User</th>
@@ -502,7 +502,7 @@ export default function AdminPage() {
 
         {activeSection === "storage" && (
           <div>
-            <div style={{ background: "#fff", borderRadius: 18, padding: 20, marginBottom: 20, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
+            <div style={{ background: "var(--surface-card)", borderRadius: 18, padding: 20, marginBottom: 20, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
               <div style={{ marginBottom: 14, fontWeight: 700 }}>Storage Breakdown by Organization</div>
               <div style={{ width: "100%", height: 320 }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -516,9 +516,9 @@ export default function AdminPage() {
                 </ResponsiveContainer>
               </div>
             </div>
-            <div style={{ background: "#fff", borderRadius: 18, overflow: "hidden" }}>
+            <div style={{ background: "var(--surface-card)", borderRadius: 18, overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead style={{ background: "#f8fafc" }}>
+                <thead style={{ background: "var(--surface-base)" }}>
                   <tr>
                     <th style={tableHeaderStyle}>Organization</th>
                     <th style={tableHeaderStyle}>Users</th>
@@ -543,10 +543,10 @@ export default function AdminPage() {
 
         {activeSection === "settings" && (
           <div style={{ display: "grid", gap: 18 }}>
-            <div style={{ background: "#fff", borderRadius: 18, padding: 24, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
+            <div style={{ background: "var(--surface-card)", borderRadius: 18, padding: 24, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
               <div style={{ fontWeight: 700, marginBottom: 16 }}>Settings</div>
               {STORAGE_TOGGLES.map((toggle) => (
-                <div key={toggle.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: 16, borderRadius: 14, background: "#f8fafc" }}>
+                <div key={toggle.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: 16, borderRadius: 14, background: "var(--surface-base)" }}>
                   <div>
                     <div style={{ fontWeight: 700 }}>{toggle.label}</div>
                     <div style={{ fontSize: 12, color: "var(--gray-500)" }}>Configuration coming soon.</div>
@@ -562,7 +562,7 @@ export default function AdminPage() {
                 </div>
               ))}
             </div>
-            <div style={{ background: "#fff", borderRadius: 18, padding: 24, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
+            <div style={{ background: "var(--surface-card)", borderRadius: 18, padding: 24, boxShadow: "0 10px 30px rgba(15,23,42,0.04)" }}>
               <div style={{ fontWeight: 700, marginBottom: 12 }}>Maintenance Mode</div>
               <div style={{ color: "var(--gray-600)", marginBottom: 16 }}>This is a placeholder for future maintenance controls. No live action is taken yet.</div>
               <button style={{ border: "1px solid #dc2626", color: "#dc2626", background: "transparent", borderRadius: 12, padding: "10px 16px", cursor: "pointer" }} onClick={() => toast.success("Maintenance toggle is coming soon")}>Enable Maintenance Mode</button>
@@ -597,7 +597,7 @@ const buttonStyle = {
   padding: "10px 14px",
   fontWeight: 700,
   cursor: "pointer",
-  background: "#f8fafc",
+  background: "var(--surface-base)",
   color: "var(--gray-900)",
 };
 
@@ -605,6 +605,6 @@ const paginationButtonStyle = {
   borderRadius: 12,
   border: "1px solid rgba(148,163,184,0.3)",
   padding: "10px 14px",
-  background: "#fff",
+  background: "var(--surface-card)",
   cursor: "pointer",
 };

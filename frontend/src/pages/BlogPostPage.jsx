@@ -2,6 +2,31 @@ import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Database, BookOpen, Users, Vote, TrendingUp, Heart, Leaf, Wind, Share2 } from "lucide-react";
 import { BLOG_POSTS } from "./BlogPage";
+import GhanaRegionMap from "../components/GhanaRegionMap";
+
+/* HOW TO EMBED A REGIONAL MAP IN A DATA STORY:
+ *
+ * 1. Import the component:
+ *    import GhanaRegionMap from '../components/GhanaRegionMap';
+ *
+ * 2. Add regionMap data to the blog post object in BlogPage.jsx:
+ *    regionMap: {
+ *      rows: [['Region','Value'],['Ashanti',45.2],...],
+ *      title: 'Literacy Rate by Region',
+ *    }
+ *
+ * 3. Render inside the blog post body:
+ *    {post.regionMap && (
+ *      <div style={{ margin: '24px 0' }}>
+ *        <GhanaRegionMap
+ *          rows={post.regionMap.rows}
+ *          datasetTitle={post.regionMap.title}
+ *          datasetId=''
+ *          height={380}
+ *        />
+ *      </div>
+ *    )}
+ */
 
 const CATEGORY_ICON = {
   Economy: TrendingUp,
@@ -86,13 +111,23 @@ export default function BlogPostPage() {
           </button>
         </div>
 
-        <div style={{ background: "white", borderRadius: 20, boxShadow: "var(--shadow-md)", padding: 28 }}>
+        <div style={{ background: "var(--surface-card)", borderRadius: 20, boxShadow: "var(--shadow-md)", padding: 28 }}>
           <div style={{ display: "grid", gap: 18 }}>
             {post.body.split("\n\n").map((paragraph, idx) => (
-              <p key={idx} style={{ margin: 0, color: "#374151", fontSize: 16, lineHeight: 1.9 }}>{paragraph}</p>
+              <p key={idx} style={{ margin: 0, color: "var(--text-secondary)", fontSize: 16, lineHeight: 1.9 }}>{paragraph}</p>
             ))}
           </div>
-          <div style={{ marginTop: 28, borderRadius: 16, padding: 22, background: "#f9fafb", display: "grid", gap: 14 }}>
+          {post.regionMap && (
+            <div style={{ margin: "24px 0" }}>
+              <GhanaRegionMap
+                rows={post.regionMap.rows}
+                datasetTitle={post.regionMap.title}
+                datasetId=""
+                height={380}
+              />
+            </div>
+          )}
+          <div style={{ marginTop: 28, borderRadius: 16, padding: 22, background: "var(--surface-base)", display: "grid", gap: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <Database size={24} style={{ color: "var(--green)" }} />
               <div>

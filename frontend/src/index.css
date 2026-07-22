@@ -9,10 +9,15 @@
   --red: #ce1126;
   --black: #0a0a0a;
   --gray-900: #111827;
+  --gray-800: #1f2937;
   --gray-700: #374151;
+  --gray-600: #4b5563;
   --gray-500: #6b7280;
+  --gray-400: #9ca3af;
   --gray-300: #d1d5db;
+  --gray-200: #e5e7eb;
   --gray-100: #f3f4f6;
+  --gray-50: #f9fafb;
   --white: #ffffff;
   --sidebar-w: 240px;
   --radius: 10px;
@@ -28,8 +33,8 @@
 
 body {
   font-family: "Inter", sans-serif;
-  background: var(--gray-100);
-  color: var(--gray-900);
+  background: var(--surface-base, var(--gray-100));
+  color: var(--text-primary, var(--gray-900));
   font-size: 14px;
   line-height: 1.5;
 }
@@ -214,8 +219,8 @@ select {
 }
 
 .topbar {
-  background: white;
-  border-bottom: 1px solid var(--gray-300);
+  background: var(--surface-card, white);
+  border-bottom: 1px solid var(--border-default, var(--gray-300));
   padding: 0 24px;
   height: 56px;
   display: flex;
@@ -245,7 +250,7 @@ select {
 
 /* Cards */
 .card {
-  background: white;
+  background: var(--surface-card, white);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 20px;
@@ -274,7 +279,7 @@ select {
 }
 
 .stat-card {
-  background: white;
+  background: var(--surface-card, white);
   border-radius: var(--radius);
   padding: 18px 20px;
   box-shadow: var(--shadow);
@@ -373,7 +378,8 @@ select {
   transition:
     border-color 0.15s,
     box-shadow 0.15s;
-  background: white;
+  background: var(--surface-elevated, white);
+  color: var(--text-primary, var(--gray-900));
 }
 
 .form-input:focus,
@@ -418,7 +424,7 @@ td {
 }
 
 tr:hover td {
-  background: #fafafa;
+  background: var(--green-pale);
 }
 
 /* Badges */
@@ -483,7 +489,7 @@ tr:hover td {
 }
 
 .modal {
-  background: white;
+  background: var(--surface-card, white);
   border-radius: 12px;
   padding: 24px;
   width: 100%;
@@ -568,13 +574,13 @@ tr:hover td {
 .auth-page {
   min-height: 100vh;
   display: flex;
-  background: var(--gray-100);
+  background: var(--surface-base, var(--gray-100));
 }
 
 .auth-panel {
   width: 420px;
   flex-shrink: 0;
-  background: white;
+  background: var(--surface-card, white);
   padding: 48px 40px;
   display: flex;
   flex-direction: column;
@@ -666,7 +672,7 @@ tr:hover td {
 }
 
 .dataset-card {
-  background: white;
+  background: var(--surface-card, white);
   border-radius: var(--radius);
   padding: 18px;
   box-shadow: var(--shadow);
@@ -739,7 +745,7 @@ tr:hover td {
 }
 
 .chart-card {
-  background: white;
+  background: var(--surface-card, white);
   border-radius: var(--radius);
   padding: 20px;
   box-shadow: var(--shadow);
@@ -771,8 +777,8 @@ tr:hover td {
   border-radius: 6px;
   border: 1px solid var(--gray-300);
   font-size: 13px;
-  background: white;
-  color: var(--gray-700);
+  background: var(--surface-card, white);
+  color: var(--text-secondary, var(--gray-700));
   transition: all 0.15s;
 }
 
@@ -965,4 +971,612 @@ tr:hover td {
 @keyframes fadeSlideIn {
   from { opacity: 0; transform: translateX(8px); }
   to { opacity: 1; transform: translateX(0); }
+}
+
+/* ===================================================
+   DARK MODE COLOUR SYSTEM
+   Expo.dev-inspired: warm dark green base, premium depth
+   =================================================== */
+
+/* Light mode (default) — explicit reset for every token dark mode mutates. */
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+  /* Brand */
+  --green: #006B3F;
+  --green-light: #00A35C;
+  --green-pale: #E8F5EF;
+  --gold: #FCD116;
+  --gold-dark: #E6BC00;
+  --red: #CE1126;
+  --black: #0A0A0A;
+
+  /* Gray scale */
+  --gray-900: #111827;
+  --gray-800: #1F2937;
+  --gray-700: #374151;
+  --gray-600: #4B5563;
+  --gray-500: #6B7280;
+  --gray-400: #9CA3AF;
+  --gray-300: #D1D5DB;
+  --gray-200: #E5E7EB;
+  --gray-100: #F3F4F6;
+  --gray-50: #F9FAFB;
+
+  /* Surface layers (light mode) */
+  --surface-base: #F9FAFB;
+  --surface-card: #FFFFFF;
+  --surface-elevated: #FFFFFF;
+  --surface-sidebar: #FFFFFF;
+  --border-subtle: rgba(0,0,0,0.06);
+  --border-default: #D1D5DB;
+  --text-primary: #111827;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+  --text-on-accent: #FFFFFF;
+  --dark: #111827;
+  --white: #FFFFFF;
+
+  /* Shadows */
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 16px rgba(17,24,39,0.08), 0 2px 8px rgba(17,24,39,0.06);
+  --shadow-lg: 0 8px 40px rgba(17,24,39,0.12), 0 4px 16px rgba(17,24,39,0.08);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  /* ── BACKGROUNDS ─────────────────────────────────── */
+  /* Warm dark green base — the Ghana brand breathes through */
+  --surface-base:     #0F1A14;
+  /* Slightly lighter for main content area */
+  --surface-card:     #162019;
+  /* Cards and elevated surfaces */
+  --surface-elevated: #1C2B21;
+  /* Sidebar and nav */
+  --surface-sidebar:  #0A1410;
+
+  /* ── BORDERS ─────────────────────────────────────── */
+  --border-subtle:    rgba(255,255,255,0.05);
+  --border-default:   rgba(255,255,255,0.10);
+
+  /* ── TEXT ────────────────────────────────────────── */
+  --text-primary:     #F9FAFB;
+  --text-secondary:   #9CA3AF;
+  --text-muted:       #6B7280;
+  --text-on-accent:   #FFFFFF;
+
+  /* ── BRAND ACCENTS (unchanged — green and gold remain) */
+  --green:            #00A35C;
+  /* Slightly brighter green for dark backgrounds */
+  --green-pale:       rgba(0,163,92,0.12);
+  --gold:             #FCD116;
+
+  /* ── OVERRIDES FOR GRAY SCALE ───────────────────── */
+  --gray-900:         #F9FAFB;
+  --gray-800:         #E5E7EB;
+  --gray-700:         #D1D5DB;
+  --gray-600:         #B6BDC7;
+  --gray-500:         #9CA3AF;
+  --gray-400:         #7A828E;
+  --gray-100:         #1C2B21;
+  --gray-50:          #162019;
+  --gray-200:         rgba(255,255,255,0.08);
+  --gray-300:         rgba(255,255,255,0.12);
+  --dark:             #F9FAFB;
+  --white:            #FFFFFF;
+
+  /* ── SHADOWS ────────────────────────────────────── */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.5);
+}
+
+/* Global transition so switching feels smooth */
+*, *::before, *::after {
+  transition: background-color 0.25s ease, border-color 0.2s ease,
+    color 0.2s ease;
+}
+/* Except for transforms and animations — keep those snappy */
+button, a, [role='button'] {
+  transition: background-color 0.15s ease, color 0.15s ease,
+    border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Update existing component classes to use the new variables */
+/* (These override the hardcoded colours without touching component files) */
+
+[data-theme='dark'] body {
+  background-color: var(--surface-base);
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .sidebar-container,
+[data-theme='dark'] .sidebar,
+[data-theme='dark'] .sidebar-premium,
+[data-theme='dark'] aside[class*='sidebar'] {
+  background-color: var(--surface-sidebar) !important;
+  border-right-color: var(--border-default) !important;
+}
+
+[data-theme='dark'] .sidebar-label,
+[data-theme='dark'] .sidebar-nav-list,
+[data-theme='dark'] .sidebar-group {
+  background-color: transparent !important;
+}
+
+[data-theme='dark'] .main,
+[data-theme='dark'] .page-content,
+[data-theme='dark'] .dashboard-v2,
+[data-theme='dark'] .admin-page,
+[data-theme='dark'] .news-feed-page,
+[data-theme='dark'] .blog-page-root {
+  background-color: var(--surface-base) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] .topbar {
+  background-color: var(--surface-card) !important;
+  border-bottom-color: var(--border-default) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] .card,
+[data-theme='dark'] .chart-card,
+[data-theme='dark'] .feed-card,
+[data-theme='dark'] .headline-card,
+[data-theme='dark'] .latest-card,
+[data-theme='dark'] .dash-v2-stat-card,
+[data-theme='dark'] .dash-v2-greet-band,
+[data-theme='dark'] .af-card,
+[data-theme='dark'] .ecal-card,
+[data-theme='dark'] .pulse-card,
+[data-theme='dark'] .modal,
+[data-theme='dark'] .skeleton-card {
+  background-color: var(--surface-card) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] [style*='background: white'],
+[data-theme='dark'] [style*='background:white'],
+[data-theme='dark'] [style*='background: #fff'],
+[data-theme='dark'] [style*='background:#fff'],
+[data-theme='dark'] [style*='background: #ffffff'],
+[data-theme='dark'] [style*='background:#ffffff'],
+[data-theme='dark'] [style*='background-color: white'],
+[data-theme='dark'] [style*='background-color:white'],
+[data-theme='dark'] [style*='background-color: #fff'],
+[data-theme='dark'] [style*='background-color:#fff'],
+[data-theme='dark'] [style*='background-color: #ffffff'],
+[data-theme='dark'] [style*='background-color:#ffffff'] {
+  background-color: var(--surface-card) !important;
+}
+
+[data-theme='dark'] [style*='color: var(--gray-900)'],
+[data-theme='dark'] [style*='color:var(--gray-900)'],
+[data-theme='dark'] [style*='color: #111827'],
+[data-theme='dark'] [style*='color:#111827'] {
+  color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] [style*='color: var(--gray-700)'],
+[data-theme='dark'] [style*='color:var(--gray-700)'],
+[data-theme='dark'] [style*='color: var(--gray-600)'],
+[data-theme='dark'] [style*='color:var(--gray-600)'],
+[data-theme='dark'] [style*='color: #374151'],
+[data-theme='dark'] [style*='color:#374151'] {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme='dark'] .final-cta .landing-btn {
+  background-color: #ffffff !important;
+  color: var(--green) !important;
+}
+
+[data-theme='dark'] input,
+[data-theme='dark'] select,
+[data-theme='dark'] textarea {
+  background-color: var(--surface-elevated) !important;
+  border-color: var(--border-default) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme='dark'] input::placeholder {
+  color: var(--text-muted) !important;
+}
+
+[data-theme='dark'] table thead tr {
+  background-color: var(--surface-elevated) !important;
+}
+[data-theme='dark'] table tbody tr:hover {
+  background-color: rgba(0,163,92,0.06) !important;
+}
+
+/* Scrollbar theming for dark mode */
+[data-theme='dark'] * {
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 4px;
+}
+[data-theme='dark'] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── DARK MODE GLOW EFFECTS (Expo-inspired) ──────── */
+@keyframes hero-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes border-spin {
+  to { transform: rotate(360deg); }
+}
+
+.dark-hero-glow {
+  position: absolute;
+  width: 600px; height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,163,92,0.15) 0%, transparent 70%);
+  animation: hero-glow 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ── AUTHENTICATED PAGE DARK MODE AUDIT FIXES ───── */
+[data-theme='dark'] [style*='background: rgb(255, 255, 255)'],
+[data-theme='dark'] [style*='background-color: rgb(255, 255, 255)'] {
+  background-color: var(--surface-card) !important;
+}
+
+[data-theme='dark'] [style*='background: #f8fafc'],
+[data-theme='dark'] [style*='background:#f8fafc'],
+[data-theme='dark'] [style*='background: #F8FAFC'],
+[data-theme='dark'] [style*='background:#F8FAFC'],
+[data-theme='dark'] [style*='background: #f9fafb'],
+[data-theme='dark'] [style*='background:#f9fafb'],
+[data-theme='dark'] [style*='background: #F9FAFB'],
+[data-theme='dark'] [style*='background:#F9FAFB'],
+[data-theme='dark'] [style*='background: #f3f4f6'],
+[data-theme='dark'] [style*='background:#f3f4f6'],
+[data-theme='dark'] [style*='background: #F3F4F6'],
+[data-theme='dark'] [style*='background:#F3F4F6'] {
+  background-color: var(--surface-base) !important;
+}
+
+[data-theme='dark'] [style*='color: #6B7280'],
+[data-theme='dark'] [style*='color:#6B7280'],
+[data-theme='dark'] [style*='color: #4B5563'],
+[data-theme='dark'] [style*='color:#4B5563'],
+[data-theme='dark'] [style*='color: #374151'],
+[data-theme='dark'] [style*='color:#374151'] {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme='dark'] .dataset-card,
+[data-theme='dark'] .dataset-modal-panel,
+[data-theme='dark'] .dataset-modal-preview,
+[data-theme='dark'] .dataset-preview-table-wrap,
+[data-theme='dark'] .dataset-preview-unavailable,
+[data-theme='dark'] .profile-stat-card,
+[data-theme='dark'] .catalogue-card,
+[data-theme='dark'] .catalogue-card-menu,
+[data-theme='dark'] .blog-left-panel,
+[data-theme='dark'] .blog-centre-panel,
+[data-theme='dark'] .blog-right-panel,
+[data-theme='dark'] .blog-left-cta-card,
+[data-theme='dark'] .blog-article-row,
+[data-theme='dark'] .blog-top-tabs,
+[data-theme='dark'] .blog-search-row,
+[data-theme='dark'] .blog-author-chip,
+[data-theme='dark'] .blog-tag-pill,
+[data-theme='dark'] .blog-share-button,
+[data-theme='dark'] .slv-card,
+[data-theme='dark'] .rec-card-item,
+[data-theme='dark'] .ep-card,
+[data-theme='dark'] .th-card,
+[data-theme='dark'] .gdh-daily-popup-panel,
+[data-theme='dark'] .authx-form-card,
+[data-theme='dark'] .authx-preview-card,
+[data-theme='dark'] .authx-float-card {
+  background-color: var(--surface-card) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] .dataset-card-title,
+[data-theme='dark'] .dataset-modal-title,
+[data-theme='dark'] .dataset-modal-meta-value,
+[data-theme='dark'] .dataset-preview-title,
+[data-theme='dark'] .blog-article-title,
+[data-theme='dark'] .blog-right-title,
+[data-theme='dark'] .blog-left-heading,
+[data-theme='dark'] .page-title,
+[data-theme='dark'] .topbar-title {
+  color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] .dataset-card-footer,
+[data-theme='dark'] .dataset-modal-meta-label,
+[data-theme='dark'] .dataset-modal-description,
+[data-theme='dark'] .dataset-preview-note,
+[data-theme='dark'] .blog-article-meta,
+[data-theme='dark'] .blog-article-author,
+[data-theme='dark'] .blog-right-meta,
+[data-theme='dark'] .page-subtitle {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme='dark'] .blog-article-row:hover,
+[data-theme='dark'] .blog-article-row.selected,
+[data-theme='dark'] .catalogue-card-menu-item:hover,
+[data-theme='dark'] .page-btn:hover {
+  background-color: rgba(0,163,92,0.08) !important;
+}
+
+[data-theme='dark'] table,
+[data-theme='dark'] td,
+[data-theme='dark'] th {
+  border-color: var(--border-default) !important;
+}
+
+[data-theme='dark'] td {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme='dark'] .badge-gray,
+[data-theme='dark'] .tag-chip,
+[data-theme='dark'] .dataset-tag-pill {
+  background-color: var(--surface-elevated) !important;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary) !important;
+}
+
+[data-theme='dark'] .badge-blue {
+  background-color: rgba(59,130,246,0.14) !important;
+  color: #93C5FD !important;
+}
+
+[data-theme='dark'] .badge-gold,
+[data-theme='dark'] .vis-shared_link {
+  background-color: rgba(252,209,22,0.14) !important;
+  color: #FCD116 !important;
+}
+
+[data-theme='dark'] .badge-red,
+[data-theme='dark'] .vis-private {
+  background-color: rgba(220,38,38,0.16) !important;
+  color: #FCA5A5 !important;
+}
+
+/* ── LIGHT MODE NORMALIZATION ───────────────────── */
+[data-theme='light'] body {
+  background-color: var(--surface-base);
+  color: var(--text-primary);
+}
+
+[data-theme='light'] .main,
+[data-theme='light'] .page-content,
+[data-theme='light'] .dashboard-v2,
+[data-theme='light'] .admin-page,
+[data-theme='light'] .news-feed-page,
+[data-theme='light'] .blog-page-root {
+  background-color: var(--surface-base);
+  color: var(--text-primary);
+}
+
+[data-theme='light'] .topbar,
+[data-theme='light'] .card,
+[data-theme='light'] .chart-card,
+[data-theme='light'] .feed-card,
+[data-theme='light'] .headline-card,
+[data-theme='light'] .latest-card,
+[data-theme='light'] .dash-v2-stat-card,
+[data-theme='light'] .dash-v2-greet-band,
+[data-theme='light'] .af-card,
+[data-theme='light'] .ecal-card,
+[data-theme='light'] .pulse-card,
+[data-theme='light'] .modal,
+[data-theme='light'] .dataset-card,
+[data-theme='light'] .dataset-modal-panel,
+[data-theme='light'] .catalogue-card,
+[data-theme='light'] .blog-left-panel,
+[data-theme='light'] .blog-centre-panel,
+[data-theme='light'] .blog-right-panel {
+  background-color: var(--surface-card);
+  color: var(--text-primary);
+}
+
+[data-theme='light'] input,
+[data-theme='light'] select,
+[data-theme='light'] textarea {
+  background-color: var(--surface-elevated);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+[data-theme='light'] input::placeholder,
+[data-theme='light'] textarea::placeholder {
+  color: var(--text-muted);
+}
+
+[data-theme='light'] table thead tr {
+  background-color: var(--gray-100);
+}
+
+[data-theme='light'] table {
+  border-color: var(--gray-300);
+}
+
+[data-theme='light'] th {
+  border-color: var(--gray-300);
+}
+
+[data-theme='light'] td {
+  border-color: var(--gray-100);
+  color: var(--gray-700);
+}
+
+/* ── MOBILE RESPONSIVE ADDITIONS ─────────────── */
+
+@media (max-width: 768px) {
+
+  /* Main layout: sidebar becomes overlay on mobile */
+  .main-layout,
+  .main {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Dashboard bento cards: single column */
+  .dashboard-grid,
+  .stat-cards-row,
+  .dash-v2-grid-4,
+  .stat-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Dashboard charts: reduce height on mobile */
+  .recharts-wrapper {
+    height: 220px !important;
+  }
+
+  /* Dataset cards: single column, full width */
+  .datasets-grid,
+  .dataset-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Catalogue grid: single column */
+  .catalogue-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Tables: horizontal scroll on mobile */
+  .admin-table-container,
+  .data-table-container,
+  .table-wrap,
+  .dataset-preview-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  table {
+    min-width: 600px;
+  }
+
+  /* Profile page: single column */
+  .profile-two-col {
+    flex-direction: column !important;
+  }
+
+  /* Economic pulse: horizontal scroll */
+  .economic-pulse-strip {
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+  }
+
+  /* Today highlight card: single column */
+  .today-highlight-card,
+  .th-card {
+    flex-direction: column !important;
+  }
+  .today-highlight-card .right-col,
+  .th-card .right-col {
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  /* Modal sizing */
+  .modal-card,
+  .modal,
+  .dataset-modal-panel {
+    width: 95vw !important;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* Form inputs: full width */
+  .filter-bar,
+  .search-bar {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .filter-bar input,
+  .filter-bar select,
+  .search-bar input,
+  .search-bar select {
+    width: 100% !important;
+  }
+
+  /* Activity feed: hidden on mobile */
+  .activity-feed-col,
+  .dash-v2-sidebar {
+    display: none !important;
+  }
+
+  /* Blog split panel: single column */
+  .blog-three-panel,
+  .blog-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .blog-left-panel,
+  .blog-right-panel {
+    display: none !important;
+  }
+
+  /* Catalogue left sidebar on mobile */
+  .catalogue-two-col {
+    flex-direction: column !important;
+  }
+  .catalogue-sidebar {
+    position: static !important;
+    width: 100% !important;
+  }
+
+  /* Economic calendar: hidden on mobile */
+  .economic-calendar-col {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Very small screens: reduce typography */
+  h1 { font-size: 28px !important; }
+  h2 { font-size: 22px !important; }
+  .stat-card-value,
+  .stat-value {
+    font-size: 24px !important;
+  }
+
+  /* Stack pagination on small screens */
+  .pagination-row,
+  .pagination {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+  }
+}
+
+/* Improve touch targets on mobile */
+@media (max-width: 768px) {
+  button, a, [role='button'], select {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  /* Exception: icon-only buttons can be smaller if labelled */
+  .icon-btn-sm { min-height: 36px; min-width: 36px; }
+
+  /* Remove hover effects on touch (they cause sticky hover bugs) */
+  @media (hover: none) {
+    .dataset-card:hover { transform: none; }
+    .catalogue-card:hover { transform: none; }
+    .headline-card:hover,
+    .latest-card:hover,
+    .dash-v2-tab:hover {
+      transform: none;
+    }
+  }
 }

@@ -44,7 +44,7 @@ export function BookmarkButton({ datasetId, initiallyBookmarked = false, onToggl
         justifyContent: "center",
         gap: 6,
         border: "1px solid var(--gray-200)",
-        background: bookmarked ? "var(--green-pale)" : "white",
+        background: bookmarked ? "var(--green-pale)" : "var(--surface-card)",
         color: bookmarked ? "var(--green)" : "var(--gray-700)",
         borderRadius: 10,
         padding: "8px 12px",

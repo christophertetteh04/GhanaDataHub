@@ -1,26 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Activity,
+  ArrowRight,
   BarChart3,
-  Building2,
-  Check,
   ChevronDown,
-  ChevronRight,
-  ClipboardList,
   Database,
-  GitBranch,
-  KeyRound,
-  LockKeyhole,
+  Download,
   Menu,
   Search,
-  Server,
-  ShieldCheck,
-  Share2,
   Users,
   X,
 } from "lucide-react";
-import { useInView } from "../hooks/useInView";
+import ObservanceBanner from "../components/ObservanceBanner";
+import DarkModeToggle from "../components/DarkModeToggle";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
@@ -29,70 +21,20 @@ const FALLBACK_STATS = {
   total_users: 860,
   total_organizations: 74,
   total_storage_bytes: 2400000000,
+  total_downloads_all_time: 18400,
 };
 
-const problemSolutions = [
-  {
-    icon: Database,
-    problem: "Scattered spreadsheets",
-    solution: "One searchable repository",
-    text: "Bring department files, research data, and operational records into a governed workspace your team can actually find.",
-  },
-  {
-    icon: ClipboardList,
-    problem: "No audit trail",
-    solution: "Full activity logs on every action",
-    text: "Track uploads, edits, downloads, and sharing events with a clear record for compliance and internal review.",
-  },
-  {
-    icon: ShieldCheck,
-    problem: "Insecure sharing",
-    solution: "Role-based access control",
-    text: "Give the right people the right access while keeping sensitive datasets protected by organisation-level permissions.",
-  },
-];
-
-const features = [
-  {
-    icon: GitBranch,
-    title: "Dataset Versioning",
-    text: "Preserve every update with clear version history, file metadata, and accountable changes.",
-  },
-  {
-    icon: LockKeyhole,
-    title: "Role-Based Access Control",
-    text: "Manage who can upload, review, publish, and administer data across each organisation.",
-  },
-  {
-    icon: Search,
-    title: "Full-Text Search",
-    text: "Find datasets quickly by title, description, tags, category, owner, and relevant metadata.",
-  },
-  {
-    icon: Share2,
-    title: "Secure Sharing Links",
-    text: "Share approved data with collaborators using controlled links and visibility settings.",
-  },
-  {
-    icon: BarChart3,
-    title: "Analytics Dashboard",
-    text: "Monitor data growth, user activity, storage, and organisational adoption in one place.",
-  },
-  {
-    icon: Server,
-    title: "REST API Access",
-    text: "Connect GhanaDataHub to existing institutional systems through a clean API surface.",
-  },
-];
-
-
-
-const orgs = [
+const trustPills = [
   "Ghana Statistical Service",
-  "University of Ghana",
-  "GIZ Ghana",
-  "Bank of Ghana",
+  "World Bank",
   "UNICEF Ghana",
+  "FAOSTAT",
+  "Bank of Ghana",
+  "Electoral Commission Ghana",
+  "Ministry of Finance",
+  "University of Ghana",
+  "Joy FM",
+  "Graphic Business",
 ];
 
 const faqs = [
@@ -113,6 +55,37 @@ const faqs = [
   },
 ];
 
+const testimonials = [
+  {
+    initials: "AM",
+    name: "Ama Mensah",
+    role: "Researcher, University of Ghana",
+    quote:
+      "GhanaDataHub saved me three weeks of data collection for my thesis on cocoa farmer income. Every dataset I needed was already there and downloadable in one click.",
+  },
+  {
+    initials: "KA",
+    name: "Kwame Adu",
+    role: "Data Journalist",
+    quote:
+      "I use it every time I need to fact-check a government statistic. The daily forex rates alone are worth bookmarking the site.",
+  },
+  {
+    initials: "EN",
+    name: "Esi Nkrumah",
+    role: "NGO Data Officer",
+    quote:
+      "The choropleth maps automatically generated from our uploaded regional health data saved our team an entire day of GIS work.",
+  },
+];
+
+const academyTracks = [
+  { name: "Data Foundations", lessons: "12 lessons", color: "#00A35C" },
+  { name: "Excel for Analysts", lessons: "18 lessons", color: "#FCD116" },
+  { name: "Python + CSVs", lessons: "16 lessons", color: "#3B82F6" },
+  { name: "Policy Dashboards", lessons: "10 lessons", color: "#A78BFA" },
+];
+
 function formatCompactNumber(value) {
   return new Intl.NumberFormat("en", {
     notation: "compact",
@@ -120,28 +93,11 @@ function formatCompactNumber(value) {
   }).format(value || 0);
 }
 
-function formatStorage(bytes) {
-  if (!bytes) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  const value = bytes / 1024 ** index;
-
-  return `${value >= 10 || index === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[index]}`;
-}
-
-function RevealSection({ as: Component = "section", className = "", children, ...props }) {
-  const [ref, isInView] = useInView();
-
-  return (
-    <Component ref={ref} className={`${className} landing-reveal${isInView ? " is-visible" : ""}`} {...props}>
-      {children}
-    </Component>
-  );
-}
-
 export default function LandingPage() {
   const [stats, setStats] = useState(FALLBACK_STATS);
+  const [observanceData, setObservanceData] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
 
   useEffect(() => {
@@ -163,843 +119,906 @@ export default function LandingPage() {
           total_users: data.total_users ?? FALLBACK_STATS.total_users,
           total_organizations: data.total_organizations ?? FALLBACK_STATS.total_organizations,
           total_storage_bytes: data.total_storage_bytes ?? FALLBACK_STATS.total_storage_bytes,
+          total_downloads_all_time:
+            data.total_downloads_all_time ?? data.total_downloads ?? FALLBACK_STATS.total_downloads_all_time,
         });
       } catch (error) {
-        if (error.name !== "AbortError") {
-          setStats(FALLBACK_STATS);
-        }
+        if (error.name !== "AbortError") setStats(FALLBACK_STATS);
       }
     }
 
     loadStats();
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch(`${API_BASE}/observances/today`, { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (data) setObservanceData(data);
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") setObservanceData(null);
+      });
 
     return () => controller.abort();
   }, []);
 
-  const statItems = useMemo(
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 60);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const metricTiles = useMemo(
     () => [
-      { label: "Datasets", value: formatCompactNumber(stats.total_datasets), icon: Database },
-      { label: "Organisations", value: formatCompactNumber(stats.total_organizations), icon: Building2 },
+      { label: "Total Datasets", value: formatCompactNumber(stats.total_datasets), icon: Database },
+      { label: "Downloads", value: formatCompactNumber(stats.total_downloads_all_time), icon: Download },
       { label: "Users", value: formatCompactNumber(stats.total_users), icon: Users },
-      { label: "Storage", value: formatStorage(stats.total_storage_bytes), icon: Activity },
+      { label: "Categories", value: "7+", icon: BarChart3 },
     ],
     [stats]
   );
 
   const navLinks = [
-    { label: "Home", to: "#top" },
-    { label: "Datasets", to: "/datasets" },
-    { label: "Pricing", to: "#pricing" },
-    { label: "API Docs", to: "#api" },
-    { label: "About", to: "#about" },
+    { label: "Explore", to: "/datasets" },
+    { label: "Learn", to: "#learn" },
+    { label: "API", to: "#api" },
+    { label: "Roadmap", to: "#roadmap" },
   ];
 
   return (
     <div className="landing-page" id="top">
       <style>{`
         .landing-page {
+          --landing-nav-top: rgba(255,255,255,0.72);
+          --landing-nav-scrolled: rgba(255,255,255,0.9);
+          --landing-nav-top-filter: blur(12px) saturate(160%);
+          --landing-nav-border: rgba(17,24,39,0.08);
+          --landing-nav-top-border: rgba(17,24,39,0.05);
+          --landing-preview-bg:
+            linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.94));
+          --landing-preview-border: rgba(0,107,63,0.14);
+          --landing-preview-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.92),
+            0 0 0 1px rgba(0,107,63,0.08),
+            0 24px 64px rgba(17,24,39,0.12);
+          --landing-preview-stroke:
+            conic-gradient(
+              from 210deg at 50% 50%,
+              rgba(0,107,63,0.10) 0deg,
+              rgba(0,107,63,0.46) 54deg,
+              rgba(252,209,22,0.34) 82deg,
+              rgba(17,24,39,0.10) 118deg,
+              rgba(0,107,63,0.08) 360deg
+            );
+          --landing-metric-bg: rgba(255,255,255,0.92);
+          --landing-metric-border: rgba(17,24,39,0.08);
+          --landing-inner-card-bg: rgba(255,255,255,0.72);
+          --landing-academy-bg:
+            linear-gradient(135deg, #FFFFFF 0%, #F7FBF9 48%, #EEF8F2 100%);
+          --landing-academy-border: rgba(0,107,63,0.14);
           min-height: 100vh;
-          background: var(--white);
-          color: var(--gray-900);
+          background-color: var(--surface-base);
+          color: var(--text-primary);
+          font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
           overflow-x: hidden;
         }
 
+        [data-theme='dark'] .landing-page {
+          --landing-nav-top: transparent;
+          --landing-nav-scrolled: rgba(15,26,20,0.85);
+          --landing-nav-top-filter: none;
+          --landing-nav-border: var(--border-subtle);
+          --landing-nav-top-border: transparent;
+          --landing-preview-bg:
+            linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018)),
+            rgba(22,32,25,0.86);
+          --landing-preview-border: rgba(255,255,255,0.08);
+          --landing-preview-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.08),
+            0 0 0 1px rgba(0,163,92,0.10),
+            0 24px 64px rgba(0,0,0,0.45);
+          --landing-preview-stroke:
+            conic-gradient(
+              from 210deg at 50% 50%,
+              rgba(255,255,255,0.06) 0deg,
+              rgba(0,163,92,0.62) 54deg,
+              rgba(252,209,22,0.28) 82deg,
+              rgba(255,255,255,0.08) 118deg,
+              rgba(255,255,255,0.035) 360deg
+            );
+          --landing-metric-bg: rgba(255,255,255,0.04);
+          --landing-metric-border: rgba(255,255,255,0.06);
+          --landing-inner-card-bg: rgba(255,255,255,0.035);
+          --landing-academy-bg: linear-gradient(135deg, #0A1410 0%, #162019 50%, #0A1410 100%);
+          --landing-academy-border: rgba(0,163,92,0.15);
+        }
+
         .landing-shell {
-          width: min(1160px, calc(100% - 40px));
+          max-width: 1200px;
           margin: 0 auto;
-        }
-
-        .landing-reveal {
-          opacity: 0;
-          transform: translateY(20px);
-          transition: opacity 0.5s ease, transform 0.5s ease;
-        }
-
-        .landing-reveal.is-visible {
-          opacity: 1;
-          transform: translateY(0);
+          padding: 0 24px;
         }
 
         .landing-nav {
-          position: sticky;
+          position: fixed;
           top: 0;
-          z-index: 80;
-          background: rgba(255, 255, 255, 0.86);
-          border-bottom: 1px solid rgba(209, 213, 219, 0.72);
-          backdrop-filter: blur(18px);
+          left: 0;
+          right: 0;
+          z-index: 100;
+          background: ${isScrolled ? "var(--landing-nav-scrolled)" : "var(--landing-nav-top)"};
+          backdrop-filter: ${isScrolled ? "blur(16px) saturate(180%)" : "var(--landing-nav-top-filter)"};
+          -webkit-backdrop-filter: ${isScrolled ? "blur(16px) saturate(180%)" : "var(--landing-nav-top-filter)"};
+          border-bottom: 1px solid ${isScrolled ? "var(--landing-nav-border)" : "var(--landing-nav-top-border)"};
+          transition: all 0.3s ease;
         }
 
         .landing-nav-inner {
-          min-height: 72px;
+          height: 60px;
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 24px;
+          display: grid;
+          grid-template-columns: auto 1fr auto;
+          align-items: center;
+          gap: 28px;
+        }
+
+        .landing-brand,
+        .landing-nav-links,
+        .landing-nav-actions,
+        .landing-cta-row,
+        .landing-proof-row,
+        .landing-mobile-actions {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          gap: 18px;
         }
 
         .landing-brand {
-          display: inline-flex;
-          align-items: center;
           gap: 10px;
-          flex-shrink: 0;
+          font-size: 16px;
+          font-weight: 800;
+          color: var(--text-primary);
         }
 
         .landing-logo-mark {
-          width: 38px;
-          height: 38px;
-          border-radius: 10px;
+          width: 32px;
+          height: 32px;
+          border-radius: 9px;
           background: var(--green);
-          color: var(--white);
+          color: white;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          font-family: 'Sora', sans-serif;
-          font-weight: 700;
-          box-shadow: 0 10px 24px rgba(0, 107, 63, 0.18);
-        }
-
-        .landing-brand-name {
-          display: block;
-          font-family: 'Sora', sans-serif;
-          font-weight: 700;
-          font-size: 16px;
-          line-height: 1.1;
-        }
-
-        .landing-brand-sub {
-          display: block;
-          color: var(--gray-500);
-          font-size: 11px;
-          margin-top: 2px;
-        }
-
-        .landing-nav-links,
-        .landing-nav-actions,
-        .landing-hero-actions {
-          display: flex;
-          align-items: center;
-          gap: 10px;
+          font-weight: 900;
+          box-shadow: 0 0 24px rgba(0,163,92,0.32);
         }
 
         .landing-nav-links {
-          margin-left: auto;
-        }
-
-        .landing-nav-link,
-        .landing-footer-link {
-          color: var(--gray-700);
-          font-weight: 600;
-          transition: color 0.2s ease, background 0.2s ease;
+          justify-content: center;
+          gap: 26px;
         }
 
         .landing-nav-link {
-          padding: 10px 11px;
-          border-radius: 8px;
-          font-size: 13.5px;
+          color: var(--text-secondary);
+          font-size: 14px;
+          font-weight: 600;
+          transition: color 0.15s ease;
         }
 
-        .landing-nav-link:hover,
-        .landing-footer-link:hover {
-          color: var(--green);
+        .landing-nav-link:hover {
+          color: var(--text-primary);
+        }
+
+        .landing-nav-actions {
+          justify-content: flex-end;
+          gap: 10px;
         }
 
         .landing-btn {
+          height: 36px;
+          border-radius: 8px;
+          border: 1px solid transparent;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
-          min-height: 44px;
-          padding: 11px 18px;
-          border-radius: 10px;
-          border: 1px solid transparent;
-          font-weight: 700;
-          transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+          padding: 0 16px;
+          font-size: 14px;
+          font-weight: 800;
           white-space: nowrap;
+          transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease, filter 0.15s ease;
         }
 
-        .landing-btn:hover {
-          transform: translateY(-2px);
+        .landing-btn-ghost {
+          background: transparent;
+          color: var(--text-primary);
+          border-color: var(--border-default);
+        }
+
+        .landing-btn-ghost:hover,
+        .landing-btn-secondary:hover {
+          background: var(--surface-elevated);
         }
 
         .landing-btn-primary {
           background: var(--green);
-          color: var(--white);
-          box-shadow: 0 12px 24px rgba(0, 107, 63, 0.2);
+          color: white;
         }
 
         .landing-btn-primary:hover {
-          background: var(--green-light);
-          box-shadow: 0 16px 30px rgba(0, 107, 63, 0.25);
+          filter: brightness(1.1);
+          transform: scale(1.02);
         }
 
-        .landing-btn-secondary {
-          background: var(--white);
-          border-color: var(--gray-300);
-          color: var(--green);
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-        }
-
-        .landing-btn-secondary:hover {
-          border-color: rgba(0, 107, 63, 0.28);
-          background: var(--green-pale);
-          box-shadow: 0 12px 24px rgba(17, 24, 39, 0.08);
-        }
-
-        .landing-btn-light {
-          background: var(--white);
-          color: var(--green);
-          box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16);
-        }
-
-        .landing-btn-light:hover {
-          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
-        }
-
-        .landing-nav-toggle {
+        .landing-menu-button {
           display: none;
-          width: 44px;
-          height: 44px;
-          border-radius: 10px;
-          border: 1px solid var(--gray-300);
-          background: var(--white);
-          color: var(--green);
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
+          border: 1px solid var(--border-default);
+          background: transparent;
+          color: var(--text-primary);
           align-items: center;
           justify-content: center;
         }
 
-        .landing-page a:focus-visible,
-        .landing-page button:focus-visible {
-          outline: 3px solid rgba(0, 107, 63, 0.24);
-          outline-offset: 3px;
+        .landing-mobile-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 120;
+          background: var(--surface-base);
+          padding: 24px;
+          display: grid;
+          align-content: start;
+          gap: 42px;
+        }
+
+        .landing-mobile-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .landing-mobile-nav {
+          display: grid;
+          gap: 22px;
+        }
+
+        .landing-mobile-nav a {
+          font-size: 20px;
+          color: var(--text-primary);
+          font-weight: 800;
         }
 
         .landing-hero {
-          position: relative;
-          overflow: hidden;
-          background: linear-gradient(135deg, rgba(0,107,63,0.04) 0%, rgba(255,255,255,1) 40%, rgba(252,209,22,0.04) 100%);
-          padding: 92px 0 108px;
-        }
-
-        .landing-hero-blob {
-          position: absolute;
-          pointer-events: none;
-          z-index: 0;
-        }
-
-        .landing-float-card {
-          position: absolute;
-          background: rgba(255,255,255,0.7);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border: 1px solid rgba(255,255,255,0.8);
-          border-radius: 14px;
-          box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-          padding: 12px 18px;
+          min-height: 100vh;
           display: flex;
           align-items: center;
-          gap: 10px;
-          font-weight: 700;
-          font-size: 13px;
-          color: var(--gray-900);
-          white-space: nowrap;
-          z-index: 2;
+          justify-content: center;
+          padding: 120px 24px 80px;
+          position: relative;
+          overflow: hidden;
+          background-image:
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+          background-size: 40px 40px;
         }
 
-        .landing-float-card-1 {
-          top: 20px;
-          right: -20px;
-          animation: floatCard1 3s ease-in-out infinite alternate;
-        }
-
-        .landing-float-card-2 {
-          bottom: 60px;
-          left: -30px;
-          animation: floatCard1 3s ease-in-out 1.5s infinite alternate;
-        }
-
-        @keyframes floatCard1 {
-          from { transform: translateY(-6px); }
-          to   { transform: translateY(6px); }
-        }
-
-        @media (max-width: 768px) {
-          .landing-float-card { display: none; }
-        }
-
-        .landing-hero::before {
-          content: "";
+        .landing-gold-glow {
           position: absolute;
-          top: -180px;
-          left: 50%;
-          width: 760px;
-          height: 520px;
-          border-radius: 999px;
-          background: radial-gradient(circle, rgba(0, 163, 92, 0.2) 0%, rgba(232, 245, 239, 0.72) 38%, rgba(255, 255, 255, 0) 72%);
-          filter: blur(34px);
-          transform: translateX(-50%);
+          width: 300px;
+          height: 300px;
+          border-radius: 50%;
+          top: 50%;
+          right: 10%;
+          background: radial-gradient(circle, rgba(252,209,22,0.08) 0%, transparent 70%);
           pointer-events: none;
         }
 
         .landing-hero-content {
           position: relative;
           z-index: 1;
-          max-width: 880px;
+          max-width: 800px;
           margin: 0 auto;
           text-align: center;
         }
 
-        .landing-eyebrow,
-        .landing-kicker {
+        .landing-eyebrow-pill {
           display: inline-flex;
           align-items: center;
-          justify-content: center;
           gap: 8px;
+          border: 1px solid rgba(0,163,92,0.3);
+          background: rgba(0,163,92,0.08);
+          border-radius: 99px;
+          padding: 4px 14px;
           color: var(--green);
-          font-weight: 800;
           font-size: 12px;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
+          font-weight: 600;
         }
 
-        .landing-kicker {
-          background: rgba(232, 245, 239, 0.9);
-          border: 1px solid rgba(0, 107, 63, 0.12);
-          border-radius: 999px;
-          padding: 8px 13px;
-          margin-bottom: 24px;
-          letter-spacing: 0.08em;
+        .landing-pulse-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: var(--green);
+          box-shadow: 0 0 0 0 rgba(0,163,92,0.6);
+          animation: pulse-dot 1.8s ease infinite;
         }
 
-        .landing-hero h1 {
-          font-size: clamp(48px, 6vw, 64px);
-          line-height: 1.02;
-          letter-spacing: 0;
-          color: var(--dark, var(--gray-900));
-          max-width: 860px;
-          margin: 0 auto;
+        @keyframes pulse-dot {
+          70% { box-shadow: 0 0 0 9px rgba(0,163,92,0); }
+          100% { box-shadow: 0 0 0 0 rgba(0,163,92,0); }
         }
 
-        .landing-hero-text {
-          max-width: 690px;
-          color: var(--gray-500);
-          font-size: 18px;
-          line-height: 1.72;
-          margin: 24px auto 30px;
+        .landing-hero-title {
+          margin: 22px auto 0;
+          color: var(--text-primary);
+          font-size: 64px;
+          line-height: 1.1;
+          letter-spacing: -0.02em;
+          font-weight: 900;
+          max-width: 800px;
         }
 
-        .landing-hero-actions {
+        .landing-gradient-text {
+          background: linear-gradient(135deg, var(--green) 0%, #00E87A 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .landing-hero-sub {
+          max-width: 600px;
+          margin: 24px auto 0;
+          color: var(--text-secondary);
+          font-size: 20px;
+          line-height: 1.6;
+        }
+
+        .landing-cta-row {
           justify-content: center;
+          gap: 12px;
+          margin-top: 40px;
           flex-wrap: wrap;
         }
 
-        .landing-trust-note {
-          color: var(--gray-500);
-          font-size: 13px;
-          font-weight: 600;
-          margin-top: 16px;
+        .landing-cta-row .landing-btn {
+          height: 48px;
+          padding: 0 28px;
+          border-radius: 10px;
+          font-size: 15px;
         }
 
-        .landing-product-preview {
+        .landing-btn-secondary {
+          background: transparent;
+          color: var(--text-primary);
+          border-color: var(--border-default);
+        }
+
+        .landing-proof-row {
+          justify-content: center;
+          gap: 14px;
+          margin-top: 32px;
+          color: var(--text-muted);
+          font-size: 13px;
+        }
+
+        .landing-avatars {
+          display: flex;
+        }
+
+        .landing-avatar {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: #0A1410;
+          font-size: 11px;
+          font-weight: 900;
+          border: 2px solid var(--surface-base);
+          margin-left: -8px;
+        }
+
+        .landing-avatar:first-child {
+          margin-left: 0;
+        }
+
+        .landing-preview-card {
+          position: relative;
+          max-width: 700px;
+          margin: 48px auto 0;
+          background: var(--landing-preview-bg);
+          backdrop-filter: blur(20px) saturate(150%);
+          -webkit-backdrop-filter: blur(20px) saturate(150%);
+          border: 1px solid var(--landing-preview-border);
+          border-radius: 16px;
+          padding: 20px;
+          box-shadow: var(--landing-preview-shadow);
+          overflow: hidden;
+          z-index: 1;
+        }
+
+        .landing-preview-card::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          padding: 1px;
+          border-radius: 17px;
+          background: var(--landing-preview-stroke);
+          -webkit-mask:
+            linear-gradient(#000 0 0) content-box,
+            linear-gradient(#000 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          opacity: 0.8;
+          pointer-events: none;
+          animation: border-spin 10s linear infinite;
+          z-index: 0;
+        }
+
+        .landing-preview-grid {
           position: relative;
           z-index: 1;
-          border-radius: 16px;
-          background: var(--white);
-          overflow: hidden;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 30px 80px rgba(17, 24, 39, 0.12);
-        }
-
-        .landing-browser-bar {
-          min-height: 46px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 0 18px;
-          border-bottom: 1px solid var(--gray-100);
-          background: rgba(243, 244, 246, 0.6);
-        }
-
-        .landing-browser-dot {
-          width: 10px;
-          height: 10px;
-          border-radius: 50%;
-          background: var(--gray-300);
-        }
-
-        .landing-preview-body {
           display: grid;
-          grid-template-columns: 0.8fr 1.2fr;
-          gap: 22px;
-          padding: 24px;
-          background:
-            linear-gradient(rgba(0, 107, 63, 0.045) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 107, 63, 0.045) 1px, transparent 1px),
-            var(--white);
-          background-size: 34px 34px;
-        }
-
-        .landing-preview-sidebar,
-        .landing-preview-chart {
-          border: 1px solid var(--gray-100);
-          border-radius: 14px;
-          background: rgba(255, 255, 255, 0.88);
-          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        }
-
-        .landing-preview-sidebar {
-          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 12px;
-          padding: 16px;
         }
 
-        .landing-preview-stat {
+        .landing-metric-tile {
           border-radius: 12px;
+          background: var(--landing-metric-bg);
+          border: 1px solid var(--landing-metric-border);
           padding: 16px;
-          background: var(--gray-100);
+          text-align: left;
+          box-shadow: 0 10px 28px rgba(17,24,39,0.06);
         }
 
-        .landing-preview-stat strong {
-          display: block;
+        .landing-metric-tile svg {
           color: var(--green);
-          font-family: 'Sora', sans-serif;
-          font-size: 26px;
-          line-height: 1;
-          margin-bottom: 7px;
+          margin-bottom: 18px;
         }
 
-        .landing-preview-stat span,
-        .landing-chart-label {
-          color: var(--gray-500);
+        .landing-metric-value {
+          font-size: 24px;
+          font-weight: 900;
+          color: var(--text-primary);
+        }
+
+        .landing-metric-label {
+          color: var(--text-muted);
+          font-size: 11px;
+          margin-top: 4px;
+        }
+
+        .landing-trust-strip {
+          background: var(--surface-card);
+          border-top: 1px solid var(--border-subtle);
+          border-bottom: 1px solid var(--border-subtle);
+          padding: 32px 24px;
+          overflow: hidden;
+        }
+
+        .landing-strip-label {
+          color: var(--text-muted);
           font-size: 12px;
-          font-weight: 700;
-          text-transform: uppercase;
           letter-spacing: 0.08em;
-        }
-
-        .landing-preview-chart {
-          padding: 20px;
-        }
-
-        .landing-chart-top {
-          display: flex;
-          justify-content: space-between;
-          gap: 18px;
-          margin-bottom: 30px;
-        }
-
-        .landing-chart-title {
-          font-family: 'Sora', sans-serif;
-          font-weight: 700;
-        }
-
-        .landing-data-pill {
-          color: var(--green);
-          background: var(--green-pale);
-          border-radius: 999px;
-          padding: 7px 11px;
-          font-size: 12px;
+          text-transform: uppercase;
+          text-align: center;
           font-weight: 800;
         }
 
-        .landing-bars {
-          height: 220px;
-          display: grid;
-          grid-template-columns: repeat(7, 1fr);
-          align-items: end;
-          gap: 14px;
-          padding: 0 4px 18px;
-          border-bottom: 1px solid var(--gray-300);
+        .landing-marquee-outer {
+          max-width: 1200px;
+          margin: 18px auto 0;
+          overflow: hidden;
         }
 
-        .landing-bar {
-          min-height: 42px;
-          border-radius: 8px 8px 0 0;
-          background: var(--green);
-          box-shadow: inset 0 8px 0 rgba(255, 255, 255, 0.14);
+        .landing-marquee-track {
+          display: flex;
+          width: max-content;
+          gap: 10px;
+          animation: marquee 20s linear infinite;
+        }
+
+        .landing-trust-pill {
+          border: 1px solid var(--border-default);
+          background: transparent;
+          color: var(--text-secondary);
+          border-radius: 99px;
+          padding: 6px 16px;
+          font-size: 13px;
+          white-space: nowrap;
         }
 
         .landing-section {
-          padding: 112px 0;
+          padding: 80px 24px;
         }
 
-        .landing-section-alt {
-          background: linear-gradient(180deg, rgba(232, 245, 239, 0.55), rgba(243, 244, 246, 0.68));
-          border-top: 1px solid rgba(209, 213, 219, 0.45);
-          border-bottom: 1px solid rgba(209, 213, 219, 0.45);
+        .landing-section-inner {
+          max-width: 1100px;
+          margin: 0 auto;
+        }
+
+        .landing-section-label {
+          color: var(--green);
+          font-size: 11px;
+          font-weight: 900;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          margin-bottom: 16px;
         }
 
         .landing-section-heading {
-          max-width: 760px;
-          margin-bottom: 44px;
+          color: var(--text-primary);
+          font-size: 40px;
+          line-height: 1.15;
+          font-weight: 900;
+          max-width: 600px;
+          margin: 0 0 34px;
+          letter-spacing: -0.02em;
         }
 
-        .landing-section-heading.centered {
-          text-align: center;
-          margin-left: auto;
-          margin-right: auto;
-        }
-
-        .landing-section-heading h2 {
-          font-size: clamp(32px, 4vw, 46px);
-          line-height: 1.12;
-          margin: 10px 0 14px;
-          letter-spacing: 0;
-        }
-
-        .landing-section-heading p {
-          color: var(--gray-500);
-          font-size: 16px;
-          line-height: 1.72;
-        }
-
-        .landing-stat-strip {
+        .landing-bento-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          overflow: hidden;
-          border: 1px solid var(--gray-300);
+          grid-template-columns: repeat(12, 1fr);
+          gap: 16px;
+        }
+
+        .landing-bento-card {
+          background: var(--surface-card);
+          border: 1px solid var(--border-subtle);
           border-radius: 16px;
-          background: var(--white);
-          box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
+          padding: 28px;
+          transition: border-color 0.2s ease, transform 0.2s ease;
+          overflow: hidden;
         }
 
-        .landing-stat-item {
-          min-height: 148px;
-          padding: 30px 24px;
+        .landing-bento-card:hover {
+          border-color: rgba(0,163,92,0.3);
+          transform: translateY(-2px);
+        }
+
+        .bento-wide { grid-column: span 8; }
+        .bento-narrow { grid-column: span 4; }
+        .bento-full { grid-column: span 12; }
+
+        .landing-bento-card h3 {
+          font-size: 22px;
+          color: var(--text-primary);
+          margin: 0 0 10px;
+          letter-spacing: -0.01em;
+        }
+
+        .landing-bento-card p {
+          color: var(--text-secondary);
+          line-height: 1.65;
+          margin: 0;
+        }
+
+        .mock-search {
+          margin-top: 24px;
+          border-radius: 14px;
+          background: var(--surface-elevated);
+          border: 1px solid var(--border-default);
+          padding: 14px;
+        }
+
+        .mock-search-input,
+        .mock-result-row,
+        .ai-summary-card,
+        .track-card {
+          border: 1px solid var(--border-subtle);
+          background: var(--landing-inner-card-bg);
+          border-radius: 10px;
+        }
+
+        .mock-search-input {
           display: flex;
-          flex-direction: column;
           align-items: center;
-          justify-content: center;
-          text-align: center;
-          gap: 12px;
-          position: relative;
+          gap: 10px;
+          height: 38px;
+          padding: 0 12px;
+          color: var(--text-muted);
+          font-size: 13px;
         }
 
-        .landing-stat-item + .landing-stat-item::before {
-          content: "";
-          position: absolute;
-          left: 0;
-          top: 28px;
-          bottom: 28px;
-          width: 1px;
-          background: var(--gray-300);
+        .mock-result-row {
+          margin-top: 10px;
+          padding: 10px 12px;
+          color: var(--text-secondary);
+          font-size: 13px;
         }
 
-        .landing-stat-icon,
-        .landing-card-icon {
-          width: 46px;
-          height: 46px;
-          border-radius: 13px;
-          background: var(--green-pale);
-          color: var(--green);
+        .landing-green-link {
           display: inline-flex;
           align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-
-        .landing-stat-value {
-          font-family: 'Sora', sans-serif;
+          gap: 6px;
           color: var(--green);
-          font-size: clamp(32px, 3vw, 42px);
-          font-weight: 700;
-          line-height: 1;
+          font-weight: 900;
+          margin-top: 22px;
         }
 
-        .landing-stat-label {
-          color: var(--gray-500);
+        .daily-card {
+          background: rgba(0,163,92,0.12);
+          border-color: rgba(0,163,92,0.2);
+        }
+
+        .daily-card h3 {
+          color: var(--green);
+        }
+
+        .daily-badges {
+          display: grid;
+          gap: 10px;
+          margin-top: 24px;
+        }
+
+        .daily-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          width: fit-content;
+          border-radius: 99px;
+          border: 1px solid rgba(0,163,92,0.22);
+          padding: 7px 12px;
+          color: var(--text-primary);
           font-size: 12px;
-          font-weight: 800;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
+          background: rgba(0,163,92,0.08);
         }
 
-        .landing-three-grid,
-        .landing-feature-grid,
-        .landing-pricing-grid {
-          display: grid;
-          gap: 22px;
+        .tiny-map {
+          margin-top: 26px;
+          width: 100%;
+          height: 160px;
         }
 
-        .landing-three-grid,
-        .landing-feature-grid,
-        .landing-pricing-grid {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
-
-        .landing-info-card,
-        .landing-feature-card,
-        .landing-plan-card {
-          background: var(--white);
-          border: 1px solid rgba(209, 213, 219, 0.86);
-          border-radius: 16px;
-          padding: 26px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
-          transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-        }
-
-        .landing-info-card:hover,
-        .landing-feature-card:hover {
-          transform: translateY(-4px);
-          border-color: rgba(0, 107, 63, 0.2);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 18px 38px rgba(0,0,0,0.08);
-        }
-
-        .landing-info-card h3,
-        .landing-feature-card h3,
-        .landing-plan-card h3 {
-          font-size: 18px;
-          margin-top: 18px;
-          margin-bottom: 9px;
-          letter-spacing: 0;
-        }
-
-        .landing-problem {
-          color: var(--green);
-          font-weight: 800;
-          font-size: 11px;
-          text-transform: uppercase;
-          letter-spacing: 0.12em;
-          margin-top: 18px;
-        }
-
-        .landing-info-card p,
-        .landing-feature-card p,
-        .landing-plan-card li,
-        .landing-faq-answer {
-          color: var(--gray-500);
-          line-height: 1.68;
-        }
-
-        .landing-feature-card {
-          min-height: 236px;
-        }
-
-        .landing-logo-strip {
-          display: grid;
-          grid-template-columns: repeat(5, minmax(0, 1fr));
-          align-items: center;
-          gap: 20px;
-        }
-
-        .landing-logo-name {
-          min-height: 78px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
+        .ai-summary-card {
+          margin-top: 24px;
           padding: 18px;
-          color: var(--gray-500);
-          font-family: 'Sora', sans-serif;
-          font-weight: 700;
-          font-size: 12px;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-          opacity: 0.5;
-          transition: opacity 0.2s ease, color 0.2s ease;
+          color: var(--text-secondary);
+          line-height: 1.7;
         }
 
-        .landing-logo-name:hover {
-          color: var(--green);
-          opacity: 1;
+        .ai-summary-card strong {
+          color: var(--text-primary);
         }
 
-        .landing-plan-card {
-          display: flex;
-          flex-direction: column;
-          min-height: 340px;
-          position: relative;
-        }
-
-        .landing-plan-card.is-recommended {
-          transform: translateY(-10px) scale(1.02);
-          border: 2px solid var(--green);
-          box-shadow: 0 2px 10px rgba(0,0,0,0.08), 0 26px 60px rgba(0, 107, 63, 0.14);
-        }
-
-        .landing-plan-card.is-recommended:hover {
-          transform: translateY(-14px) scale(1.02);
-        }
-
-        .landing-plan-badge {
-          position: absolute;
-          top: 18px;
-          right: 18px;
-          border-radius: 999px;
-          background: var(--green);
-          color: var(--white);
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: 0.1em;
-          padding: 7px 10px;
-        }
-
-        .landing-price {
-          display: flex;
-          align-items: baseline;
-          gap: 7px;
-          font-family: 'Sora', sans-serif;
-          color: var(--green);
-          font-size: 42px;
-          font-weight: 700;
-          margin: 10px 0 22px;
-        }
-
-        .landing-price span {
-          color: var(--gray-500);
-          font-family: 'Inter', sans-serif;
-          font-size: 14px;
-          font-weight: 700;
-        }
-
-        .landing-plan-card ul {
-          list-style: none;
+        .academy-card {
+          background: var(--landing-academy-bg);
+          border: 1px solid var(--landing-academy-border);
           display: grid;
+          grid-template-columns: 1fr 0.85fr;
+          gap: 28px;
+          align-items: center;
+        }
+
+        .academy-badge {
+          display: inline-flex;
+          width: fit-content;
+          border-radius: 99px;
+          padding: 6px 12px;
+          background: rgba(0,163,92,0.12);
+          color: var(--green);
+          font-size: 12px;
+          font-weight: 900;
+          margin-bottom: 16px;
+        }
+
+        .track-stack {
+          display: grid;
+          gap: 10px;
+        }
+
+        .track-card {
+          display: grid;
+          grid-template-columns: 5px 1fr auto;
           gap: 12px;
+          align-items: center;
+          padding: 12px;
+        }
+
+        .track-band {
+          width: 5px;
+          height: 42px;
+          border-radius: 999px;
+        }
+
+        .social-proof {
+          background: var(--surface-card);
+          border-top: 1px solid var(--border-subtle);
+          padding: 64px 24px;
+        }
+
+        .social-proof h2 {
+          text-align: center;
+          font-size: 32px;
+          color: var(--text-primary);
           margin-bottom: 28px;
         }
 
-        .landing-plan-card li {
+        .testimonial-grid {
+          max-width: 1100px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 16px;
+        }
+
+        .testimonial-card {
+          background: var(--surface-elevated);
+          border: 1px solid var(--border-subtle);
+          border-radius: 14px;
+          padding: 24px;
+        }
+
+        .testimonial-card blockquote {
+          color: var(--text-secondary);
+          font-size: 14px;
+          line-height: 1.7;
+          font-style: italic;
+          margin: 0 0 22px;
+        }
+
+        .testimonial-author {
           display: flex;
-          gap: 10px;
-          align-items: flex-start;
+          align-items: center;
+          gap: 12px;
         }
 
-        .landing-plan-card li svg {
-          color: var(--green);
-          margin-top: 3px;
-          flex-shrink: 0;
-        }
-
-        .landing-pricing-link {
-          margin-top: auto;
-          color: var(--green);
+        .testimonial-avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: var(--green);
+          color: white;
           display: inline-flex;
           align-items: center;
-          gap: 5px;
-          font-weight: 800;
+          justify-content: center;
+          font-weight: 900;
+          font-size: 12px;
         }
 
-        .landing-faq-list {
-          max-width: 860px;
+        .faq-section {
+          background: var(--surface-base);
+        }
+
+        .faq-list {
+          max-width: 820px;
           margin: 0 auto;
           display: grid;
           gap: 12px;
         }
 
-        .landing-faq-item {
-          border: 1px solid rgba(209, 213, 219, 0.88);
-          border-radius: 16px;
-          background: var(--white);
-          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        .faq-item {
+          border: 1px solid var(--border-subtle);
+          background: var(--surface-card);
+          border-radius: 14px;
           overflow: hidden;
         }
 
-        .landing-faq-question {
+        .faq-question {
           width: 100%;
           min-height: 58px;
-          border: 0;
           background: transparent;
+          border: 0;
+          color: var(--text-primary);
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 18px;
           padding: 18px 20px;
-          color: var(--gray-900);
           text-align: left;
-          font-family: 'Sora', sans-serif;
-          font-weight: 700;
+          font-weight: 800;
         }
 
-        .landing-faq-question svg {
-          color: var(--green);
-          flex-shrink: 0;
-          transition: transform 0.2s ease;
-        }
-
-        .landing-faq-question[aria-expanded="true"] svg {
-          transform: rotate(180deg);
-        }
-
-        .landing-faq-panel {
-          display: grid;
-          grid-template-rows: 0fr;
-          transition: grid-template-rows 0.25s ease;
-        }
-
-        .landing-faq-panel.is-open {
-          grid-template-rows: 1fr;
-        }
-
-        .landing-faq-answer-wrap {
-          overflow: hidden;
-        }
-
-        .landing-faq-answer {
+        .faq-answer {
+          color: var(--text-secondary);
+          line-height: 1.7;
           padding: 0 20px 20px;
         }
 
-        .landing-cta-section {
-          padding: 112px 0;
-          background: var(--white);
-        }
-
-        .landing-cta-band {
+        .final-cta {
           position: relative;
           overflow: hidden;
-          border-radius: 24px;
-          background: var(--green);
-          color: var(--white);
-          padding: 64px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 28px;
-          box-shadow: 0 26px 70px rgba(0, 107, 63, 0.22);
+          background: linear-gradient(135deg, #006B3F 0%, #004D2C 100%);
+          padding: 80px 24px;
+          text-align: center;
+          color: white;
         }
 
-        .landing-cta-band::before {
-          content: "";
-          position: absolute;
-          right: -130px;
-          top: -190px;
-          width: 460px;
-          height: 460px;
-          border-radius: 999px;
-          background: radial-gradient(circle, rgba(0, 163, 92, 0.75), rgba(232, 245, 239, 0.18) 48%, rgba(255, 255, 255, 0) 70%);
-          filter: blur(18px);
-        }
-
-        .landing-cta-content,
-        .landing-cta-band .landing-btn {
+        .final-cta h2 {
           position: relative;
           z-index: 1;
+          font-size: 40px;
+          margin: 0 0 12px;
+          color: white;
         }
 
-        .landing-cta-band h2 {
-          font-size: clamp(32px, 4vw, 46px);
-          line-height: 1.1;
-          max-width: 720px;
-          letter-spacing: 0;
-          margin: 8px 0 12px;
-        }
-
-        .landing-cta-band p {
-          color: rgba(255, 255, 255, 0.78);
+        .final-cta p {
+          position: relative;
+          z-index: 1;
+          color: rgba(255,255,255,0.78);
           font-size: 16px;
-          line-height: 1.7;
-          max-width: 580px;
+          margin: 0 0 28px;
         }
 
-        .landing-cta-band .landing-eyebrow {
-          color: rgba(255, 255, 255, 0.82);
+        .final-cta-actions {
+          position: relative;
+          z-index: 1;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 18px;
+          flex-wrap: wrap;
+        }
+
+        .final-cta .landing-btn {
+          height: 48px;
+          padding: 0 24px;
+          background: var(--surface-card);
+          color: var(--green);
+        }
+
+        .final-cta-link {
+          color: rgba(255,255,255,0.75);
+          font-weight: 800;
+        }
+
+        .newsletter-card {
+          max-width: 1100px;
+          margin: 0 auto 42px;
+          border: 1px solid var(--border-subtle);
+          background: var(--surface-elevated);
+          border-radius: 16px;
+          padding: 24px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 20px;
+        }
+
+        .newsletter-card h3 {
+          margin: 0 0 6px;
+          color: var(--text-primary);
+        }
+
+        .newsletter-card p {
+          margin: 0;
+          color: var(--text-secondary);
+        }
+
+        .newsletter-form {
+          display: flex;
+          gap: 10px;
+          min-width: min(420px, 100%);
+        }
+
+        .newsletter-form input {
+          flex: 1;
+          height: 42px;
+          border-radius: 10px;
+          border: 1px solid var(--border-default);
+          background: var(--surface-card);
+          color: var(--text-primary);
+          padding: 0 12px;
         }
 
         .landing-footer {
-          background: var(--gray-900);
-          color: rgba(255, 255, 255, 0.76);
-          padding: 66px 0 26px;
+          background: var(--surface-sidebar);
+          border-top: 1px solid var(--border-subtle);
+          padding: 56px 24px 28px;
         }
 
         .landing-footer-grid {
+          max-width: 1100px;
+          margin: 0 auto;
           display: grid;
           grid-template-columns: 1.4fr repeat(4, 1fr);
           gap: 32px;
@@ -1007,14 +1026,14 @@ export default function LandingPage() {
 
         .landing-footer h3,
         .landing-footer h4 {
-          color: var(--white);
-          margin-bottom: 14px;
-          letter-spacing: 0;
+          color: var(--text-primary);
+          margin: 0 0 14px;
         }
 
-        .landing-footer-brand p {
-          max-width: 300px;
-          line-height: 1.7;
+        .landing-footer p,
+        .landing-footer-link,
+        .landing-footer-bottom {
+          color: var(--text-secondary);
         }
 
         .landing-footer-links {
@@ -1022,221 +1041,125 @@ export default function LandingPage() {
           gap: 10px;
         }
 
-        .landing-footer-link {
-          color: rgba(255, 255, 255, 0.7);
+        .landing-footer-link:hover {
+          color: var(--green);
         }
 
         .landing-footer-bottom {
-          border-top: 1px solid rgba(255, 255, 255, 0.12);
-          margin-top: 38px;
-          padding-top: 20px;
+          max-width: 1100px;
+          margin: 36px auto 0;
+          padding-top: 22px;
+          border-top: 1px solid var(--border-subtle);
           display: flex;
           justify-content: space-between;
-          gap: 18px;
+          gap: 20px;
           flex-wrap: wrap;
-          color: rgba(255, 255, 255, 0.56);
+          font-size: 13px;
         }
 
-        .landing-auth-links {
-          display: flex;
-          gap: 16px;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .landing-reveal,
-          .landing-btn,
-          .landing-info-card,
-          .landing-feature-card,
-          .landing-plan-card,
-          .landing-logo-name,
-          .landing-faq-panel,
-          .landing-faq-question svg {
-            transition: none;
-          }
-
-          .landing-reveal {
-            opacity: 1;
-            transform: none;
-          }
-        }
-
-        @media (max-width: 980px) {
+        @media (max-width: 768px) {
           .landing-nav-inner {
-            flex-wrap: wrap;
-            padding: 12px 0;
+            grid-template-columns: 1fr auto;
           }
 
-          .landing-nav-toggle {
+          .landing-nav-links,
+          .desktop-login {
+            display: none;
+          }
+
+          .landing-menu-button {
             display: inline-flex;
-            order: 2;
           }
 
           .landing-nav-actions {
-            margin-left: auto;
-            order: 1;
-          }
-
-          .landing-nav-links {
-            order: 3;
-            width: 100%;
-            display: none;
-            margin-left: 0;
-            padding: 8px 0 4px;
-            border-top: 1px solid var(--gray-100);
-          }
-
-          .landing-nav-links.is-open {
-            display: grid;
-            grid-template-columns: repeat(5, minmax(0, 1fr));
-          }
-
-          .landing-nav-link {
-            text-align: center;
-          }
-
-          .landing-preview-body {
-            grid-template-columns: 1fr;
-          }
-
-          .landing-stat-strip,
-          .landing-three-grid,
-          .landing-feature-grid,
-          .landing-pricing-grid,
-          .landing-logo-strip {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-
-          .landing-stat-item:nth-child(3)::before {
-            display: none;
-          }
-
-          .landing-plan-card.is-recommended {
-            transform: none;
-          }
-
-          .landing-plan-card.is-recommended:hover {
-            transform: translateY(-4px);
-          }
-
-          .landing-cta-band {
-            align-items: flex-start;
-            flex-direction: column;
-          }
-
-          .landing-footer-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-
-        @media (max-width: 640px) {
-          .landing-shell {
-            width: min(100% - 28px, 1160px);
-          }
-
-          .landing-brand-sub {
-            display: none;
-          }
-
-          .landing-nav-actions {
-            gap: 6px;
-          }
-
-          .landing-nav-actions .landing-btn {
-            min-height: 44px;
-            padding: 9px 10px;
-            font-size: 12px;
-          }
-
-          .landing-nav-links.is-open {
-            grid-template-columns: 1fr;
-          }
-
-          .landing-hero {
-            padding: 66px 0 78px;
-          }
-
-          .landing-hero h1 {
-            font-size: 42px;
-          }
-
-          .landing-hero-text {
-            font-size: 16px;
-          }
-
-          .landing-product-preview {
-            margin-top: 42px;
-          }
-
-          .landing-preview-body {
-            padding: 16px;
-          }
-
-          .landing-bars {
-            height: 170px;
             gap: 8px;
           }
 
-          .landing-section,
-          .landing-cta-section {
-            padding: 78px 0;
+          .landing-hero {
+            padding: 110px 18px 70px;
           }
 
-          .landing-stat-strip,
-          .landing-three-grid,
-          .landing-feature-grid,
-          .landing-pricing-grid,
-          .landing-logo-strip,
-          .landing-footer-grid {
+          .landing-hero-title {
+            font-size: 36px;
+          }
+
+          .landing-hero-sub {
+            font-size: 16px;
+          }
+
+          .landing-preview-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .landing-proof-row {
+            flex-direction: column;
+          }
+
+          .landing-bento-grid {
+            grid-template-columns: repeat(12, 1fr);
+          }
+
+          .bento-wide,
+          .bento-narrow,
+          .bento-full {
+            grid-column: span 12;
+          }
+
+          .academy-card {
             grid-template-columns: 1fr;
           }
 
-          .landing-stat-item + .landing-stat-item::before {
-            display: none;
+          .testimonial-grid {
+            display: flex;
+            overflow-x: auto;
+            padding-bottom: 8px;
           }
 
-          .landing-stat-item {
-            min-height: 132px;
-            padding: 24px;
-            border-top: 1px solid var(--gray-100);
+          .testimonial-card {
+            min-width: 280px;
+            flex-shrink: 0;
           }
 
-          .landing-stat-item:first-child {
-            border-top: 0;
+          .newsletter-card,
+          .newsletter-form {
+            flex-direction: column;
+            align-items: stretch;
           }
 
-          .landing-logo-strip {
-            gap: 6px;
+          .landing-footer-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .landing-btn-primary.nav-register {
+            padding: 0 12px;
           }
 
-          .landing-logo-name {
-            min-height: 54px;
-          }
-
-          .landing-cta-band {
-            padding: 36px 22px;
-            border-radius: 20px;
+          .landing-preview-grid,
+          .landing-footer-grid {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>
 
+      {observanceData && <ObservanceBanner variant="landing" observance={observanceData} />}
+
       <header className="landing-nav" aria-label="Primary navigation">
-        <div className="landing-shell landing-nav-inner">
+        <div className="landing-nav-inner">
           <a className="landing-brand" href="#top" aria-label="GhanaDataHub home">
             <span className="landing-logo-mark">GD</span>
-            <span>
-              <span className="landing-brand-name">GhanaDataHub</span>
-              <span className="landing-brand-sub">Data Management Platform</span>
-            </span>
+            <span>GhanaDataHub</span>
           </a>
 
-          <nav className={`landing-nav-links${menuOpen ? " is-open" : ""}`} aria-label="Marketing">
+          <nav className="landing-nav-links" aria-label="Marketing">
             {navLinks.map((link) =>
               link.to.startsWith("/") ? (
-                <Link key={link.label} className="landing-nav-link" to={link.to} onClick={() => setMenuOpen(false)}>
+                <Link key={link.label} className="landing-nav-link" to={link.to}>
                   {link.label}
                 </Link>
               ) : (
-                <a key={link.label} className="landing-nav-link" href={link.to} onClick={() => setMenuOpen(false)}>
+                <a key={link.label} className="landing-nav-link" href={link.to}>
                   {link.label}
                 </a>
               )
@@ -1244,327 +1167,311 @@ export default function LandingPage() {
           </nav>
 
           <div className="landing-nav-actions">
-            <Link className="landing-btn landing-btn-secondary" to="/login">
-              Log In
+            <DarkModeToggle />
+            <Link className="landing-btn landing-btn-ghost desktop-login" to="/login">
+              Log in
             </Link>
-            <Link className="landing-btn landing-btn-primary" to="/register">
-              Sign Up
+            <Link className="landing-btn landing-btn-primary nav-register" to="/register">
+              Get Started
             </Link>
+            <button
+              className="landing-menu-button"
+              type="button"
+              aria-label="Open navigation menu"
+              onClick={() => setMenuOpen(true)}
+            >
+              <Menu size={18} />
+            </button>
           </div>
-
-          <button
-            className="landing-nav-toggle"
-            type="button"
-            aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            {menuOpen ? <X size={19} /> : <Menu size={19} />}
-          </button>
         </div>
       </header>
 
+      {menuOpen && (
+        <div className="landing-mobile-overlay">
+          <div className="landing-mobile-top">
+            <a className="landing-brand" href="#top" onClick={() => setMenuOpen(false)}>
+              <span className="landing-logo-mark">GD</span>
+              <span>GhanaDataHub</span>
+            </a>
+            <button className="landing-menu-button" type="button" aria-label="Close navigation menu" onClick={() => setMenuOpen(false)}>
+              <X size={20} />
+            </button>
+          </div>
+          <nav className="landing-mobile-nav" aria-label="Mobile marketing navigation">
+            {navLinks.map((link) =>
+              link.to.startsWith("/") ? (
+                <Link key={link.label} to={link.to} onClick={() => setMenuOpen(false)}>
+                  {link.label}
+                </Link>
+              ) : (
+                <a key={link.label} href={link.to} onClick={() => setMenuOpen(false)}>
+                  {link.label}
+                </a>
+              )
+            )}
+            <Link to="/login" onClick={() => setMenuOpen(false)}>Log in</Link>
+            <Link to="/register" onClick={() => setMenuOpen(false)}>Get Started</Link>
+          </nav>
+        </div>
+      )}
+
       <main>
         <section className="landing-hero" aria-labelledby="landing-hero-title">
-          {/* ── Decorative blobs (purely visual) ── */}
-          {/* ADD THIS: Blob 1 — top-left green blob */}
-          <div
-            className="landing-hero-blob"
-            aria-hidden="true"
-            style={{
-              width: 480,
-              height: 480,
-              background: "radial-gradient(circle, rgba(0,107,63,0.08) 0%, transparent 70%)",
-              top: -120,
-              left: -80,
-              filter: "blur(40px)",
-            }}
-          />
-          {/* ADD THIS: Blob 2 — bottom-right gold blob */}
-          <div
-            className="landing-hero-blob"
-            aria-hidden="true"
-            style={{
-              width: 400,
-              height: 400,
-              background: "radial-gradient(circle, rgba(252,209,22,0.10) 0%, transparent 70%)",
-              bottom: -80,
-              right: -60,
-              filter: "blur(48px)",
-            }}
-          />
+          <div className="dark-hero-glow" style={{ top: "10%", left: "-5%" }} />
+          <div className="landing-gold-glow" />
 
-          <div className="landing-shell">
-            {/* ADD THIS: position:relative wrapper so float cards + blobs are bounded */}
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <div className="landing-hero-content">
-                <div className="landing-kicker">
-                  <KeyRound size={15} />
-                  Trusted institutional data infrastructure
-                </div>
-                <h1 id="landing-hero-title">Ghana's Data Management Platform</h1>
-                <p className="landing-hero-text">
-                  Upload, organise, search, and securely share datasets across your organisation. Built for government
-                  agencies, NGOs, universities, and researchers across Ghana.
-                </p>
-                {/* ADD THIS: Floating glass stat card 1 — Datasets */}
-                <div className="landing-float-card landing-float-card-1" aria-hidden="true">
-                  <Database size={16} color="var(--green)" />
-                  <span>{formatCompactNumber(stats.total_datasets)} Datasets</span>
-                </div>
-                {/* ADD THIS: Floating glass stat card 2 — Researchers */}
-                <div className="landing-float-card landing-float-card-2" aria-hidden="true">
-                  <Users size={16} color="var(--green)" />
-                  <span>{formatCompactNumber(stats.total_users)} Researchers</span>
-                </div>
-                <div className="landing-hero-actions">
-                  <Link className="landing-btn landing-btn-primary" to="/register">
-                    Get Started Free
-                    <ChevronRight size={17} />
-                  </Link>
-                  <Link className="landing-btn landing-btn-secondary" to="/datasets">
-                    Browse Datasets
-                  </Link>
-                </div>
-                <p className="landing-trust-note">No credit card required - Free forever plan available</p>
+          <div className="landing-hero-content">
+            <div className="landing-eyebrow-pill">
+              <span className="landing-pulse-dot" />
+              Now indexing {formatCompactNumber(stats.total_datasets)} Ghana datasets
+            </div>
+            <h1 className="landing-hero-title" id="landing-hero-title">
+              Ghana's <span className="landing-gradient-text">Open Data</span>, Finally Organised.
+            </h1>
+            <p className="landing-hero-sub">
+              GhanaDataHub brings together datasets from government, international organisations, and researchers into one searchable, downloadable, and analysable platform - free for everyone.
+            </p>
+            <div className="landing-cta-row">
+              <Link className="landing-btn landing-btn-primary" to="/datasets">
+                Explore Datasets <ArrowRight size={16} />
+              </Link>
+              <a className="landing-btn landing-btn-secondary" href="#api">
+                View the API
+              </a>
+            </div>
+            <div className="landing-proof-row">
+              <div className="landing-avatars" aria-hidden="true">
+                {[
+                  ["AM", "#D1FAE5"],
+                  ["KO", "#E0F2FE"],
+                  ["EK", "#FEF3C7"],
+                  ["NK", "#E9D5FF"],
+                ].map(([initials, color]) => (
+                  <span className="landing-avatar" style={{ background: color }} key={initials}>
+                    {initials}
+                  </span>
+                ))}
               </div>
+              <span>500+ researchers, journalists, and analysts trust GhanaDataHub</span>
+            </div>
 
-              {/* ADD THIS: animated-border-wrapper around the preview card */}
-              <div className="animated-border-wrapper" style={{ maxWidth: 980, margin: "58px auto 0" }}>
-                <div className="landing-product-preview" aria-label="GhanaDataHub dashboard preview">
-                  <div className="landing-browser-bar" aria-hidden="true">
-                    <span className="landing-browser-dot" />
-                    <span className="landing-browser-dot" />
-                    <span className="landing-browser-dot" />
+            <div className="landing-preview-card" aria-label="Dashboard preview">
+              <div className="landing-preview-grid">
+                {metricTiles.map(({ label, value, icon: Icon }) => (
+                  <div className="landing-metric-tile" key={label}>
+                    <Icon size={18} />
+                    <div className="landing-metric-value">{value}</div>
+                    <div className="landing-metric-label">{label}</div>
                   </div>
-                  <div className="landing-preview-body">
-                    <div className="landing-preview-sidebar">
-                      <div className="landing-preview-stat">
-                        <strong>{formatCompactNumber(stats.total_datasets)}</strong>
-                        <span>Datasets managed</span>
-                      </div>
-                      <div className="landing-preview-stat">
-                        <strong>{formatCompactNumber(stats.total_organizations)}</strong>
-                        <span>Organisations</span>
-                      </div>
-                      <div className="landing-preview-stat">
-                        <strong>{formatStorage(stats.total_storage_bytes)}</strong>
-                        <span>Storage tracked</span>
-                      </div>
-                    </div>
-                    <div className="landing-preview-chart">
-                      <div className="landing-chart-top">
-                        <div>
-                          <div className="landing-chart-label">Dashboard</div>
-                          <div className="landing-chart-title">Catalogue activity</div>
-                        </div>
-                        <div className="landing-data-pill">Live</div>
-                      </div>
-                      <div className="landing-bars" aria-hidden="true">
-                        <div className="landing-bar" style={{ height: "48%" }} />
-                        <div className="landing-bar" style={{ height: "72%" }} />
-                        <div className="landing-bar" style={{ height: "58%" }} />
-                        <div className="landing-bar" style={{ height: "86%" }} />
-                        <div className="landing-bar" style={{ height: "64%" }} />
-                        <div className="landing-bar" style={{ height: "94%" }} />
-                        <div className="landing-bar" style={{ height: "76%" }} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
         </section>
 
-        <RevealSection className="landing-section" aria-labelledby="stats-title">
-          <div className="landing-shell">
-            <div className="landing-section-heading centered">
-              <div className="landing-eyebrow">Live Stats</div>
-              <h2 id="stats-title">Platform momentum at a glance</h2>
-              <p>Public-facing indicators from the platform, with graceful fallback figures when live stats require authentication.</p>
+        <section className="landing-trust-strip" aria-label="Trusted by">
+          <div className="landing-strip-label">Trusted by researchers, journalists, and government agencies</div>
+          <div className="landing-marquee-outer">
+            <div className="landing-marquee-track">
+              {[...trustPills, ...trustPills].map((pill, index) => (
+                <span className="landing-trust-pill" key={`${pill}-${index}`}>
+                  {pill}
+                </span>
+              ))}
             </div>
-            <div className="landing-stat-strip">
-              {statItems.map(({ label, value, icon: Icon }) => (
-                <div className="landing-stat-item" key={label}>
-                  <div className="landing-stat-icon">
-                    <Icon size={20} />
+          </div>
+        </section>
+
+        <section className="landing-section" id="api">
+          <div className="landing-section-inner">
+            <div className="landing-section-label">What you get</div>
+            <h2 className="landing-section-heading">Everything you need to work with Ghana data</h2>
+
+            <div className="landing-bento-grid">
+              <article className="landing-bento-card bento-wide">
+                <h3>Search across {formatCompactNumber(stats.total_datasets)} datasets instantly</h3>
+                <p>Full-text search, category filters, freshness indicators, and quality scores on every dataset.</p>
+                <div className="mock-search">
+                  <div className="mock-search-input">
+                    <Search size={15} />
+                    Search "inflation", "cocoa exports", "malaria"
                   </div>
-                  <div className="landing-stat-value">{value}</div>
-                  <div className="landing-stat-label">{label}</div>
+                  {["Ghana CPI and Inflation Series", "Cocoa Production by Region", "Health Facilities Registry"].map((item) => (
+                    <div className="mock-result-row" key={item}>{item}</div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        </RevealSection>
+                <Link className="landing-green-link" to="/datasets">
+                  Explore Datasets <ArrowRight size={15} />
+                </Link>
+              </article>
 
-        <RevealSection className="landing-section landing-section-alt" id="about" aria-labelledby="solution-title">
-          <div className="landing-shell">
-            <div className="landing-section-heading">
-              <div className="landing-eyebrow">Solutions</div>
-              <h2 id="solution-title">From fragmented files to governed data operations</h2>
-              <p>GhanaDataHub turns everyday data management challenges into repeatable workflows institutions can trust.</p>
-            </div>
-            <div className="landing-three-grid">
-              {problemSolutions.map(({ icon: Icon, problem, solution, text }) => (
-                <article className="landing-info-card" key={solution}>
-                  <div className="landing-card-icon">
-                    <Icon size={21} />
-                  </div>
-                  <div className="landing-problem">{problem}</div>
-                  <h3>{solution}</h3>
-                  <p>{text}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </RevealSection>
-
-        <RevealSection className="landing-section" id="api" aria-labelledby="features-title">
-          <div className="landing-shell">
-            <div className="landing-section-heading centered">
-              <div className="landing-eyebrow">Features</div>
-              <h2 id="features-title">Everything needed to manage institutional datasets</h2>
-              <p>Core tools for upload governance, discovery, sharing, analytics, and integration.</p>
-            </div>
-            <div className="landing-feature-grid">
-              {features.map(({ icon: Icon, title, text }) => (
-                <article className="landing-feature-card" key={title}>
-                  <div className="landing-card-icon">
-                    <Icon size={21} />
-                  </div>
-                  <h3>{title}</h3>
-                  <p>{text}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </RevealSection>
-
-        <RevealSection className="landing-section landing-section-alt" aria-labelledby="trust-title">
-          <div className="landing-shell">
-            <div className="landing-section-heading centered">
-              <div className="landing-eyebrow">Trusted By</div>
-              <h2 id="trust-title">Built for institutions across Ghana</h2>
-              <p>Designed for the data stewardship expectations of public agencies, development partners, universities, and research teams.</p>
-            </div>
-            <div className="landing-logo-strip" aria-label="Example institution types">
-              {orgs.map((org) => (
-                <div className="landing-logo-name" key={org}>
-                  {org}
+              <article className="landing-bento-card bento-narrow daily-card">
+                <h3>Updated Daily</h3>
+                <p>8 financial datasets updated every morning from the Ghana market briefing.</p>
+                <div className="daily-badges">
+                  {["Forex Rates", "GSE Stocks", "Cocoa Price"].map((badge) => (
+                    <span className="daily-badge" key={badge}>
+                      <span className="landing-pulse-dot" /> {badge}
+                    </span>
+                  ))}
                 </div>
-              ))}
+              </article>
+
+              <article className="landing-bento-card bento-narrow">
+                <h3>Regional Visualisation</h3>
+                <p>Auto-generated choropleth maps for any regional dataset.</p>
+                <svg className="tiny-map" viewBox="0 0 180 200" role="img" aria-label="Simplified Ghana region map">
+                  <path d="M67 7 113 12 147 48 136 94 160 130 132 188 83 194 52 160 27 112 39 57Z" fill="#1C2B21" stroke="rgba(255,255,255,0.18)" strokeWidth="2" />
+                  <path d="M67 7 113 12 109 58 65 62 39 57Z" fill="#004D2C" />
+                  <path d="M65 62 109 58 136 94 94 111 52 94Z" fill="#006B3F" />
+                  <path d="M52 94 94 111 83 194 52 160 27 112Z" fill="#00A35C" />
+                  <path d="M94 111 160 130 132 188 83 194Z" fill="#00E87A" opacity="0.75" />
+                </svg>
+              </article>
+
+              <article className="landing-bento-card bento-wide">
+                <h3>AI-Powered Insights on Every Dataset</h3>
+                <p>Upload a CSV or PDF and get an instant plain-language summary, column profiles, anomaly detection, and key findings.</p>
+                <div className="ai-summary-card">
+                  <p><strong>Summary:</strong> This dataset shows regional differences in service access, with Greater Accra and Ashanti leading the national average while northern regions show the largest improvement opportunity.</p>
+                  <p style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 12 }}>Generated by Claude AI</p>
+                </div>
+              </article>
+
+              <article className="landing-bento-card bento-full academy-card" id="learn">
+                <div>
+                  <span className="academy-badge">Analytics Academy</span>
+                  <h3>Learn data analytics with real Ghana data</h3>
+                  <p>4 tracks from complete beginner to advanced analyst. Free certificate on completion.</p>
+                  <Link className="landing-green-link" to="/blog">
+                    Start Learning Free <ArrowRight size={15} />
+                  </Link>
+                </div>
+                <div className="track-stack">
+                  {academyTracks.map((track) => (
+                    <div className="track-card" key={track.name}>
+                      <span className="track-band" style={{ background: track.color }} />
+                      <span style={{ color: "var(--text-primary)", fontWeight: 800 }}>{track.name}</span>
+                      <span style={{ color: "var(--text-muted)", fontSize: 12 }}>{track.lessons}</span>
+                    </div>
+                  ))}
+                </div>
+              </article>
             </div>
           </div>
-        </RevealSection>
+        </section>
 
+        <section className="social-proof">
+          <h2>What the community says</h2>
+          <div className="testimonial-grid">
+            {testimonials.map((item) => (
+              <article className="testimonial-card" key={item.name}>
+                <blockquote>"{item.quote}"</blockquote>
+                <div className="testimonial-author">
+                  <span className="testimonial-avatar">{item.initials}</span>
+                  <div>
+                    <div style={{ color: "var(--text-primary)", fontSize: 13, fontWeight: 900 }}>{item.name}</div>
+                    <div style={{ color: "var(--text-muted)", fontSize: 12 }}>{item.role}</div>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
 
-        <RevealSection className="landing-section landing-section-alt" aria-labelledby="faq-title">
-          <div className="landing-shell">
-            <div className="landing-section-heading centered">
-              <div className="landing-eyebrow">FAQ</div>
-              <h2 id="faq-title">Questions teams ask before they start</h2>
-              <p>Clear answers for organisations moving from informal folders into a governed data workspace.</p>
-            </div>
-            <div className="landing-faq-list">
+        <section className="landing-section faq-section">
+          <div className="landing-section-inner">
+            <div className="landing-section-label" style={{ textAlign: "center" }}>FAQ</div>
+            <h2 className="landing-section-heading" style={{ textAlign: "center", marginLeft: "auto", marginRight: "auto" }}>
+              Questions teams ask before they start
+            </h2>
+            <div className="faq-list">
               {faqs.map((faq, index) => {
                 const isOpen = openFaqIndex === index;
-
                 return (
-                  <div className="landing-faq-item" key={faq.question}>
+                  <div className="faq-item" key={faq.question}>
                     <button
-                      className="landing-faq-question"
+                      className="faq-question"
                       type="button"
                       aria-expanded={isOpen}
-                      aria-controls={`landing-faq-panel-${index}`}
                       onClick={() => setOpenFaqIndex(isOpen ? -1 : index)}
                     >
                       <span>{faq.question}</span>
-                      <ChevronDown size={20} />
+                      <ChevronDown size={18} style={{ transform: isOpen ? "rotate(180deg)" : "none" }} />
                     </button>
-                    <div
-                      id={`landing-faq-panel-${index}`}
-                      className={`landing-faq-panel${isOpen ? " is-open" : ""}`}
-                    >
-                      <div className="landing-faq-answer-wrap">
-                        <p className="landing-faq-answer">{faq.answer}</p>
-                      </div>
-                    </div>
+                    {isOpen && <p className="faq-answer">{faq.answer}</p>}
                   </div>
                 );
               })}
             </div>
           </div>
-        </RevealSection>
+        </section>
 
-        <RevealSection className="landing-cta-section" aria-labelledby="cta-title">
-          <div className="landing-shell">
-            <div className="landing-cta-band">
-              <div className="landing-cta-content">
-                <div className="landing-eyebrow">Get Started</div>
-                <h2 id="cta-title">Ready to organise your organisation's data?</h2>
-                <p>Launch a secure workspace for datasets, permissions, search, analytics, and accountable collaboration.</p>
-              </div>
-              <Link className="landing-btn landing-btn-light" to="/register">
-                Create Your Free Account
-              </Link>
-            </div>
+        <section className="final-cta" id="roadmap">
+          <div className="dark-hero-glow" style={{ width: 420, height: 420, background: "radial-gradient(circle, rgba(252,209,22,0.16) 0%, transparent 70%)", top: -120, left: "50%", transform: "translateX(-50%)" }} />
+          <h2>Start exploring Ghana data today</h2>
+          <p>Free forever. No credit card. No account required to browse.</p>
+          <div className="final-cta-actions">
+            <Link className="landing-btn" to="/datasets">Explore Datasets</Link>
+            <Link className="final-cta-link" to="/register">Create a free account</Link>
           </div>
-        </RevealSection>
+        </section>
       </main>
 
       <footer className="landing-footer">
-        <div className="landing-shell">
-          <div className="landing-footer-grid">
-            <div className="landing-footer-brand">
-              <h3>GhanaDataHub</h3>
-              <p>Secure data management for organisations building evidence, policy, and research across Ghana.</p>
-            </div>
-            <div>
-              <h4>Product</h4>
-              <div className="landing-footer-links">
-                <Link className="landing-footer-link" to="/datasets">Datasets</Link>
-                <Link className="landing-footer-link" to="/search">Search</Link>
-                <a className="landing-footer-link" href="#pricing">Pricing</a>
-                <a className="landing-footer-link" href="#api">API Docs</a>
-              </div>
-            </div>
-            <div>
-              <h4>Company</h4>
-              <div className="landing-footer-links">
-                <a className="landing-footer-link" href="#about">About</a>
-                <a className="landing-footer-link" href="mailto:hello@ghanadatahub.org">Contact</a>
-              </div>
-            </div>
-            <div>
-              <h4>Legal</h4>
-              <div className="landing-footer-links">
-                <Link className="landing-footer-link" to="/register">Privacy</Link>
-                <Link className="landing-footer-link" to="/register">Terms</Link>
-              </div>
-            </div>
-            <div>
-              <h4>Connect</h4>
-              <div className="landing-footer-links">
-                <a className="landing-footer-link" href="https://github.com" target="_blank" rel="noreferrer">
-                  GitHub
-                </a>
-                <a className="landing-footer-link" href="mailto:hello@ghanadatahub.org">
-                  hello@ghanadatahub.org
-                </a>
-                <Link className="landing-footer-link" to="/login">Log In</Link>
-                <Link className="landing-footer-link" to="/register">Sign Up</Link>
-              </div>
+        <div className="newsletter-card">
+          <div>
+            <h3>Get GhanaDataHub updates</h3>
+            <p>New datasets, data stories, and product notes in your inbox.</p>
+          </div>
+          <form className="newsletter-form" onSubmit={(event) => event.preventDefault()}>
+            <input type="email" placeholder="you@example.com" aria-label="Email address" />
+            <button className="landing-btn landing-btn-primary" type="submit">Subscribe</button>
+          </form>
+        </div>
+
+        <div className="landing-footer-grid">
+          <div>
+            <h3>GhanaDataHub</h3>
+            <p>Secure data management for organisations building evidence, policy, and research across Ghana.</p>
+          </div>
+          <div>
+            <h4>Product</h4>
+            <div className="landing-footer-links">
+              <Link className="landing-footer-link" to="/datasets">Datasets</Link>
+              <Link className="landing-footer-link" to="/search">Search</Link>
+              <a className="landing-footer-link" href="#learn">Learn</a>
+              <a className="landing-footer-link" href="#api">API Docs</a>
             </div>
           </div>
-
-          <div className="landing-footer-bottom">
-            <span>(c) 2024 GhanaDataHub. Built for Ghana.</span>
-            <div className="landing-auth-links">
+          <div>
+            <h4>Company</h4>
+            <div className="landing-footer-links">
+              <a className="landing-footer-link" href="#top">About</a>
+              <a className="landing-footer-link" href="mailto:hello@ghanadatahub.org">Contact</a>
+            </div>
+          </div>
+          <div>
+            <h4>Legal</h4>
+            <div className="landing-footer-links">
+              <Link className="landing-footer-link" to="/register">Privacy</Link>
+              <Link className="landing-footer-link" to="/register">Terms</Link>
+            </div>
+          </div>
+          <div>
+            <h4>Connect</h4>
+            <div className="landing-footer-links">
+              <a className="landing-footer-link" href="https://github.com" target="_blank" rel="noreferrer">GitHub</a>
+              <a className="landing-footer-link" href="mailto:hello@ghanadatahub.org">hello@ghanadatahub.org</a>
               <Link className="landing-footer-link" to="/login">Log In</Link>
               <Link className="landing-footer-link" to="/register">Sign Up</Link>
             </div>
           </div>
+        </div>
+
+        <div className="landing-footer-bottom">
+          <span>(c) 2024 GhanaDataHub. Built for Ghana.</span>
+          <span>Open data, better decisions.</span>
         </div>
       </footer>
     </div>

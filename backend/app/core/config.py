@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "DEBUG"
     LOG_FORMAT: str = "console"
     LOGTAIL_TOKEN: Optional[str] = None
+    CALENDARIFIC_API_KEY: Optional[str] = None
 
     # Pydantic v2 uses model_config (not Config class)
     model_config = {

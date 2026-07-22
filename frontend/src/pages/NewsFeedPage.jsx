@@ -18,6 +18,9 @@ import {
   Plus,
 } from "lucide-react";
 import { datasetsApi, categoriesApi, dashboardApi } from "../services/api";
+import ObservanceBanner from "../components/ObservanceBanner";
+
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
 const FILTERS = [
   { key: "all", label: "All Updates", icon: Layers },
@@ -106,20 +109,23 @@ export default function NewsFeedPage() {
   const [subscribedCards, setSubscribedCards] = useState({});
   const [bookmarkedCards, setBookmarkedCards] = useState({});
   const [isSticky, setIsSticky] = useState(false);
+  const [observanceData, setObservanceData] = useState(null);
   const topbarRef = useRef(null);
 
   useEffect(() => {
     async function load() {
       setIsLoading(true);
       try {
-        const [datasetsRes, categoriesRes, statsRes] = await Promise.all([
+        const [datasetsRes, categoriesRes, statsRes, observanceRes] = await Promise.all([
           datasetsApi.list({ per_page: 20, sort_by: "created_at", sort_dir: "desc" }),
           categoriesApi.list(),
           dashboardApi.stats(),
+          fetch(`${API_BASE}/observances/today`).then((res) => (res.ok ? res.json() : null)),
         ]);
         setDatasets(datasetsRes.data?.items || datasetsRes.data || []);
         setCategories(categoriesRes.data || []);
         setDashboardStats(statsRes.data || null);
+        if (observanceRes) setObservanceData(observanceRes);
       } catch (error) {
         console.error(error);
       } finally {
@@ -217,7 +223,7 @@ export default function NewsFeedPage() {
         <div style={{ position: "sticky", top: 80, alignSelf: "start" }}>
           <div style={{ display: "grid", gap: 20 }}>
             <div>
-              <div style={{ marginBottom: 12, padding: 16, borderRadius: 14, background: "white", boxShadow: "var(--shadow-md)" }}>
+              <div style={{ marginBottom: 12, padding: 16, borderRadius: 14, background: "var(--surface-card)", boxShadow: "var(--shadow-md)" }}>
                 <div style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--gray-500)", marginBottom: 10 }}>Feed Filters</div>
                 <div style={{ display: "grid", gap: 10 }}>
                   {FILTERS.map(({ key, label, icon: Icon }) => {
@@ -248,7 +254,7 @@ export default function NewsFeedPage() {
                 </div>
               </div>
             </div>
-            <div style={{ background: "white", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 16 }}>
+            <div style={{ background: "var(--surface-card)", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 16 }}>
               <div style={{ fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--gray-500)", marginBottom: 12 }}>Topics</div>
               <div style={{ display: "grid", gap: 10 }}>
                 {categories.map((category) => {
@@ -279,7 +285,7 @@ export default function NewsFeedPage() {
                 })}
               </div>
             </div>
-            <div style={{ background: "white", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 16 }}>
+            <div style={{ background: "var(--surface-card)", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>Recent</div>
               </div>
@@ -317,7 +323,7 @@ export default function NewsFeedPage() {
               position: isSticky ? "sticky" : "relative",
               top: isSticky ? 80 : "unset",
               zIndex: 10,
-              background: isSticky ? "rgba(255,255,255,0.85)" : "white",
+              background: isSticky ? "var(--surface-card)" : "var(--surface-card)",
               backdropFilter: isSticky ? "blur(12px)" : "none",
               borderRadius: 14,
               boxShadow: "var(--shadow-md)",
@@ -341,7 +347,7 @@ export default function NewsFeedPage() {
                     borderRadius: 10,
                     border: "1px solid var(--gray-300)",
                     padding: "10px 12px",
-                    background: "white",
+                    background: "var(--surface-card)",
                     color: "var(--gray-900)",
                   }}
                 >
@@ -374,6 +380,10 @@ export default function NewsFeedPage() {
             </div>
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
+              {observanceData && (
+                <ObservanceBanner variant="feed" observance={observanceData} />
+              )}
+
               {filteredDatasets.map((item, index) => {
                 const ownerName = item.owner?.full_name || "Unknown";
                 const initials = ownerName
@@ -496,7 +506,7 @@ export default function NewsFeedPage() {
 
         <div style={{ position: "sticky", top: 80, alignSelf: "start" }}>
           <div style={{ display: "grid", gap: 20 }}>
-            <div style={{ background: "white", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 16 }}>
+            <div style={{ background: "var(--surface-card)", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                 <div style={{ fontSize: 14, fontWeight: 700 }}>Recent Updates</div>
                 <button onClick={handleClearFilters} style={{ border: "none", background: "transparent", color: "var(--green)", fontSize: 12, cursor: "pointer" }}>
@@ -538,7 +548,7 @@ export default function NewsFeedPage() {
               </div>
             </div>
 
-            <div style={{ background: "white", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 16 }}>
+            <div style={{ background: "var(--surface-card)", borderRadius: 14, boxShadow: "var(--shadow-md)", padding: 16 }}>
               <div style={{ marginBottom: 14, fontSize: 14, fontWeight: 700 }}>Platform Stats</div>
               <div style={{ display: "grid", gap: 14 }}>
                 <div style={statItemStyle}>
@@ -560,7 +570,7 @@ export default function NewsFeedPage() {
       </div>
       <style>{`
         .feed-card {
-          background: white;
+          background: var(--surface-card);
           border-radius: 14px;
           box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
           padding: 20px;
@@ -582,7 +592,7 @@ export default function NewsFeedPage() {
         }
 
         .skeleton-card {
-          background: #ffffff;
+          background: var(--surface-card);
           border-radius: 14px;
           padding: 20px;
           box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);

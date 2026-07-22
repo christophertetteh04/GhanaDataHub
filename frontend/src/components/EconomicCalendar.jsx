@@ -138,7 +138,7 @@ export default function EconomicCalendar() {
           100% { background-position: -200% 0; }
         }
         .ec-event-row:hover {
-          background: #f9fafb;
+          background: var(--surface-base);
           cursor: pointer;
         }
         .ec-event-row:last-child {
@@ -147,7 +147,7 @@ export default function EconomicCalendar() {
       `}</style>
 
       <div style={{
-        background: "#fff",
+        background: "var(--surface-card)",
         borderRadius: 14,
         boxShadow: "0 1px 4px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05)",
         padding: 0,
