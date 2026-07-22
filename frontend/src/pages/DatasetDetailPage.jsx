@@ -7,6 +7,7 @@ import { trackDatasetView } from "../components/PersonalisedRecs";
 import WatchButton from "../components/WatchButton";
 import GhanaRegionMap from "../components/GhanaRegionMap";
 import { detectRegionColumn } from "../utils/mapUtils";
+import AttributionModal from "../components/AttributionModal";
 import toast from "react-hot-toast";
 import {
   ArrowLeft,
@@ -214,6 +215,7 @@ export default function DatasetDetailPage() {
   const [versions, setVersions] = useState([]);
   const [related, setRelated] = useState([]);
   const [showShare, setShowShare] = useState(false);
+  const [showAttributionModal, setShowAttributionModal] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [csvRows, setCsvRows] = useState(null);
   const [hasRegionData, setHasRegionData] = useState(false);
@@ -294,7 +296,7 @@ export default function DatasetDetailPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const handleDownload = () => {
+  const triggerDownload = () => {
     if (dataset?.file_path) {
       const filename = dataset.file_path.split("/").pop();
       const url = `http://localhost:8000/uploads/${filename}`;
@@ -305,6 +307,14 @@ export default function DatasetDetailPage() {
       a.click();
       document.body.removeChild(a);
     }
+  };
+
+  const handleDownload = () => {
+    if (dataset?.source_attribution) {
+      setShowAttributionModal(true);
+      return;
+    }
+    triggerDownload();
   };
 
   if (!dataset) {
@@ -855,6 +865,15 @@ export default function DatasetDetailPage() {
           onClose={() => setShowShare(false)}
         />
       )}
+      <AttributionModal
+        isOpen={showAttributionModal}
+        onClose={() => setShowAttributionModal(false)}
+        onConfirmDownload={() => {
+          setShowAttributionModal(false);
+          triggerDownload();
+        }}
+        dataset={dataset}
+      />
     </div>
   );
 }

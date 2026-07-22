@@ -1439,6 +1439,7 @@ export default function LandingPage() {
             <h4>Product</h4>
             <div className="landing-footer-links">
               <Link className="landing-footer-link" to="/datasets">Datasets</Link>
+              <Link className="landing-footer-link" to="/sources">Data Sources</Link>
               <Link className="landing-footer-link" to="/search">Search</Link>
               <a className="landing-footer-link" href="#learn">Learn</a>
               <a className="landing-footer-link" href="#api">API Docs</a>

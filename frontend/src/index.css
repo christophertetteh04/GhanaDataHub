@@ -822,6 +822,29 @@ tr:hover td {
   }
 }
 
+/* ===================================================
+   CHARACTER UI ANIMATIONS
+   =================================================== */
+@keyframes wobble {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+@keyframes confetti-fall {
+  from { transform: translateY(0) rotate(0deg); opacity: 1; }
+  to { transform: translateY(60px) rotate(360deg); opacity: 0; }
+}
+
+@keyframes character-slide-in {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes character-slide-out {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(20px); opacity: 0; }
+}
+
 /* Tag chips */
 .tag-chip {
   display: inline-flex;

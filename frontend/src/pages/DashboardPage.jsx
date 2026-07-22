@@ -10,6 +10,7 @@ import SinceLastVisit from "../components/SinceLastVisit";
 import EconomicCalendar from "../components/EconomicCalendar";
 import PersonalisedRecs from "../components/PersonalisedRecs";
 import ComparisonEngine from "../components/ComparisonEngine";
+import KwekuOnboarding from "../components/KwekuOnboarding";
 import {
   AreaChart,
   Area,
@@ -551,6 +552,7 @@ export default function DashboardPage() {
         </aside>
       </div> {/* end dash-v2-layout */}
 
+      <KwekuOnboarding />
     </div>
   );
 }

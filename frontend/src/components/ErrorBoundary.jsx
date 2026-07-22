@@ -1,5 +1,6 @@
 import React from "react";
 import { logError } from "../services/logger";
+import ErrorPage from "../pages/ErrorPage";
 
 /**
  * React error boundary for catching render/runtime errors in the component tree.
@@ -19,22 +20,7 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div
-          className="card"
-          style={{ maxWidth: 520, margin: "72px auto", padding: 24 }}
-        >
-          <h2 style={{ marginTop: 0 }}>Something went wrong</h2>
-          <p>Our team has been notified. Please refresh.</p>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => window.location.reload()}
-          >
-            Refresh Page
-          </button>
-        </div>
-      );
+      return <ErrorPage code={500} />;
     }
 
     return this.props.children;

@@ -3,6 +3,8 @@ import { datasetsApi, categoriesApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import QualityBadge from "../components/QualityBadge";
+import AdjoaEmptyState from "../components/AdjoaEmptyState";
+import CelebrationToast from "../components/CelebrationToast";
 import toast from "react-hot-toast";
 import { logInfo, logAction } from "../services/logger";
 
@@ -33,6 +35,7 @@ const VIS_LABELS = {
 const ALLOWED_EXTS = ".csv,.json,.xlsx,.xls,.pdf,.png,.jpg,.jpeg,.gif,.webp";
 
 function UploadModal({ onClose, onSuccess, categories }) {
+  const { user } = useAuth();
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -54,8 +57,6 @@ function UploadModal({ onClose, onSuccess, categories }) {
   };
 
   const submit = async (e) => {
-    const { user } = useAuth();
-
     e.preventDefault();
     if (!form.title) return toast.error("Title is required");
     const fd = new FormData();
@@ -74,6 +75,9 @@ function UploadModal({ onClose, onSuccess, categories }) {
         file_size_bytes: file?.size,
         title: form.title,
       });
+      if (!localStorage.getItem("gdh_has_uploaded")) {
+        window.dispatchEvent(new CustomEvent("gdh:first-upload"));
+      }
       onSuccess();
 
       onClose();
@@ -940,26 +944,20 @@ export default function DatasetsPage() {
           <span className="spinner" style={{ width: 28, height: 28 }} />
         </div>
       ) : datasets.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-icon">
-            <FileText size={24} />
-          </div>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>
-            No datasets found
-          </div>
-          <div style={{ fontSize: 13 }}>
-            Try adjusting your filters or upload a new dataset
-          </div>
-          {canUpload && (
-            <button
-              className="btn btn-primary"
-              style={{ marginTop: 16 }}
-              onClick={() => setShowUpload(true)}
-            >
-              <Plus size={14} /> Upload Dataset
-            </button>
-          )}
-        </div>
+        <AdjoaEmptyState
+          message="No datasets found. Try a different search or filter."
+          actionLabel="Clear filters"
+          onAction={() => {
+            setFilters({
+              search: "",
+              category_id: "",
+              visibility: "",
+              sort_by: "created_at",
+              sort_dir: "desc",
+            });
+            setPage(1);
+          }}
+        />
       ) : (
         <div className="dataset-grid">
           {datasets.map((d) => (
@@ -1216,6 +1214,7 @@ export default function DatasetsPage() {
           onSuccess={load}
         />
       )}
+      <CelebrationToast />
     </div>
   );
 }

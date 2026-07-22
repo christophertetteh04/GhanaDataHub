@@ -24,6 +24,8 @@ import BlogPostPage from "./pages/BlogPostPage";
 import AdminPage from "./pages/AdminPage";
 import ProfilePage from "./pages/ProfilePage";
 import PublicProfilePage from "./pages/PublicProfilePage";
+import ErrorPage from "./pages/ErrorPage";
+import SourcesPage from "./pages/SourcesPage";
 
 const ADMIN_ROLES = ["super_admin", "org_admin"];
 
@@ -40,6 +42,7 @@ function AppContent() {
       <Routes>
           {/* Public auth routes */}
           <Route path="/" element={<LandingPage />} />
+          <Route path="/sources" element={<SourcesPage />} />
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
@@ -74,10 +77,7 @@ function AppContent() {
           } />
 
           {/* Fallback */}
-          <Route path="*" element={<PrivateRoute><Layout><div style={{ padding: 48, textAlign: "center" }}>
-            <h2 style={{ fontFamily: "Sora", marginBottom: 8 }}>404 — Page not found</h2>
-            <a href="/dashboard" style={{ color: "var(--green)" }}>Go to Dashboard</a>
-          </div></Layout></PrivateRoute>} />
+          <Route path="*" element={<ErrorPage code={404} />} />
       </Routes>
     </>
   );
