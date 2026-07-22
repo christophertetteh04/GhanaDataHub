@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { datasetsApi, shareApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import QualityBadge from "../components/QualityBadge";
@@ -30,6 +30,8 @@ import {
   Database,
   Map,
   BarChart2,
+  Bot,
+  Send,
   Sparkles,
   TriangleAlert,
   TrendingUp,
@@ -274,9 +276,61 @@ function getAuthHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+function getAnalysisIntro(dataset) {
+  const summary = dataset?.analysis_data?.ai_summary;
+  if (summary) {
+    const firstParagraph = summary.split(/\n\n+/)[0]?.trim();
+    if (firstParagraph) return firstParagraph;
+  }
+  return dataset?.description || "This dataset has metadata available, but no generated analysis summary yet.";
+}
+
+function buildKwekuAnswer(dataset, question) {
+  const q = (question || "").toLowerCase();
+  const title = dataset?.title || "this dataset";
+  const category = dataset?.category?.name || "general";
+  const analysis = dataset?.analysis_data || {};
+  const rows = Number(analysis.total_rows || 0);
+  const columns = Number(analysis.total_columns || 0);
+  const completeness = analysis.completeness_pct;
+  const numericColumns = (analysis.column_profiles || [])
+    .filter((profile) => profile.type === "numeric")
+    .map((profile) => profile.name)
+    .slice(0, 4);
+
+  if (q.includes("api")) {
+    return `Use the API tab to fetch metadata, download the file, or check health insight availability for "${title}". The public metadata endpoint is GET /api/v1/datasets/${dataset.id}.`;
+  }
+
+  if (q.includes("map") || q.includes("region")) {
+    return `The map view works best when the dataset contains a Ghana region, district, area, or zone column plus a numeric value column. If those fields are detected, GhanaDataHub renders a choropleth map automatically; otherwise the Map tab explains what is missing.`;
+  }
+
+  if (q.includes("trend") || q.includes("chart")) {
+    if (numericColumns.length > 0) {
+      return `For "${title}", the strongest chart candidates are ${numericColumns.join(", ")}. A line chart is useful for time series data, while a bar chart or map is better if the rows describe categories or Ghana regions.`;
+    }
+    return `I do not see numeric column profiles for "${title}" yet. Download or re-upload a CSV version with numeric fields to unlock stronger chart recommendations.`;
+  }
+
+  if (q.includes("anomal")) {
+    if (analysis.has_anomalies) {
+      return `I found possible anomalies in this dataset. Check the Analysis tab for columns marked with the warning icon; those values sit unusually far from the column average.`;
+    }
+    return `No major anomalies are currently flagged for this dataset. That means the local analyser did not find numeric values more than three standard deviations from their column average.`;
+  }
+
+  if (q.includes("quality") || q.includes("complete")) {
+    return `This dataset has ${completeness ?? "unknown"}% completeness${rows ? ` across ${rows.toLocaleString()} rows` : ""}${columns ? ` and ${columns} columns` : ""}. Use the Analysis tab for null rates, unique values, numeric ranges, and notable correlations.`;
+  }
+
+  return `${getAnalysisIntro(dataset)}\n\nIn plain terms: "${title}" is a ${category.toLowerCase()} dataset${rows ? ` with ${rows.toLocaleString()} rows` : ""}${columns ? ` and ${columns} columns` : ""}. Good next steps are to inspect the Analysis tab, open the Map tab if it has regional data, or use the API tab to connect it to another tool.`;
+}
+
 export default function DatasetDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const [dataset, setDataset] = useState(null);
   const [versions, setVersions] = useState([]);
@@ -289,6 +343,11 @@ export default function DatasetDetailPage() {
   
   const [isScrolledPastHero, setIsScrolledPastHero] = useState(false);
   const [expandedDesc, setExpandedDesc] = useState(false);
+  const [showAskKweku, setShowAskKweku] = useState(false);
+  const [kwekuQuestion, setKwekuQuestion] = useState("Explain this dataset.");
+  const [kwekuAnswer, setKwekuAnswer] = useState("");
+  const [copiedApiSnippet, setCopiedApiSnippet] = useState(false);
+  const [queryBootstrappedDatasetId, setQueryBootstrappedDatasetId] = useState(null);
 
   useEffect(() => {
     datasetsApi
@@ -317,10 +376,28 @@ export default function DatasetDetailPage() {
   }, [dataset]);
 
   useEffect(() => {
-    if (activeTab === "map" && !hasRegionData) {
-      setActiveTab("overview");
+    if (!dataset) return;
+    if (queryBootstrappedDatasetId === dataset.id) return;
+
+    const requestedTab = searchParams.get("tab");
+    const requestedAsk = searchParams.get("ask");
+    if (["overview", "map", "analysis", "api"].includes(requestedTab)) {
+      setActiveTab(requestedTab);
     }
-  }, [activeTab, hasRegionData]);
+    if (requestedAsk === "kweku") {
+      const defaultQuestion = "Explain this dataset.";
+      setShowAskKweku(true);
+      setKwekuQuestion(defaultQuestion);
+      setKwekuAnswer(buildKwekuAnswer(dataset, defaultQuestion));
+      window.requestAnimationFrame(() => {
+        document.getElementById("ask-kweku-panel")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    }
+    setQueryBootstrappedDatasetId(dataset.id);
+  }, [dataset, searchParams, queryBootstrappedDatasetId]);
 
   useEffect(() => {
     if (!dataset) return;
@@ -366,7 +443,7 @@ export default function DatasetDetailPage() {
     const tagsHaveRegion = tagNames.some((t) => regionSignals.some((s) => t.includes(s)));
     const previewHeaders = Array.isArray(dataset.preview_data?.[0]) ? dataset.preview_data[0] : [];
     const previewHasRegion = detectRegionColumn(previewHeaders) !== -1;
-    if (!dataset.file_path && (titleHasRegion || tagsHaveRegion || previewHasRegion)) {
+    if (titleHasRegion || tagsHaveRegion || previewHasRegion) {
       setHasRegionData(true);
       // Build a sample rows array from dataset metadata for the map.
       // For the MVP: show a placeholder map with Ghana regions coloured
@@ -483,6 +560,47 @@ export default function DatasetDetailPage() {
   const mockData = generateMockData(dataset.title, dataset.category?.name, 8);
   const citationText = `${dataset.owner?.full_name || 'GhanaDataHub'}. (${new Date(dataset.created_at).getFullYear()}). ${dataset.title}. GhanaDataHub. ${window.location.href}`;
   const hasAnalysisData = dataset.analysis_data && !dataset.analysis_data.error;
+  const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
+  const datasetApiUrl = `${apiBase}/datasets/${dataset.id}`;
+  const downloadApiUrl = `${datasetApiUrl}/download`;
+  const healthInsightApiUrl = `${datasetApiUrl}/health-insight`;
+  const apiSnippet = `curl "${datasetApiUrl}"\n\ncurl -L "${downloadApiUrl}"`;
+
+  const selectTab = (tab) => {
+    setActiveTab(tab);
+    const nextParams = new URLSearchParams(searchParams);
+    if (tab === "overview") {
+      nextParams.delete("tab");
+    } else {
+      nextParams.set("tab", tab);
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const openKweku = (question = "Explain this dataset.") => {
+    setShowAskKweku(true);
+    setKwekuQuestion(question);
+    setKwekuAnswer(buildKwekuAnswer(dataset, question));
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("ask", "kweku");
+    setSearchParams(nextParams, { replace: true });
+    window.requestAnimationFrame(() => {
+      document.getElementById("ask-kweku-panel")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  };
+
+  const submitKwekuQuestion = () => {
+    setKwekuAnswer(buildKwekuAnswer(dataset, kwekuQuestion));
+  };
+
+  const copyApiSnippet = () => {
+    navigator.clipboard.writeText(apiSnippet);
+    setCopiedApiSnippet(true);
+    setTimeout(() => setCopiedApiSnippet(false), 1800);
+  };
 
   return (
     <div style={{ background: "var(--gray-100)", minHeight: "100vh", paddingBottom: 64 }} className="fade-in">
@@ -525,6 +643,9 @@ export default function DatasetDetailPage() {
                <ArrowLeft size={16}/> Back
              </button>
              <div style={{ display: 'flex', gap: 8 }}>
+               <button onClick={() => openKweku()} className="ghost-btn">
+                 <Bot size={16}/> Ask Kweku
+               </button>
                {canShare && (
                  <button onClick={() => setShowShare(true)} className="ghost-btn">
                    <Share2 size={16}/> Share
@@ -586,6 +707,7 @@ export default function DatasetDetailPage() {
               {dataset.title}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-outline btn-sm" onClick={() => openKweku()}><Bot size={14}/> Ask</button>
               {canShare && (
                 <button className="btn btn-outline btn-sm" onClick={() => setShowShare(true)}><Share2 size={14}/> Share</button>
               )}
@@ -602,17 +724,89 @@ export default function DatasetDetailPage() {
         {/* LEFT COLUMN */}
         <div style={{ flex: '1 1 68%', minWidth: 0 }}>
 
-          {(hasRegionData || hasAnalysisData) && (
-            <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
+          {showAskKweku && (
+            <div
+              id="ask-kweku-panel"
+              className="card"
+              style={{
+                padding: 24,
+                borderRadius: 18,
+                marginBottom: 24,
+                border: "1px solid rgba(0,163,92,0.18)",
+                background: "var(--surface-card)",
+                boxShadow: "var(--shadow-sm)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 12, background: "var(--green-pale)", color: "var(--green)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Bot size={18} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>Ask Kweku</div>
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>Dataset assistant powered by this page's metadata and analysis.</div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowAskKweku(false);
+                    const nextParams = new URLSearchParams(searchParams);
+                    nextParams.delete("ask");
+                    setSearchParams(nextParams, { replace: true });
+                  }}
+                  style={{ width: 30, height: 30, borderRadius: 999, border: "1px solid var(--border-default)", background: "var(--surface-elevated)", color: "var(--text-secondary)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  aria-label="Close Ask Kweku"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+                {["Explain this dataset.", "Show the trend.", "Can this be mapped?", "Check data quality.", "How do I use the API?"].map((prompt) => (
+                  <button
+                    key={prompt}
+                    onClick={() => openKweku(prompt)}
+                    style={{ border: "1px solid var(--border-default)", background: "var(--surface-elevated)", color: "var(--text-secondary)", borderRadius: 999, padding: "7px 11px", fontSize: 12, cursor: "pointer" }}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 16 }}>
+                <input
+                  value={kwekuQuestion}
+                  onChange={(e) => setKwekuQuestion(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && submitKwekuQuestion()}
+                  placeholder="Ask about trends, maps, API access, quality..."
+                  style={{ flex: 1, height: 42, borderRadius: 10, border: "1px solid var(--border-default)", background: "var(--surface-elevated)", color: "var(--text-primary)", padding: "0 12px", fontSize: 13 }}
+                />
+                <button
+                  onClick={submitKwekuQuestion}
+                  style={{ height: 42, padding: "0 14px", borderRadius: 10, border: "none", background: "var(--green)", color: "white", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" }}
+                >
+                  <Send size={15} /> Ask
+                </button>
+              </div>
+
+              {kwekuAnswer && (
+                <div style={{ background: "var(--surface-elevated)", border: "1px solid var(--border-subtle)", borderRadius: 14, padding: 16, color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                  {kwekuAnswer}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
               <button
-                onClick={() => setActiveTab("overview")}
+                onClick={() => selectTab("overview")}
                 className={activeTab === "overview" ? "tab-active" : "tab-inactive"}
               >
                 <Database size={14} /> Overview
               </button>
-              {hasRegionData && (
+              {(hasRegionData || activeTab === "map") && (
                 <button
-                  onClick={() => setActiveTab("map")}
+                  onClick={() => selectTab("map")}
                   className={activeTab === "map" ? "tab-active" : "tab-inactive"}
                 >
                   <Map size={14} /> Regional Map
@@ -620,14 +814,19 @@ export default function DatasetDetailPage() {
               )}
               {hasAnalysisData && (
                 <button
-                  onClick={() => setActiveTab("analysis")}
+                  onClick={() => selectTab("analysis")}
                   className={activeTab === "analysis" ? "tab-active" : "tab-inactive"}
                 >
                   <BarChart2 size={14} /> Analysis
                 </button>
               )}
+              <button
+                onClick={() => selectTab("api")}
+                className={activeTab === "api" ? "tab-active" : "tab-inactive"}
+              >
+                <Code2 size={14} /> API Access
+              </button>
             </div>
-          )}
 
           {activeTab === "map" && hasRegionData && csvRows && (
             <div style={{ padding: "20px 0" }}>
@@ -643,7 +842,27 @@ export default function DatasetDetailPage() {
             </div>
           )}
 
-          <HealthInsightCard datasetId={dataset.id} datasetTitle={dataset.title} />
+          {activeTab === "map" && (!hasRegionData || !csvRows) && (
+            <div className="card" style={{ padding: 32, borderRadius: 18, marginBottom: 24, background: "var(--surface-card)", border: "1px solid var(--border-subtle)", textAlign: "center" }}>
+              <div style={{ width: 56, height: 56, borderRadius: 16, background: "var(--green-pale)", color: "var(--green)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                <Map size={26} />
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8 }}>No regional map available yet</div>
+              <div style={{ maxWidth: 520, margin: "0 auto", color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.7 }}>
+                GhanaDataHub needs a Ghana region, district, area, or zone column plus a numeric value column to build a choropleth map for this dataset.
+              </div>
+              <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
+                <button onClick={() => openKweku("Can this be mapped?")} className="btn btn-outline">
+                  <Bot size={16} /> Ask Kweku
+                </button>
+                <button onClick={() => selectTab("overview")} className="btn btn-primary">
+                  View Overview
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "overview" && <HealthInsightCard datasetId={dataset.id} datasetTitle={dataset.title} />}
 
           {activeTab === "analysis" && hasAnalysisData && (() => {
             const analysis = dataset.analysis_data;
@@ -785,7 +1004,50 @@ export default function DatasetDetailPage() {
               </div>
             );
           })()}
-          {activeTab !== "analysis" && (
+
+          {activeTab === "api" && (
+            <div style={{ padding: "20px 0", display: "flex", flexDirection: "column", gap: 18 }}>
+              <div className="card" style={{ padding: 24, borderRadius: 18, background: "var(--surface-card)", border: "1px solid var(--border-subtle)", boxShadow: "var(--shadow-sm)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 12, background: "var(--green-pale)", color: "var(--green)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Code2 size={18} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>API Access</div>
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>Use this dataset in dashboards, notebooks, and data apps.</div>
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gap: 12 }}>
+                  {[
+                    { label: "Dataset metadata", method: "GET", url: datasetApiUrl },
+                    { label: "Download file", method: "GET", url: downloadApiUrl },
+                    { label: "Health insight", method: "GET", url: healthInsightApiUrl },
+                  ].map((endpoint) => (
+                    <div key={endpoint.label} style={{ border: "1px solid var(--border-subtle)", borderRadius: 12, padding: 14, background: "var(--surface-elevated)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 8 }}>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>{endpoint.label}</div>
+                        <span style={{ padding: "3px 8px", borderRadius: 6, background: "var(--green-pale)", color: "var(--green)", fontSize: 11, fontWeight: 800 }}>{endpoint.method}</span>
+                      </div>
+                      <div style={{ fontFamily: "monospace", fontSize: 12, color: "var(--text-secondary)", wordBreak: "break-all" }}>{endpoint.url}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ marginTop: 16, background: "#0A1410", color: "#D1FAE5", borderRadius: 12, padding: 16, fontFamily: "monospace", fontSize: 12, lineHeight: 1.7, whiteSpace: "pre-wrap", overflowX: "auto" }}>
+                  {apiSnippet}
+                </div>
+                <button
+                  onClick={copyApiSnippet}
+                  style={{ marginTop: 14, height: 38, borderRadius: 9, border: "1px solid var(--border-default)", background: "var(--surface-elevated)", color: "var(--green)", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 8, padding: "0 12px", cursor: "pointer" }}
+                >
+                  <Copy size={15} /> {copiedApiSnippet ? "Copied!" : "Copy cURL"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "overview" && (
           <>
           <div className="card" style={{ padding: 32, borderRadius: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginBottom: 24, border: 'none', transition: 'transform 0.2s ease' }}
                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}

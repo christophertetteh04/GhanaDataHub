@@ -24,6 +24,14 @@ import {
   ArrowRight,
   Share2,
   User,
+  BarChart3,
+  Bot,
+  Building2,
+  Link2,
+  Map,
+  ShieldCheck,
+  Sparkles,
+  TrendingUp,
 } from "lucide-react";
 
 const VIS_LABELS = {
@@ -33,6 +41,317 @@ const VIS_LABELS = {
   shared_link: "Shared Link",
 };
 const ALLOWED_EXTS = ".csv,.json,.xlsx,.xls,.pdf,.png,.jpg,.jpeg,.gif,.webp";
+
+const WORLD_BANK_INDICATORS = {
+  "SP.URB.TOTL.IN.ZS": {
+    title: "Urban Population (% of Total Population)",
+    summary: "Tracks Ghana's annual urban population share from 1960 to 2025. Ideal for analysing urbanisation, city growth, housing demand and regional development trends.",
+    topic: "Population",
+    trend: "Trending upward",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "SP.POP.TOTL": {
+    title: "Total Population of Ghana",
+    summary: "Shows Ghana's population growth over time, useful for planning, market sizing, education, health, infrastructure and long-term development analysis.",
+    topic: "Population",
+    trend: "Long-term growth",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "NY.GDP.MKTP.CD": {
+    title: "Gross Domestic Product (Current US$)",
+    summary: "Measures the total value of goods and services produced in Ghana in current US dollars, useful for macroeconomic analysis and investment research.",
+    topic: "Economy",
+    trend: "Economic scale",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "NY.GDP.MKTP.KD.ZG": {
+    title: "GDP Growth Rate",
+    summary: "Tracks Ghana's annual economic growth rate, helping analysts compare expansions, slowdowns and recovery periods across the economy.",
+    topic: "Economy",
+    trend: "Growth indicator",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "FP.CPI.TOTL.ZG": {
+    title: "Inflation Rate",
+    summary: "Tracks annual consumer price inflation in Ghana, useful for understanding cost of living changes, monetary policy and household purchasing power.",
+    topic: "Economy",
+    trend: "Price pressure",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "SL.UEM.TOTL.ZS": {
+    title: "Unemployment Rate",
+    summary: "Shows the share of Ghana's labour force that is unemployed, useful for employment, youth policy and economic opportunity analysis.",
+    topic: "Employment",
+    trend: "Labour market signal",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "SE.ADT.LITR.ZS": {
+    title: "Adult Literacy Rate",
+    summary: "Measures adult literacy in Ghana and supports education planning, regional equity analysis and long-term human capital research.",
+    topic: "Education",
+    trend: "Human capital indicator",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "SP.DYN.IMRT.IN": {
+    title: "Infant Mortality Rate",
+    summary: "Tracks infant deaths per 1,000 live births in Ghana, helping users understand child health outcomes and healthcare progress over time.",
+    topic: "Health",
+    trend: "Health outcome",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "SH.STA.MMRT": {
+    title: "Maternal Mortality Ratio",
+    summary: "Measures maternal deaths per 100,000 live births in Ghana, useful for analysing maternal health, facility access and public health progress.",
+    topic: "Health",
+    trend: "Public health priority",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "SH.MED.BEDS.ZS": {
+    title: "Hospital Beds per 1,000 People",
+    summary: "Tracks hospital bed availability in Ghana, useful for healthcare capacity planning, access analysis and public health system comparisons.",
+    topic: "Health",
+    trend: "Healthcare capacity",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "EG.ELC.ACCS.ZS": {
+    title: "Access to Electricity (% of Population)",
+    summary: "Shows the share of Ghanaians with access to electricity, useful for energy planning, infrastructure analysis and regional development work.",
+    topic: "Energy",
+    trend: "Access expanding",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "AG.PRD.CROP.XD": {
+    title: "Crop Production Index",
+    summary: "Tracks crop production trends in Ghana, useful for agriculture, food security, commodity planning and rural development analysis.",
+    topic: "Agriculture",
+    trend: "Agricultural output",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "TM.VAL.MRCH.CD.WT": {
+    title: "Merchandise Imports",
+    summary: "Shows the value of goods imported into Ghana, useful for trade, supply chain, currency demand and macroeconomic analysis.",
+    topic: "Economy",
+    trend: "Trade flow",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "TX.VAL.MRCH.CD.WT": {
+    title: "Merchandise Exports",
+    summary: "Shows the value of goods exported from Ghana, useful for trade analysis, commodity research, foreign exchange studies and export strategy.",
+    topic: "Economy",
+    trend: "Export signal",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "GC.REV.TOTL.GD.ZS": {
+    title: "Government Revenue (% of GDP)",
+    summary: "Measures Ghana government revenue as a share of GDP, useful for fiscal policy, public finance and debt sustainability analysis.",
+    topic: "Economy",
+    trend: "Fiscal indicator",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "GC.DOD.TOTL.GD.ZS": {
+    title: "Government Debt (% of GDP)",
+    summary: "Tracks Ghana government debt as a share of GDP, useful for public finance, sovereign risk and fiscal sustainability research.",
+    topic: "Economy",
+    trend: "Debt burden",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "SH.XPD.CHEX.GD.ZS": {
+    title: "Health Expenditure (% of GDP)",
+    summary: "Shows Ghana's current health expenditure as a share of GDP, useful for healthcare financing and public budget analysis.",
+    topic: "Health",
+    trend: "Health spending",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "SE.XPD.TOTL.GD.ZS": {
+    title: "Education Expenditure (% of GDP)",
+    summary: "Shows Ghana's education expenditure as a share of GDP, useful for analysing human capital investment and public spending priorities.",
+    topic: "Education",
+    trend: "Education spending",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "IT.NET.USER.ZS": {
+    title: "Internet Users (% of Population)",
+    summary: "Tracks internet adoption in Ghana, useful for digital economy, telecoms, education technology and financial inclusion analysis.",
+    topic: "Technology",
+    trend: "Digital adoption",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+  "EN.ATM.CO2E.PC": {
+    title: "CO2 Emissions per Person",
+    summary: "Measures Ghana's carbon dioxide emissions per capita, useful for climate, energy transition and environmental policy analysis.",
+    topic: "Environment",
+    trend: "Climate indicator",
+    coverage: "1960-2025",
+    records: "66 years",
+    regions: "National",
+  },
+};
+
+function getIndicatorCode(title = "") {
+  const match = title.match(/([A-Z]{2,}(?:\.[A-Z0-9]+){2,})\s*$/);
+  return match?.[1] || null;
+}
+
+function getPublisher(dataset) {
+  const title = dataset.title || "";
+  if (/world bank/i.test(title)) return "World Bank";
+  if (/bank of ghana|bog/i.test(title)) return "Bank of Ghana";
+  if (/ghana statistical service|gss/i.test(title)) return "Ghana Statistical Service";
+  if (/faostat|food and agriculture/i.test(title)) return "FAOSTAT";
+  if (/who|health service|ghs/i.test(title)) return "Ghana Health Service / WHO";
+  return dataset.owner?.full_name || dataset.organization?.name || "GhanaDataHub";
+}
+
+function titleCaseWords(value = "") {
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getCleanTitle(dataset) {
+  const rawTitle = dataset.title || "Untitled Dataset";
+  const indicator = getIndicatorCode(rawTitle);
+  if (indicator && WORLD_BANK_INDICATORS[indicator]) return WORLD_BANK_INDICATORS[indicator].title;
+  if (indicator && /^World Bank Open Data/i.test(rawTitle)) return "Ghana Development Indicator";
+
+  return rawTitle
+    .replace(/^World Bank Open Data\s*[–-]\s*Ghana\s*:\s*/i, "")
+    .replace(/^[^:]{3,80}:\s*([A-Z]{2,}(?:\.[A-Z0-9]+){2,})$/i, "$1")
+    .replace(/\b[A-Z]{2,}(?:\.[A-Z0-9]+){2,}\b/g, "")
+    .replace(/\s*[–-]\s*Ghana\s*$/i, "")
+    .trim() || titleCaseWords(rawTitle);
+}
+
+function getTopic(dataset) {
+  const text = `${dataset.category?.name || ""} ${dataset.title || ""} ${dataset.description || ""}`.toLowerCase();
+  if (/inflation|gdp|forex|exchange|revenue|debt|bank|econom/.test(text)) return "Economy";
+  if (/cocoa|maize|cassava|crop|farm|agric/.test(text)) return "Agriculture";
+  if (/health|hospital|mortality|malaria|maternal|hiv|disease/.test(text)) return "Health";
+  if (/school|education|literacy|teacher/.test(text)) return "Education";
+  if (/population|census|urban|demographic/.test(text)) return "Population";
+  if (/road|rail|port|electricity|energy|infrastructure/.test(text)) return "Infrastructure";
+  if (/climate|forest|co2|environment|rainfall/.test(text)) return "Environment";
+  if (/job|employment|unemployment|labour/.test(text)) return "Employment";
+  if (/internet|technology|digital|mobile/.test(text)) return "Technology";
+  return dataset.category?.name || "Ghana Data";
+}
+
+function getDatasetDisplay(dataset) {
+  const indicator = getIndicatorCode(dataset.title || "");
+  const mapped = indicator ? WORLD_BANK_INDICATORS[indicator] : null;
+  const topic = mapped?.topic || getTopic(dataset);
+  const summaryFromAI = dataset.analysis_data?.ai_summary?.split(".")?.[0];
+  const summary = mapped?.summary
+    || (summaryFromAI && summaryFromAI.length > 24 ? `${summaryFromAI}.` : null)
+    || dataset.description
+    || `Explore this ${topic.toLowerCase()} dataset for Ghana, with metadata, preview tools, API access and download options.`;
+
+  return {
+    title: mapped?.title || getCleanTitle(dataset),
+    summary,
+    publisher: getPublisher(dataset),
+    topic,
+    trend: mapped?.trend || (dataset.download_count > 50 ? "Popular with users" : "Ready to explore"),
+    coverage: mapped?.coverage || (dataset.title?.toLowerCase().includes("regional") ? "Regional" : "Latest available"),
+    records: mapped?.records || (dataset.analysis_data?.total_rows ? `${dataset.analysis_data.total_rows.toLocaleString()} rows` : "Metadata ready"),
+    regions: mapped?.regions || (dataset.title?.toLowerCase().includes("region") ? "Regional" : "National"),
+    verified: /world bank|ghana statistical service|bank of ghana|ministry|faostat|who/i.test(`${dataset.title} ${dataset.description || ""}`),
+  };
+}
+
+function DatasetPreviewVisual({ dataset, display }) {
+  const topic = display.topic.toLowerCase();
+  const type = topic.includes("population") || topic.includes("economy") || topic.includes("technology")
+    ? "line"
+    : topic.includes("agriculture") || topic.includes("energy") || topic.includes("infrastructure")
+      ? "bar"
+      : topic.includes("health") || topic.includes("environment")
+        ? "map"
+        : "area";
+
+  if (type === "map") {
+    return (
+      <div className="dataset-intel-map" aria-label="Map preview">
+        <Map size={42} />
+        <span>{display.regions}</span>
+      </div>
+    );
+  }
+
+  const values = Array.isArray(dataset.preview_data)
+    ? dataset.preview_data.slice(0, 12).map((value) => Number(value)).filter((value) => !Number.isNaN(value))
+    : [18, 24, 21, 35, 42, 48, 54, 63, 70, 76, 82, 88];
+  const safeValues = values.length > 1 ? values : [18, 24, 21, 35, 42, 48, 54, 63, 70, 76, 82, 88];
+  const max = Math.max(...safeValues);
+  const min = Math.min(...safeValues);
+  const range = max - min || 1;
+  const points = safeValues.map((value, index) => {
+    const x = 8 + (index / (safeValues.length - 1)) * 184;
+    const y = 82 - ((value - min) / range) * 56;
+    return `${x},${y}`;
+  }).join(" ");
+
+  return (
+    <svg className="dataset-intel-chart" viewBox="0 0 200 96" role="img" aria-label={`${type} chart preview`}>
+      <defs>
+        <linearGradient id={`datasetPreviewFill-${dataset.id}`} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="var(--green)" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="var(--green)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {[24, 48, 72].map((y) => <line key={y} x1="8" x2="192" y1={y} y2={y} stroke="var(--border-subtle)" />)}
+      {type === "bar" ? safeValues.slice(0, 8).map((value, index) => {
+        const height = Math.max(8, ((value - min) / range) * 56 + 8);
+        return <rect key={index} x={14 + index * 22} y={84 - height} width="12" height={height} rx="4" fill="var(--green)" opacity={0.82} />;
+      }) : (
+        <>
+          {type === "area" && <polyline points={`8,88 ${points} 192,88`} fill={`url(#datasetPreviewFill-${dataset.id})`} />}
+          <polyline points={points} fill="none" stroke="var(--green)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      )}
+    </svg>
+  );
+}
 
 function UploadModal({ onClose, onSuccess, categories }) {
   const { user } = useAuth();
@@ -426,6 +745,7 @@ export default function DatasetsPage() {
   };
 
   const selectedSampleTable = selectedDataset ? getSampleTable(selectedDataset) : null;
+  const selectedDisplay = selectedDataset ? getDatasetDisplay(selectedDataset) : null;
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -453,6 +773,187 @@ export default function DatasetsPage() {
         @keyframes datasetPreviewSheetSlide {
           from { opacity: 0; transform: translateY(24px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dataset-intel-card {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          padding: 18px;
+          border: 1px solid var(--border-subtle);
+          background: var(--surface-card);
+          border-radius: 18px;
+          box-shadow: var(--shadow-sm);
+          min-height: 460px;
+          transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .dataset-intel-card:hover {
+          transform: translateY(-3px);
+          border-color: rgba(0, 163, 92, 0.28);
+          box-shadow: var(--shadow-md);
+        }
+
+        .dataset-intel-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+
+        .dataset-intel-topic {
+          display: inline-flex;
+          align-items: center;
+          border-radius: 999px;
+          padding: 5px 10px;
+          background: var(--green-pale);
+          color: var(--green);
+          font-size: 11px;
+          font-weight: 900;
+        }
+
+        .dataset-intel-badges {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+
+        .dataset-intel-verified {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          border-radius: 999px;
+          padding: 3px 8px;
+          background: rgba(0, 163, 92, 0.10);
+          color: var(--green);
+          font-size: 11px;
+          font-weight: 900;
+        }
+
+        .dataset-intel-chart,
+        .dataset-intel-map {
+          width: 100%;
+          height: 112px;
+          border-radius: 14px;
+          background: linear-gradient(180deg, var(--surface-elevated), var(--surface-card));
+          border: 1px solid var(--border-subtle);
+          overflow: hidden;
+        }
+
+        .dataset-intel-map {
+          display: grid;
+          place-items: center;
+          color: var(--green);
+          font-size: 11px;
+          font-weight: 800;
+          gap: 4px;
+        }
+
+        .dataset-intel-title {
+          color: var(--text-primary);
+          font-size: 17px;
+          font-weight: 900;
+          line-height: 1.25;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .dataset-intel-summary {
+          display: flex;
+          align-items: flex-start;
+          gap: 7px;
+          color: var(--text-secondary);
+          font-size: 13px;
+          line-height: 1.55;
+          min-height: 58px;
+        }
+
+        .dataset-intel-summary svg {
+          color: var(--green);
+          flex-shrink: 0;
+          margin-top: 3px;
+        }
+
+        .dataset-intel-meta {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+          padding: 10px;
+          border-radius: 12px;
+          background: var(--surface-elevated);
+        }
+
+        .dataset-intel-meta span {
+          display: block;
+          color: var(--text-muted);
+          font-size: 10px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .dataset-intel-meta strong {
+          display: block;
+          margin-top: 2px;
+          color: var(--text-primary);
+          font-size: 12px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .dataset-intel-trend {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: var(--green);
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        .dataset-intel-downloads {
+          margin-left: auto;
+          color: var(--text-muted);
+          font-weight: 700;
+        }
+
+        .dataset-intel-actions {
+          display: grid;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 6px;
+          margin-top: auto;
+        }
+
+        .dataset-intel-actions button {
+          min-width: 0;
+          height: 34px;
+          border-radius: 9px;
+          border: 1px solid var(--border-default);
+          background: var(--surface-card);
+          color: var(--text-secondary);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          font-size: 11px;
+          font-weight: 900;
+          cursor: pointer;
+          transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        }
+
+        .dataset-intel-actions button:hover {
+          border-color: var(--green);
+          color: var(--green);
+          background: var(--green-pale);
+        }
+
+        .dataset-intel-actions button.danger {
+          color: #DC2626;
+          border-color: rgba(220, 38, 38, 0.25);
         }
 
         .dataset-modal-backdrop {
@@ -849,6 +1350,10 @@ export default function DatasetsPage() {
           .dataset-modal-btn.ghost {
             width: 100%;
           }
+
+          .dataset-intel-actions {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
         }
       `}</style>
       <div className="page-header">
@@ -960,65 +1465,88 @@ export default function DatasetsPage() {
         />
       ) : (
         <div className="dataset-grid">
-          {datasets.map((d) => (
-            <div
-              key={d.id}
-              className="dataset-card"
-              onClick={() => setSelectedDataset(d)}
-            >
-              <div className="dataset-card-title">{d.title}</div>
-              <div className="dataset-card-meta">
-                <span className={`badge vis-${d.visibility}`}>
-                  {VIS_LABELS[d.visibility]}
-                </span>
-                <QualityBadge dataset={d} size="sm" />
-                {d.file_type && (
-                  <span className="badge badge-gray">
-                    {d.file_type.split("/")[1]?.toUpperCase()}
-                  </span>
-                )}
-                {d.category && (
-                  <span className="badge badge-blue">{d.category.name}</span>
-                )}
-              </div>
-              {d.tags?.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                  {d.tags.slice(0, 3).map((t) => (
-                    <span key={t.id} className="tag-chip">
-                      <Tag size={10} />
-                      {t.name}
-                    </span>
-                  ))}
-                  {d.tags.length > 3 && (
-                    <span className="tag-chip">+{d.tags.length - 3}</span>
-                  )}
+          {datasets.map((d) => {
+            const display = getDatasetDisplay(d);
+            return (
+              <div
+                key={d.id}
+                className="dataset-card dataset-intel-card"
+                onClick={() => setSelectedDataset(d)}
+              >
+                <div className="dataset-intel-top">
+                  <span className="dataset-intel-topic">{display.topic}</span>
+                  <div className="dataset-intel-badges">
+                    {display.verified && (
+                      <span className="dataset-intel-verified">
+                        <ShieldCheck size={12} /> Verified
+                      </span>
+                    )}
+                    <QualityBadge dataset={d} size="sm" />
+                  </div>
                 </div>
-              )}
-              <div className="dataset-card-footer">
-                <span>
-                  {formatSize(d.file_size)} · v{d.version}
-                </span>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <span
-                    style={{ display: "flex", alignItems: "center", gap: 3 }}
-                  >
-                    <Download size={11} />
-                    {d.download_count}
-                  </span>
-                  {(user?.role === "super_admin" ||
-                    d.owner_id === user?.id) && (
+
+                <DatasetPreviewVisual dataset={d} display={display} />
+
+                <div className="dataset-intel-title">{display.title}</div>
+                <div className="dataset-intel-summary">
+                  <Sparkles size={13} />
+                  <span>{display.summary}</span>
+                </div>
+
+                <div className="dataset-intel-meta">
+                  <div>
+                    <span>Publisher</span>
+                    <strong>{display.publisher}</strong>
+                  </div>
+                  <div>
+                    <span>Updated</span>
+                    <strong>{formatDate(d.updated_at || d.created_at)}</strong>
+                  </div>
+                  <div>
+                    <span>Coverage</span>
+                    <strong>{display.coverage}</strong>
+                  </div>
+                  <div>
+                    <span>Regions</span>
+                    <strong>{display.regions}</strong>
+                  </div>
+                </div>
+
+                <div className="dataset-intel-trend">
+                  <TrendingUp size={14} />
+                  <span>{display.trend}</span>
+                  <span className="dataset-intel-downloads">{d.download_count || 0} downloads</span>
+                </div>
+
+                <div className="dataset-intel-actions">
+                  <button type="button" onClick={(event) => { event.stopPropagation(); setSelectedDataset(d); }}>
+                    <BarChart3 size={14} /> Explore
+                  </button>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); navigate(`/datasets/${d.id}?ask=kweku`); }}>
+                    <Bot size={14} /> Ask Kweku
+                  </button>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); navigate(`/datasets/${d.id}?tab=map`); }}>
+                    <Map size={14} /> Map
+                  </button>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); navigate(`/datasets/${d.id}?tab=api`); }}>
+                    <Link2 size={14} /> API
+                  </button>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); handleDownload(d); }}>
+                    <Download size={14} /> Download
+                  </button>
+                  {(user?.role === "super_admin" || d.owner_id === user?.id) && (
                     <button
-                      className="btn btn-danger btn-sm"
-                      style={{ padding: "2px 6px" }}
-                      onClick={(e) => deleteDataset(d.id, e)}
+                      type="button"
+                      className="danger"
+                      onClick={(event) => deleteDataset(d.id, event)}
                     >
-                      <Trash2 size={11} />
+                      <Trash2 size={14} />
                     </button>
                   )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -1071,7 +1599,16 @@ export default function DatasetsPage() {
                 <X size={18} />
               </button>
             </div>
-            <div className="dataset-modal-title">{selectedDataset.title}</div>
+            <div className="dataset-modal-title">{selectedDisplay.title}</div>
+            <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, color: "var(--text-secondary)", fontSize: 13, flexWrap: "wrap" }}>
+              <Building2 size={14} color="var(--green)" />
+              <span>Publisher: {selectedDisplay.publisher}</span>
+              {selectedDisplay.verified && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--green)", fontWeight: 800 }}>
+                  <ShieldCheck size={13} /> Verified source
+                </span>
+              )}
+            </div>
             <div className="dataset-modal-subtitle">
               <span className={`badge vis-${selectedDataset.visibility}`}>
                 {VIS_LABELS[selectedDataset.visibility] || "Unknown"}
@@ -1114,18 +1651,20 @@ export default function DatasetsPage() {
               </div>
             </div>
             <div className="dataset-modal-description">
-              {selectedDataset.description ? (
+              {selectedDisplay.summary ? (
                 <>
                   <div className={`dataset-description-text ${showDescription ? "expanded" : "collapsed"}`}>
-                    {selectedDataset.description}
+                    {selectedDisplay.summary}
                   </div>
-                  <button
-                    type="button"
-                    className="dataset-description-toggle"
-                    onClick={() => setShowDescription((prev) => !prev)}
-                  >
-                    {showDescription ? "Show less" : "Show more"}
-                  </button>
+                  {selectedDisplay.summary.length > 180 && (
+                    <button
+                      type="button"
+                      className="dataset-description-toggle"
+                      onClick={() => setShowDescription((prev) => !prev)}
+                    >
+                      {showDescription ? "Show less" : "Show more"}
+                    </button>
+                  )}
                 </>
               ) : (
                 <div className="dataset-no-description">No description provided.</div>
