@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { dashboardApi, notifApi, categoriesApi } from "../services/api";
 import TodayHighlight from "../components/TodayHighlight";
+import DailyBriefCard from "../components/DailyBriefCard";
 import EconomicPulse from "../components/EconomicPulse";
 import ActivityFeed from "../components/ActivityFeed";
 import GhanaRegionMap from "../components/GhanaRegionMap";
@@ -36,7 +37,20 @@ import {
   Download,
   ArrowRight,
   Map,
-  FileText
+  FileText,
+  Search,
+  Sparkles,
+  Bot,
+  MapPin,
+  BookOpen,
+  Code2,
+  BriefcaseBusiness,
+  Newspaper,
+  Compass,
+  Landmark,
+  LineChart,
+  Rocket,
+  UserRoundCheck
 } from "lucide-react";
 
 import useCountUp from "../hooks/useCountUp";
@@ -79,15 +93,103 @@ function greetingForHour(hour) {
 
 // Category mappings
 const CATEGORY_MAP = {
-  "Economy": { bg: "#EFF6FF", icon: TrendingUp, color: "#3B82F6" },
+  "Economy": { bg: "rgba(245,166,35,0.14)", icon: TrendingUp, color: "var(--gold)" },
   "Health": { bg: "#FEF2F2", icon: Heart, color: "#EF4444" },
   "Agriculture": { bg: "#F0FDF4", icon: Leaf, color: "#22C55E" },
   "Demographics": { bg: "#FFF7ED", icon: Users, color: "#F97316" },
   "Governance": { bg: "#F5F3FF", icon: Scale, color: "#8B5CF6" },
   "Environment": { bg: "#ECFDF5", icon: Wind, color: "#10B981" },
   "Education": { bg: "#FFFBEB", icon: GraduationCap, color: "#F59E0B" },
-  "Default": { bg: "var(--green-pale)", icon: BarChart3, color: "var(--green)" }
+  "Default": { bg: "var(--color-primary-bg)", icon: BarChart3, color: "var(--gold)" }
 };
+
+const HOME_SECTORS = [
+  { name: "Economy", icon: TrendingUp, query: "gdp inflation forex economy", color: "#F5A623" },
+  { name: "Agriculture", icon: Leaf, query: "cocoa crop agriculture food", color: "#1A7B4C" },
+  { name: "Health", icon: Heart, query: "health mortality hospital malaria", color: "#C62828" },
+  { name: "Education", icon: GraduationCap, query: "education literacy school enrolment", color: "#7B1FA2" },
+  { name: "Population", icon: Users, query: "population census demographics", color: "#1A5276" },
+  { name: "Employment", icon: BriefcaseBusiness, query: "employment jobs unemployment labour", color: "#E67E22" },
+  { name: "Trade", icon: Scale, query: "trade import export customs", color: "#008080" },
+  { name: "Infrastructure", icon: Building2, query: "roads infrastructure water sanitation", color: "#64748B" },
+  { name: "Energy", icon: HardDrive, query: "energy electricity power access", color: "#F5A623" },
+  { name: "Environment", icon: Wind, query: "climate rainfall forest environment", color: "#008080" },
+  { name: "Finance", icon: BarChart3, query: "gse banking treasury finance", color: "#13603B" },
+  { name: "Technology", icon: Code2, query: "internet mobile technology digital", color: "#5B5FC7" },
+];
+
+const GHANA_REGIONS = [
+  "Greater Accra", "Ashanti", "Northern", "Western", "Eastern", "Central",
+  "Volta", "Bono", "Savannah", "Upper East", "Upper West", "Oti"
+];
+
+const PERSONAS = [
+  { id: "student", label: "Student", icon: GraduationCap },
+  { id: "researcher", label: "Researcher", icon: Search },
+  { id: "business", label: "Business owner", icon: BriefcaseBusiness },
+  { id: "journalist", label: "Journalist", icon: Newspaper },
+  { id: "government", label: "Government professional", icon: Landmark },
+  { id: "developer", label: "Developer", icon: Code2 },
+  { id: "analyst", label: "Data analyst", icon: LineChart },
+  { id: "investor", label: "Investor", icon: TrendingUp },
+];
+
+const PERSONA_CONTENT = {
+  student: {
+    title: "Your learning workspace",
+    bullets: ["Learning progress", "Recommended datasets", "Assignments", "Saved charts"],
+    cta: "Continue learning",
+    to: "/learn",
+  },
+  researcher: {
+    title: "Research-ready Ghana data",
+    bullets: ["Cited sources", "Related datasets", "Download history", "Data quality signals"],
+    cta: "Explore datasets",
+    to: "/catalogue",
+  },
+  business: {
+    title: "Market intelligence for decisions",
+    bullets: ["Economic indicators", "Market trends", "Industry data", "Regional opportunities"],
+    cta: "View Ghana Pulse",
+    to: "/pulse",
+  },
+  journalist: {
+    title: "Story leads and evidence",
+    bullets: ["Trending indicators", "Data stories", "Verified sources", "Shareable charts"],
+    cta: "Read insights",
+    to: "/insights",
+  },
+  government: {
+    title: "Policy and planning dashboard",
+    bullets: ["Regional indicators", "Service coverage", "Sector comparisons", "Public datasets"],
+    cta: "Browse by region",
+    to: "/catalogue",
+  },
+  developer: {
+    title: "Build with Ghana data",
+    bullets: ["API keys", "Usage", "Documentation", "Saved endpoints"],
+    cta: "Open API docs",
+    to: "/api",
+  },
+  analyst: {
+    title: "Analysis workspace",
+    bullets: ["Chart previews", "Map-ready data", "AI analysis", "Saved comparisons"],
+    cta: "Start analysis",
+    to: "/search?q=regional%20ghana",
+  },
+  investor: {
+    title: "Investment intelligence",
+    bullets: ["Macroeconomic pulse", "Financial markets", "Regional opportunities", "Trade signals"],
+    cta: "View market data",
+    to: "/datasets?search=gse",
+  },
+};
+
+const LEARNING_COURSES = [
+  { title: "Excel for Ghana data", meta: "Beginner · 8 lessons", icon: FileText },
+  { title: "Regional analysis with maps", meta: "Practical · 6 lessons", icon: Map },
+  { title: "API basics for developers", meta: "Developer · 5 lessons", icon: Code2 },
+];
 
 function getCategoryName(category) {
   if (!category) return "";
@@ -158,19 +260,36 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("Trending");
   const [activeCategory, setActiveCategory] = useState(null);
   const [period, setPeriod] = useState('month');
+  const [homeSearch, setHomeSearch] = useState("");
+  const [selectedPersona, setSelectedPersona] = useState(() => {
+    try {
+      return localStorage.getItem("gdh_dashboard_persona") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [selectedInterests, setSelectedInterests] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("gdh_dashboard_interests") || "[]");
+    } catch {
+      return [];
+    }
+  });
 
   const chartColors = {
-    axis: isDark ? '#6B7280' : '#9CA3AF',
-    grid: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+    axis: isDark ? '#A0A0A0' : '#6B6B6B',
+    grid: isDark ? '#333333' : '#E0E0E0',
     tooltip: {
-      bg: isDark ? '#1C2B21' : '#FFFFFF',
-      border: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB',
-      text: isDark ? '#F9FAFB' : '#111827',
+      bg: isDark ? '#1A1A1A' : '#FFFFFF',
+      border: isDark ? '#333333' : '#E0E0E0',
+      text: isDark ? '#F8F9FA' : '#1A1A1A',
     },
-    line: '#00A35C',
-    area: isDark ? 'rgba(0,163,92,0.15)' : 'rgba(0,107,63,0.1)',
-    bar: '#00A35C',
+    line: '#F5A623',
+    area: isDark ? 'rgba(245,166,35,0.12)' : 'rgba(245,166,35,0.15)',
+    bar: '#F5A623',
   };
+
+  const isAdmin = user?.role === "super_admin" || user?.role === "org_admin";
 
   useEffect(() => {
     Promise.all([
@@ -184,6 +303,22 @@ export default function DashboardPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    try {
+      if (selectedPersona) localStorage.setItem("gdh_dashboard_persona", selectedPersona);
+    } catch {
+      // Preference storage should never break the dashboard.
+    }
+  }, [selectedPersona]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("gdh_dashboard_interests", JSON.stringify(selectedInterests));
+    } catch {
+      // Preference storage should never break the dashboard.
+    }
+  }, [selectedInterests]);
 
   const mostDownloaded = stats?.most_downloaded || [];
   const recentUploads = stats?.recent_uploads || [];
@@ -218,6 +353,22 @@ export default function DashboardPage() {
   const animateUsers = useCountUp(userCount);
   const animateOrgs = useCountUp(orgCount);
   const animateStorageGb = useCountUp(storageNumber);
+
+  const handleHomeSearch = (event) => {
+    event.preventDefault();
+    const query = homeSearch.trim();
+    if (!query) return;
+    navigate(`/search?q=${encodeURIComponent(query)}`);
+  };
+
+  const toggleInterest = (sectorName) => {
+    setSelectedInterests((current) => {
+      if (current.includes(sectorName)) {
+        return current.filter(item => item !== sectorName);
+      }
+      return [...current, sectorName].slice(-5);
+    });
+  };
 
   if (loading) {
     return (
@@ -254,6 +405,19 @@ export default function DashboardPage() {
     displayRecent.push({ id: `skel-${displayRecent.length}`, isSkeleton: true });
   }
 
+  const persona = PERSONA_CONTENT[selectedPersona] || null;
+  const preferredSectors = selectedInterests.length
+    ? HOME_SECTORS.filter(sector => selectedInterests.includes(sector.name))
+    : HOME_SECTORS.slice(0, 4);
+  const featuredDataset = mostDownloaded[0] || recentUploads[0] || null;
+  const featuredCategory = getCategoryName(featuredDataset?.category) || "Featured insight";
+  const keyIndicators = [
+    { label: "Datasets", value: datasetCount.toLocaleString(), sub: "available to explore", icon: Database },
+    { label: "New uploads", value: (recentUploads.length || 0).toLocaleString(), sub: "latest platform additions", icon: Rocket },
+    { label: "Popular data", value: mostDownloaded.length.toLocaleString(), sub: "high-demand datasets", icon: TrendingUp },
+    { label: "Storage", value: formatBytes(storageBytes), sub: "structured data library", icon: HardDrive },
+  ];
+
   return (
     <div className="dashboard-v2 fade-in">
       <style>{dashboardStyles}</style>
@@ -263,6 +427,8 @@ export default function DashboardPage() {
 
           {/* TODAY'S DATA HIGHLIGHT HERO */}
           <TodayHighlight />
+
+          <DailyBriefCard />
 
           {/* SECTION 1 - GREETING BAND */}
           <section className="dash-v2-greet-band">

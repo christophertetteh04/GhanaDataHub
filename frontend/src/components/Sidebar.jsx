@@ -12,6 +12,7 @@ import {
   Building2,
   Users,
   Bell,
+  Code2,
   FileText,
   LogOut,
   Tag,
@@ -35,6 +36,7 @@ const NAV = [
 
 const FEATURE_NAV = [
   { to: "/notifications", icon: Bell, label: "Notifications" },
+  { to: "/developers", icon: Code2, label: "API Docs" },
 ];
 
 const ADMIN_NAV = [

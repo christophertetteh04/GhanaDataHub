@@ -26,6 +26,7 @@ import ProfilePage from "./pages/ProfilePage";
 import PublicProfilePage from "./pages/PublicProfilePage";
 import ErrorPage from "./pages/ErrorPage";
 import SourcesPage from "./pages/SourcesPage";
+import DevelopersPage from "./pages/DevelopersPage";
 
 const ADMIN_ROLES = ["super_admin", "org_admin"];
 
@@ -43,6 +44,7 @@ function AppContent() {
           {/* Public auth routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/sources" element={<SourcesPage />} />
+          <Route path="/developers" element={<DevelopersPage />} />
           <Route path="/categories" element={<Layout><CategoriesPage /></Layout>} />
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />

@@ -1,0 +1,32 @@
+ticker,company_name,sector,report_year,revenue,operating_profit,profit_before_tax,profit_after_tax,total_assets,total_liabilities,shareholders_equity,basic_eps,dividends_per_share,currency_unit,pdf_url,extracted_at,error
+ACCESS,Access Bank Ghana,Banking,,,,,,,,,,,,,,No PDF found
+ADB,Agricultural Development Bank,Banking,,,,,,,,,,,,,,No PDF found
+ALLGH,Aluworks Ghana,Manufacturing,,,,,,,,,,,,https://gse.com.gh/docs/PR - 222 ALW Half Year Results June 2009 - attachment.pdf,,404 Client Error: Not Found for url: https://gse.com.gh/docs/PR%20-%20222%20ALW%20Half%20Year%20Results%20June%202009%20-%20attachment.pdf
+BOPP,Benso Oil Palm Plantation,Agriculture,,,,,,,,,,,,https://gse.com.gh/docs/PR - 270 BOPP 3RD QUARTER RESULTS - SEPT 2010.pdf,,404 Client Error: Not Found for url: https://gse.com.gh/docs/PR%20-%20270%20BOPP%203RD%20QUARTER%20RESULTS%20-%20SEPT%202010.pdf
+CAL,CAL Bank,Banking,,,,,,,,,,,,https://gse.com.gh/docs/PR - 321 CAL 3rd Quarter Results Sept 2009.pdf,,404 Client Error: Not Found for url: https://gse.com.gh/docs/PR%20-%20321%20CAL%203rd%20Quarter%20Results%20Sept%202009.pdf
+CLYD,Clydestone Ghana,Technology,,,,,,,,,,,,,,No PDF found
+CPC,Camelot Printing,Manufacturing,,,,,,,,,,,,,,No PDF found
+EGL,Enterprise Group,Insurance,,,,,,,,,,,,,,No PDF found
+EGH,Ecobank Ghana,Banking,,,,,,,,,,,,,,No PDF found
+ETI,Ecobank Transnational,Banking,,,,,,,,,,,,https://gse.com.gh/wp-content/uploads/2022/12/PR-393-ECOBANK-TRANSNATIONAL-INCORPORATED-UNAUDITED-FINANCIAL-STATEMENT-FOR-THE-PERIOD-ENDED-SEPTEMBER-30-20222.pdf,,429 Client Error: Too Many Requests for url: https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent
+FAB,First Atlantic Bank,Banking,,,,,,,,,,,,,,No PDF found
+FML,Fan Milk,Food & Beverages,,,,,,,,,,,,,,No PDF found
+GCB,GCB Bank,Banking,,,,,,,,,,,,,,No PDF found
+GGBL,Guinness Ghana Breweries,Food & Beverages,,,,,,,,,,,,,,No PDF found
+GOIL,GOIL Company,Energy,,,,,,,,,,,,https://gse.com.gh/wp-content/uploads/2022/11/PR-374-GOIL-COMPANY-LIMITED-UNAUDITED-FINANCIAL-STATEMENTS-FOR-PERIOD-ENDED-SEPTEMBER-30-20222.pdf,,"HTTPSConnectionPool(host='generativelanguage.googleapis.com', port=443): Max retries exceeded with url: /v1beta/models/gemini-flash-latest:generateContent (Caused by NameResolutionError(""HTTPSConnection(host='generativelanguage.googleapis.com', port=443): Failed to resolve 'generativelanguage.googleapis.com' ([Errno 8] nodename nor servname provided, or not known)""))"
+GLD,NewGold ETF,ETF,,,,,,,,,,,,,,No PDF found
+HORDS,HFC Bank,Banking,,,,,,,,,,,,,,No PDF found
+IIL,Industrial Holding,Manufacturing,,,,,,,,,,,,,,No PDF found
+KASA,Kasapreko Company,Food & Beverages,,,,,,,,,,,,,,No PDF found
+MMH,Mega African Capital,Finance,,,,,,,,,,,,,,No PDF found
+MTNGH,MTN Ghana,Telecoms,,,,,,,,,,,,,,No PDF found
+RBGH,Republic Bank Ghana,Banking,,,,,,,,,,,,,,No PDF found
+SCB,Standard Chartered Ghana,Banking,,,,,,,,,,,,,,No PDF found
+SCBPREF,SCB Preference Shares,Banking,,,,,,,,,,,,,,No PDF found
+SIC,SIC Insurance,Insurance,,,,,,,,,,,,,,No PDF found
+SOGEGH,Societe Generale Ghana,Banking,,,,,,,,,,,,,,No PDF found
+TOTAL,TotalEnergies Marketing Ghana,Energy,,,,,,,,,,,,,,No PDF found
+UNIL,Unilever Ghana,Consumer Goods,,,,,,,,,,,,,,No PDF found
+ZEN,Zenith Bank Ghana,Banking,,,,,,,,,,,,,,No PDF found
+ADB,ADB Bank,Banking,,,,,,,,,,,,,,No PDF found
+DASPHARMA,Dannex Ayrton Starwin,Pharmaceuticals,,,,,,,,,,,,,,No PDF found

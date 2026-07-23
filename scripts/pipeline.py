@@ -118,6 +118,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--upload-only", action="store_true", help="Skip scrapers, only upload")
     parser.add_argument("--dry-run", action="store_true", help="Do not actually upload")
+    parser.add_argument("--gse", action="store_true", help="Also scrape GSE listed-company financial statements")
     parser.add_argument("--api-base", default=os.getenv("GDH_API_BASE", "http://localhost:8000"))
     args = parser.parse_args()
 
@@ -188,6 +189,20 @@ def main():
                 print("International scraper completed successfully.")
         else:
             print(f"Warning: {int_script.name} not found, skipping.")
+
+        if args.gse:
+            print("\nRunning GSE financial statements scraper...")
+            gse_script = SCRIPTS_DIR / "scrape_gse_financials.py"
+            if gse_script.exists():
+                res = subprocess.run([sys.executable, str(gse_script)], capture_output=True, text=True)
+                if res.stdout:
+                    print(res.stdout)
+                if res.returncode != 0:
+                    print(f"GSE financial scraper failed: {res.stderr}")
+                else:
+                    print("GSE financial scraper completed successfully.")
+            else:
+                print(f"Warning: {gse_script.name} not found, skipping.")
 
     # STEP 5 - DISCOVER CSV FILES
     print("\nDiscovering CSV files...")

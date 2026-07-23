@@ -166,7 +166,7 @@ export default function LandingPage() {
   const navLinks = [
     { label: "Explore", to: "/datasets" },
     { label: "Learn", to: "#learn" },
-    { label: "API", to: "#api" },
+    { label: "API", to: "/developers" },
     { label: "Roadmap", to: "#roadmap" },
   ];
 
@@ -1442,7 +1442,7 @@ export default function LandingPage() {
               <Link className="landing-footer-link" to="/sources">Data Sources</Link>
               <Link className="landing-footer-link" to="/search">Search</Link>
               <a className="landing-footer-link" href="#learn">Learn</a>
-              <a className="landing-footer-link" href="#api">API Docs</a>
+              <Link className="landing-footer-link" to="/developers">API Docs</Link>
             </div>
           </div>
           <div>
