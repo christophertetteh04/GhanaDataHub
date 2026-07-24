@@ -398,7 +398,7 @@ export default function DevelopersPage() {
           left: 0;
           right: 0;
           z-index: 100;
-          background: rgba(15,26,20,0.85);
+          background: rgba(17,24,39,0.88);
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
           border-bottom: 1px solid var(--border-subtle);
@@ -556,7 +556,7 @@ export default function DevelopersPage() {
           border-left-color: var(--green);
           color: var(--text-primary);
           font-weight: 800;
-          background: rgba(0,163,92,0.06);
+          background: rgba(37,99,235,0.08);
         }
 
         .docs-mobile-tabs {
@@ -754,7 +754,7 @@ export default function DevelopersPage() {
         }
 
         .dev-code-block {
-          background: #0A1410;
+          background: #0B1120;
           border: 1px solid var(--border-default);
           border-radius: 10px;
           overflow: hidden;
@@ -777,7 +777,7 @@ export default function DevelopersPage() {
           font-size: 13px;
           line-height: 1.7;
           font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-          color: #00E87A;
+          color: #93C5FD;
           white-space: pre-wrap;
           word-break: break-word;
         }
@@ -1353,7 +1353,7 @@ curl -L 'SIGNED_DOWNLOAD_URL' -o dataset.csv`}
                 language="json"
                 title="example response"
                 code={`[
-  { "id": "uuid", "name": "Economy and Finance", "icon": "TrendingUp", "colour": "#006B3F" },
+  { "id": "uuid", "name": "Economy and Finance", "icon": "TrendingUp", "colour": "#2563EB" },
   { "id": "uuid", "name": "Health", "icon": "Heart", "colour": "#DC2626" }
 ]`}
               />

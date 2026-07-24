@@ -185,7 +185,7 @@ export default function Sidebar() {
         <style>{`
           .sidebar-premium {
             background: var(--surface-sidebar);
-            color: var(--text-primary);
+            color: var(--surface-sidebar-text);
             border-right: 1px solid var(--border-subtle);
             padding: 14px 0;
             width: 240px;
@@ -207,8 +207,8 @@ export default function Sidebar() {
             width: 34px;
             height: 34px;
             border-radius: 10px;
-            background: rgba(0,107,63,0.08);
-            color: var(--green);
+            background: var(--primary);
+            color: #FFFFFF;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -223,7 +223,7 @@ export default function Sidebar() {
             font-size: 15px;
             font-weight: 800;
             line-height: 1.1;
-            color: var(--green);
+            color: var(--surface-sidebar-text);
           }
 
           .brand-sub {
@@ -231,7 +231,7 @@ export default function Sidebar() {
             opacity: 0.65;
             font-weight: 500;
             margin-top: 2px;
-            color: var(--text-secondary);
+            color: var(--surface-sidebar-muted);
           }
 
           .sidebar-nav {
@@ -252,7 +252,7 @@ export default function Sidebar() {
             text-transform: uppercase;
             letter-spacing: 0.12em;
             font-weight: 900;
-            color: var(--text-muted);
+            color: var(--surface-sidebar-muted);
           }
 
           .sidebar-nav-list {
@@ -264,7 +264,7 @@ export default function Sidebar() {
             min-height: 44px;
             width: 100%;
             border-radius: 12px;
-            color: var(--text-secondary);
+            color: var(--surface-sidebar-muted);
             margin: 0;
             padding: 0 12px;
             display: flex;
@@ -273,6 +273,7 @@ export default function Sidebar() {
             gap: 11px;
             background: transparent;
             border: 0;
+            border-left: 3px solid transparent;
             font-size: 13.5px;
             font-weight: 650;
             transition: background-color 0.15s ease, transform 0.15s ease, color 0.15s ease;
@@ -287,27 +288,29 @@ export default function Sidebar() {
           }
 
           .nav-item svg {
-            color: var(--text-secondary);
+            color: var(--surface-sidebar-muted);
             transition: color 0.15s ease;
           }
 
           .nav-item span {
-            color: var(--text-secondary);
+            color: var(--surface-sidebar-muted);
           }
 
           .nav-item:hover {
-            background: rgba(0,163,92,0.08);
+            background: var(--surface-sidebar-active);
             transform: translateX(2px);
+            color: var(--surface-sidebar-text);
           }
 
           .nav-item:hover svg,
           .nav-item:hover span {
-            color: var(--text-primary);
+            color: var(--surface-sidebar-text);
           }
 
           .nav-item.active {
-            background: var(--green-pale);
+            background: var(--surface-sidebar-active);
             color: var(--green);
+            border-left: 3px solid var(--green);
             font-weight: 800;
           }
 
@@ -336,7 +339,7 @@ export default function Sidebar() {
           .upgrade-card {
             border-radius: 16px;
             padding: 14px 14px;
-            background: linear-gradient(135deg, var(--green-pale), var(--surface-elevated));
+            background: var(--surface-elevated);
             border: 1px solid var(--border-subtle);
             box-shadow: 0 18px 40px rgba(0,0,0,0.06);
             margin-bottom: 14px;
@@ -351,7 +354,7 @@ export default function Sidebar() {
             width: 180px;
             height: 180px;
             border-radius: 50%;
-            background: rgba(0,107,63,0.08);
+            background: rgba(37,99,235,0.08);
             transform: rotate(12deg);
           }
 
@@ -395,7 +398,7 @@ export default function Sidebar() {
 
           .upgrade-btn:hover {
             transform: translateY(-1px);
-            background: #005a35;
+            background: var(--primary-hover);
           }
 
           .user-row {
@@ -405,7 +408,7 @@ export default function Sidebar() {
             gap: 10px;
             border-radius: 16px;
             padding: 12px 12px;
-            background: var(--surface-elevated);
+            background: rgba(0,0,0,0.2);
             border: 1px solid var(--border-subtle);
           }
 
@@ -420,7 +423,7 @@ export default function Sidebar() {
             width: 36px;
             height: 36px;
             border-radius: 12px;
-            background: rgba(0,107,63,0.08);
+            background: var(--green-pale);
             color: var(--green);
             display: flex;
             align-items: center;
@@ -437,7 +440,7 @@ export default function Sidebar() {
           .user-name {
             font-size: 13px;
             font-weight: 900;
-            color: var(--text-primary);
+            color: var(--surface-sidebar-text);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -447,7 +450,7 @@ export default function Sidebar() {
           .user-role {
             font-size: 11px;
             font-weight: 700;
-            color: var(--text-secondary);
+            color: var(--surface-sidebar-muted);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -475,7 +478,7 @@ export default function Sidebar() {
           /* Appended Sidebar Behavior Styles */
           .sidebar.collapsed .nav-item.active { background: transparent; }
           .sidebar.collapsed .nav-item:hover { background: transparent; transform: none; }
-          .sidebar-toggle-btn:hover { background: rgba(0,0,0,0.08) !important; }
+          .sidebar-toggle-btn:hover { background: var(--surface-sidebar-active) !important; color: var(--surface-sidebar-text) !important; }
         `}</style>
 
         <div className="sidebar-logo" style={{ position: 'relative' }}>
@@ -539,7 +542,7 @@ export default function Sidebar() {
           <div className="user-row" style={{ 
             padding: isExpanded ? '12px' : '12px 0', 
             justifyContent: isExpanded ? 'space-between' : 'center', 
-            background: isExpanded ? 'var(--surface-elevated)' : 'transparent', 
+            background: isExpanded ? 'rgba(0,0,0,0.2)' : 'transparent', 
             border: isExpanded ? '1px solid var(--border-subtle)' : 'none' 
           }}>
             <div className="user-left" style={{ gap: isExpanded ? 10 : 0 }}>

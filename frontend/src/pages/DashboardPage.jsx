@@ -12,6 +12,7 @@ import EconomicCalendar from "../components/EconomicCalendar";
 import PersonalisedRecs from "../components/PersonalisedRecs";
 import ComparisonEngine from "../components/ComparisonEngine";
 import KwekuOnboarding from "../components/KwekuOnboarding";
+import { useChartTheme } from "../utils/chartTheme";
 import {
   AreaChart,
   Area,
@@ -93,18 +94,18 @@ function greetingForHour(hour) {
 
 // Category mappings
 const CATEGORY_MAP = {
-  "Economy": { bg: "rgba(245,166,35,0.14)", icon: TrendingUp, color: "var(--gold)" },
+  "Economy": { bg: "rgba(37,99,235,0.12)", icon: TrendingUp, color: "var(--sector-economy)" },
   "Health": { bg: "#FEF2F2", icon: Heart, color: "#EF4444" },
   "Agriculture": { bg: "#F0FDF4", icon: Leaf, color: "#22C55E" },
   "Demographics": { bg: "#FFF7ED", icon: Users, color: "#F97316" },
   "Governance": { bg: "#F5F3FF", icon: Scale, color: "#8B5CF6" },
   "Environment": { bg: "#ECFDF5", icon: Wind, color: "#10B981" },
   "Education": { bg: "#FFFBEB", icon: GraduationCap, color: "#F59E0B" },
-  "Default": { bg: "var(--color-primary-bg)", icon: BarChart3, color: "var(--gold)" }
+  "Default": { bg: "var(--color-primary-bg)", icon: BarChart3, color: "var(--primary)" }
 };
 
 const HOME_SECTORS = [
-  { name: "Economy", icon: TrendingUp, query: "gdp inflation forex economy", color: "#F5A623" },
+  { name: "Economy", icon: TrendingUp, query: "gdp inflation forex economy", color: "#2563EB" },
   { name: "Agriculture", icon: Leaf, query: "cocoa crop agriculture food", color: "#1A7B4C" },
   { name: "Health", icon: Heart, query: "health mortality hospital malaria", color: "#C62828" },
   { name: "Education", icon: GraduationCap, query: "education literacy school enrolment", color: "#7B1FA2" },
@@ -112,7 +113,7 @@ const HOME_SECTORS = [
   { name: "Employment", icon: BriefcaseBusiness, query: "employment jobs unemployment labour", color: "#E67E22" },
   { name: "Trade", icon: Scale, query: "trade import export customs", color: "#008080" },
   { name: "Infrastructure", icon: Building2, query: "roads infrastructure water sanitation", color: "#64748B" },
-  { name: "Energy", icon: HardDrive, query: "energy electricity power access", color: "#F5A623" },
+  { name: "Energy", icon: HardDrive, query: "energy electricity power access", color: "#F59E0B" },
   { name: "Environment", icon: Wind, query: "climate rainfall forest environment", color: "#008080" },
   { name: "Finance", icon: BarChart3, query: "gse banking treasury finance", color: "#13603B" },
   { name: "Technology", icon: Code2, query: "internet mobile technology digital", color: "#5B5FC7" },
@@ -233,26 +234,10 @@ const CustomTooltip = ({ active, payload, label, chartColors }) => {
   );
 };
 
-function useDarkMode() {
-  const [isDark, setIsDark] = useState(
-    document.documentElement.getAttribute('data-theme') === 'dark'
-  );
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setIsDark(
-        document.documentElement.getAttribute('data-theme') === 'dark'
-      );
-    });
-    observer.observe(document.documentElement, { attributes: true });
-    return () => observer.disconnect();
-  }, []);
-  return isDark;
-}
-
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isDark = useDarkMode();
+  const theme = useChartTheme();
 
   const [stats, setStats] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -275,19 +260,6 @@ export default function DashboardPage() {
       return [];
     }
   });
-
-  const chartColors = {
-    axis: isDark ? '#A0A0A0' : '#6B6B6B',
-    grid: isDark ? '#333333' : '#E0E0E0',
-    tooltip: {
-      bg: isDark ? '#1A1A1A' : '#FFFFFF',
-      border: isDark ? '#333333' : '#E0E0E0',
-      text: isDark ? '#F8F9FA' : '#1A1A1A',
-    },
-    line: '#F5A623',
-    area: isDark ? 'rgba(245,166,35,0.12)' : 'rgba(245,166,35,0.15)',
-    bar: '#F5A623',
-  };
 
   const isAdmin = user?.role === "super_admin" || user?.role === "org_admin";
 
@@ -428,7 +400,7 @@ export default function DashboardPage() {
           {/* TODAY'S DATA HIGHLIGHT HERO */}
           <TodayHighlight />
 
-          <DailyBriefCard />
+          {/* <DailyBriefCard /> */}
 
           {/* SECTION 1 - GREETING BAND */}
           <section className="dash-v2-greet-band">
@@ -537,10 +509,10 @@ export default function DashboardPage() {
           </section>
 
           {/* PERSONALISED RECOMMENDATIONS */}
-          <PersonalisedRecs
+          {/* <PersonalisedRecs
             recentUploads={stats?.recent_uploads}
             mostDownloaded={stats?.most_downloaded}
-          />
+          /> */}
 
           {/* SECTION 4 - TODAY HEADLINES */}
           <section className="dash-v2-section">
@@ -589,7 +561,8 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          {/* SECTION 5 - LATEST UPLOADS ROW */}
+          {/* SECTION 5 - LATEST UPLOADS ROW - HIDDEN */}
+          {/* 
           <section className="dash-v2-section">
             <div className="section-head">
               <div className="section-title">Latest Datasets</div>
@@ -598,44 +571,10 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="dash-v2-grid-4">
-              {displayRecent.slice(0, 4).map(d => {
-                if (d.isSkeleton) {
-                  return (
-                    <div key={d.id} className="latest-card skel">
-                      <div className="latest-img dash-skeleton" />
-                      <div className="latest-body">
-                        <div className="dash-skeleton h-4 w-full" />
-                        <div className="dash-skeleton h-4 w-60 mt-2" />
-                      </div>
-                    </div>
-                  );
-                }
-
-                const fileStyle = getFileTypeStyles(d.file_type);
-                const FileIcon = fileStyle.icon;
-
-                return (
-                  <div key={d.id} className="latest-card">
-                    <div className="latest-img" style={{ background: fileStyle.grad }}>
-                      <FileIcon size={42} color="rgba(255,255,255,0.9)" />
-                      <button className="read-more-btn" onClick={() => navigate(`/datasets/${d.id}`)}>
-                        Read more <ArrowRight size={12} />
-                      </button>
-                    </div>
-                    <div className="latest-body">
-                      <div className="latest-title">{clampTitle(d.title, 60)}</div>
-                      <div className="latest-owner">
-                        <div className="latest-avatar">{d.owner?.full_name?.[0]?.toUpperCase() || "U"}</div>
-                        <span>{d.owner?.full_name || "Unknown"}</span>
-                        <span className="dot">•</span>
-                        <span>{timeAgo(d.created_at)}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              ... content hidden ...
             </div>
-          </section>
+          </section> 
+          */}
 
           <section className="dashboard-region-section">
             <div className="dashboard-region-header">
@@ -676,54 +615,97 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          {/* SECTION 6 - MONTHLY UPLOADS CHART */}
+          {/* SECTION 6 - MODERN INFOGRAPHIC: UPLOAD ACTIVITY */}
           <section className="dash-v2-section pb-24">
-            <div className="chart-card">
-              <div style={{ display: 'flex', gap: '4px', marginBottom: '16px' }}>
-                {['week', 'month', 'year'].map(p => (
-                  <button
-                    key={p}
-                    onClick={() => setPeriod(p)}
-                    style={{
-                      background: period === p ? 'var(--green)' : 'transparent',
-                      color: period === p ? '#fff' : 'var(--gray-500)',
-                      borderRadius: '10px',
-                      height: '28px',
-                      padding: '0 12px',
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      border: 'none',
-                      cursor: 'pointer',
-                      textTransform: 'capitalize'
-                    }}
-                  >
-                    {p}
-                  </button>
-                ))}
+            <div className="infographic-card" style={{ background: 'var(--surface-card)', borderRadius: '16px', padding: '24px', border: '1px solid var(--border-subtle)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+                <div>
+                  <div style={{ fontSize: '18px', fontWeight: '800', fontFamily: 'Sora, sans-serif', color: 'var(--gray-900)' }}>Upload Activity</div>
+                  <div style={{ fontSize: '13px', color: 'var(--gray-500)', marginTop: '4px' }}>Platform growth and dataset ingestion over the last {period}</div>
+                </div>
+                
+                <div style={{ display: 'flex', gap: '4px', background: 'var(--surface-base)', padding: '4px', borderRadius: '12px' }}>
+                  {['week', 'month', 'year'].map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setPeriod(p)}
+                      style={{
+                        background: period === p ? 'var(--green)' : 'transparent',
+                        color: period === p ? '#fff' : 'var(--gray-500)',
+                        borderRadius: '8px',
+                        height: '32px',
+                        padding: '0 16px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        border: 'none',
+                        cursor: 'pointer',
+                        textTransform: 'capitalize',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="chart-head">
-                <div className="chart-title">Upload Activity</div>
-                <div className="chart-sub">Dataset activity over the last year</div>
-              </div>
+
               {monthlyUploads.length === 0 ? (
-                <div className="dash-empty" style={{ textAlign: "center", padding: "40px", color: "var(--gray-500)" }}>No monthly upload data yet.</div>
+                <div style={{ textAlign: "center", padding: "40px", color: "var(--gray-500)" }}>No upload data available.</div>
               ) : (
-                <ResponsiveContainer width="100%" height={290}>
-                  <AreaChart data={filteredData} margin={{ top: 10, right: 10, left: -18, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id='uploadGradient' x1='0' y1='0' x2='0' y2='1'>
-                        <stop offset='5%' stopColor={chartColors.line} stopOpacity={isDark ? 0.28 : 0.3} />
-                        <stop offset='95%' stopColor={chartColors.line} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid vertical={false} stroke={chartColors.grid} />
-                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: chartColors.axis }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip chartColors={chartColors} />} cursor={{ fill: chartColors.area }} />
-                    <Area type="monotone" dataKey="count" fill="url(#uploadGradient)" stroke={chartColors.line} strokeWidth={2} dot={false} activeDot={{ r: 5, fill: chartColors.line }} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+                  
+                  {/* Highlight Stat Box */}
+                  <div style={{ flex: '1 1 240px', background: 'linear-gradient(135deg, var(--green) 0%, #064E3B 100%)', borderRadius: '16px', padding: '28px', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', right: '-20px', top: '-20px', opacity: 0.1 }}>
+                      <Database size={160} />
+                    </div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, opacity: 0.9, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em', zIndex: 1 }}>Total {period} Uploads</div>
+                    <div style={{ fontSize: '48px', fontWeight: '800', fontFamily: 'Sora, sans-serif', lineHeight: 1, zIndex: 1 }}>
+                      {filteredData.reduce((sum, item) => sum + item.count, 0).toLocaleString()}
+                    </div>
+                    <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 500, zIndex: 1 }}>
+                      <div style={{ background: 'rgba(255,255,255,0.2)', padding: '6px', borderRadius: '50%' }}>
+                        <ArrowRight size={14} color="white" />
+                      </div>
+                      Datasets successfully ingested
+                    </div>
+                  </div>
+
+                  {/* Modern Bar Infographic */}
+                  <div style={{ flex: '2 1 400px', display: 'flex', alignItems: 'flex-end', height: '220px', gap: '12px', padding: '20px 24px', background: 'var(--surface-base)', borderRadius: '16px' }}>
+                    {filteredData.map((d, i) => {
+                      const maxCount = Math.max(...filteredData.map(fd => fd.count), 1);
+                      const heightPct = Math.max((d.count / maxCount) * 100, 5);
+                      
+                      return (
+                        <div key={i} className="info-bar-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', height: '100%', cursor: 'pointer' }}>
+                          <div style={{ marginTop: 'auto', width: '100%', maxWidth: '40px', height: `calc(${heightPct}% - 28px)`, background: 'var(--green-pale)', borderRadius: '8px', position: 'relative', overflow: 'hidden', transition: 'all 0.3s ease' }} className="info-bar-track">
+                            <div className="info-bar-fill" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to top, #10B981, var(--green))', opacity: 0.8, transition: 'all 0.3s ease', transformOrigin: 'bottom', transform: 'scaleY(0.9)' }} />
+                          </div>
+                          
+                          <div style={{ position: 'absolute', top: '10px', fontSize: '12px', fontWeight: '800', color: 'var(--green)', opacity: 0, transform: 'translateY(10px)', transition: 'all 0.3s ease' }} className="info-bar-value">
+                            {d.count}
+                          </div>
+                          
+                          <div style={{ fontSize: '11px', color: 'var(--gray-500)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                            {d.month.includes('-') ? d.month.split('-')[1] : d.month}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                </div>
               )}
             </div>
+
+            <style>{`
+              .info-bar-container { position: relative; }
+              .info-bar-container:hover .info-bar-track { transform: translateY(-4px); box-shadow: 0 4px 12px rgba(0, 107, 63, 0.15); }
+              .info-bar-container:hover .info-bar-fill { opacity: 1; transform: scaleY(1); }
+              .info-bar-container:hover .info-bar-value { opacity: 1; transform: translateY(0); }
+            `}</style>
           </section>
 
         </div> {/* end dash-v2-main */}

@@ -80,8 +80,8 @@ const testimonials = [
 ];
 
 const academyTracks = [
-  { name: "Data Foundations", lessons: "12 lessons", color: "#00A35C" },
-  { name: "Excel for Analysts", lessons: "18 lessons", color: "#FCD116" },
+  { name: "Data Foundations", lessons: "12 lessons", color: "#2563EB" },
+  { name: "Excel for Analysts", lessons: "18 lessons", color: "#06B6D4" },
   { name: "Python + CSVs", lessons: "16 lessons", color: "#3B82F6" },
   { name: "Policy Dashboards", lessons: "10 lessons", color: "#A78BFA" },
 ];
@@ -180,27 +180,18 @@ export default function LandingPage() {
           --landing-nav-border: rgba(17,24,39,0.08);
           --landing-nav-top-border: rgba(17,24,39,0.05);
           --landing-preview-bg:
-            linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.94));
-          --landing-preview-border: rgba(0,107,63,0.14);
+            rgba(255,255,255,0.98);
+          --landing-preview-border: rgba(37,99,235,0.14);
           --landing-preview-shadow:
             inset 0 1px 0 rgba(255,255,255,0.92),
-            0 0 0 1px rgba(0,107,63,0.08),
+            0 0 0 1px rgba(37,99,235,0.08),
             0 24px 64px rgba(17,24,39,0.12);
-          --landing-preview-stroke:
-            conic-gradient(
-              from 210deg at 50% 50%,
-              rgba(0,107,63,0.10) 0deg,
-              rgba(0,107,63,0.46) 54deg,
-              rgba(252,209,22,0.34) 82deg,
-              rgba(17,24,39,0.10) 118deg,
-              rgba(0,107,63,0.08) 360deg
-            );
+          --landing-preview-stroke: rgba(37,99,235,0.42);
           --landing-metric-bg: rgba(255,255,255,0.92);
           --landing-metric-border: rgba(17,24,39,0.08);
           --landing-inner-card-bg: rgba(255,255,255,0.72);
-          --landing-academy-bg:
-            linear-gradient(135deg, #FFFFFF 0%, #F7FBF9 48%, #EEF8F2 100%);
-          --landing-academy-border: rgba(0,107,63,0.14);
+          --landing-academy-bg: #FFFFFF;
+          --landing-academy-border: rgba(37,99,235,0.14);
           min-height: 100vh;
           background-color: var(--surface-base);
           color: var(--text-primary);
@@ -210,32 +201,23 @@ export default function LandingPage() {
 
         [data-theme='dark'] .landing-page {
           --landing-nav-top: transparent;
-          --landing-nav-scrolled: rgba(15,26,20,0.85);
+          --landing-nav-scrolled: rgba(17,24,39,0.88);
           --landing-nav-top-filter: none;
           --landing-nav-border: var(--border-subtle);
           --landing-nav-top-border: transparent;
           --landing-preview-bg:
-            linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018)),
             rgba(22,32,25,0.86);
           --landing-preview-border: rgba(255,255,255,0.08);
           --landing-preview-shadow:
             inset 0 1px 0 rgba(255,255,255,0.08),
-            0 0 0 1px rgba(0,163,92,0.10),
+            0 0 0 1px rgba(37,99,235,0.12),
             0 24px 64px rgba(0,0,0,0.45);
-          --landing-preview-stroke:
-            conic-gradient(
-              from 210deg at 50% 50%,
-              rgba(255,255,255,0.06) 0deg,
-              rgba(0,163,92,0.62) 54deg,
-              rgba(252,209,22,0.28) 82deg,
-              rgba(255,255,255,0.08) 118deg,
-              rgba(255,255,255,0.035) 360deg
-            );
+          --landing-preview-stroke: rgba(37,99,235,0.48);
           --landing-metric-bg: rgba(255,255,255,0.04);
           --landing-metric-border: rgba(255,255,255,0.06);
           --landing-inner-card-bg: rgba(255,255,255,0.035);
-          --landing-academy-bg: linear-gradient(135deg, #0A1410 0%, #162019 50%, #0A1410 100%);
-          --landing-academy-border: rgba(0,163,92,0.15);
+          --landing-academy-bg: var(--surface-card);
+          --landing-academy-border: rgba(37,99,235,0.18);
         }
 
         .landing-shell {
@@ -295,7 +277,7 @@ export default function LandingPage() {
           align-items: center;
           justify-content: center;
           font-weight: 900;
-          box-shadow: 0 0 24px rgba(0,163,92,0.32);
+          box-shadow: 0 10px 24px rgba(37,99,235,0.22);
         }
 
         .landing-nav-links {
@@ -410,14 +392,7 @@ export default function LandingPage() {
         }
 
         .landing-gold-glow {
-          position: absolute;
-          width: 300px;
-          height: 300px;
-          border-radius: 50%;
-          top: 50%;
-          right: 10%;
-          background: radial-gradient(circle, rgba(252,209,22,0.08) 0%, transparent 70%);
-          pointer-events: none;
+          display: none;
         }
 
         .landing-hero-content {
@@ -432,8 +407,8 @@ export default function LandingPage() {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          border: 1px solid rgba(0,163,92,0.3);
-          background: rgba(0,163,92,0.08);
+          border: 1px solid rgba(37,99,235,0.28);
+          background: rgba(37,99,235,0.08);
           border-radius: 99px;
           padding: 4px 14px;
           color: var(--green);
@@ -446,13 +421,13 @@ export default function LandingPage() {
           height: 7px;
           border-radius: 50%;
           background: var(--green);
-          box-shadow: 0 0 0 0 rgba(0,163,92,0.6);
+          box-shadow: 0 0 0 0 rgba(37,99,235,0.45);
           animation: pulse-dot 1.8s ease infinite;
         }
 
         @keyframes pulse-dot {
-          70% { box-shadow: 0 0 0 9px rgba(0,163,92,0); }
-          100% { box-shadow: 0 0 0 0 rgba(0,163,92,0); }
+          70% { box-shadow: 0 0 0 9px rgba(37,99,235,0); }
+          100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
         }
 
         .landing-hero-title {
@@ -466,10 +441,7 @@ export default function LandingPage() {
         }
 
         .landing-gradient-text {
-          background: linear-gradient(135deg, var(--green) 0%, #00E87A 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          color: var(--green);
         }
 
         .landing-hero-sub {
@@ -559,7 +531,7 @@ export default function LandingPage() {
           mask-composite: exclude;
           opacity: 0.8;
           pointer-events: none;
-          animation: border-spin 10s linear infinite;
+          animation: none;
           z-index: 0;
         }
 
@@ -681,7 +653,7 @@ export default function LandingPage() {
         }
 
         .landing-bento-card:hover {
-          border-color: rgba(0,163,92,0.3);
+          border-color: rgba(37,99,235,0.24);
           transform: translateY(-2px);
         }
 
@@ -746,8 +718,8 @@ export default function LandingPage() {
         }
 
         .daily-card {
-          background: rgba(0,163,92,0.12);
-          border-color: rgba(0,163,92,0.2);
+          background: rgba(37,99,235,0.08);
+          border-color: rgba(37,99,235,0.16);
         }
 
         .daily-card h3 {
@@ -766,11 +738,11 @@ export default function LandingPage() {
           gap: 8px;
           width: fit-content;
           border-radius: 99px;
-          border: 1px solid rgba(0,163,92,0.22);
+          border: 1px solid rgba(37,99,235,0.18);
           padding: 7px 12px;
           color: var(--text-primary);
           font-size: 12px;
-          background: rgba(0,163,92,0.08);
+          background: rgba(37,99,235,0.08);
         }
 
         .tiny-map {
@@ -804,7 +776,7 @@ export default function LandingPage() {
           width: fit-content;
           border-radius: 99px;
           padding: 6px 12px;
-          background: rgba(0,163,92,0.12);
+          background: rgba(37,99,235,0.10);
           color: var(--green);
           font-size: 12px;
           font-weight: 900;
@@ -927,7 +899,7 @@ export default function LandingPage() {
         .final-cta {
           position: relative;
           overflow: hidden;
-          background: linear-gradient(135deg, #006B3F 0%, #004D2C 100%);
+          background: #0F172A;
           padding: 80px 24px;
           text-align: center;
           color: white;
@@ -1321,11 +1293,11 @@ export default function LandingPage() {
                 <h3>Regional Visualisation</h3>
                 <p>Auto-generated choropleth maps for any regional dataset.</p>
                 <svg className="tiny-map" viewBox="0 0 180 200" role="img" aria-label="Simplified Ghana region map">
-                  <path d="M67 7 113 12 147 48 136 94 160 130 132 188 83 194 52 160 27 112 39 57Z" fill="#1C2B21" stroke="rgba(255,255,255,0.18)" strokeWidth="2" />
+                  <path d="M67 7 113 12 147 48 136 94 160 130 132 188 83 194 52 160 27 112 39 57Z" fill="#1E293B" stroke="rgba(255,255,255,0.18)" strokeWidth="2" />
                   <path d="M67 7 113 12 109 58 65 62 39 57Z" fill="#004D2C" />
-                  <path d="M65 62 109 58 136 94 94 111 52 94Z" fill="#006B3F" />
-                  <path d="M52 94 94 111 83 194 52 160 27 112Z" fill="#00A35C" />
-                  <path d="M94 111 160 130 132 188 83 194Z" fill="#00E87A" opacity="0.75" />
+                  <path d="M65 62 109 58 136 94 94 111 52 94Z" fill="#1D4ED8" />
+                  <path d="M52 94 94 111 83 194 52 160 27 112Z" fill="#2563EB" />
+                  <path d="M94 111 160 130 132 188 83 194Z" fill="#06B6D4" opacity="0.75" />
                 </svg>
               </article>
 
@@ -1408,7 +1380,6 @@ export default function LandingPage() {
         </section>
 
         <section className="final-cta" id="roadmap">
-          <div className="dark-hero-glow" style={{ width: 420, height: 420, background: "radial-gradient(circle, rgba(252,209,22,0.16) 0%, transparent 70%)", top: -120, left: "50%", transform: "translateX(-50%)" }} />
           <h2>Start exploring Ghana data today</h2>
           <p>Free forever. No credit card. No account required to browse.</p>
           <div className="final-cta-actions">
