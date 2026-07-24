@@ -451,26 +451,66 @@ function AutoChart({ series, type = "line" }) {
   const max = Math.max(...values);
   const min = Math.min(...values);
   const range = max - min || 1;
-  const points = series.map((point, index) => {
-    const x = 18 + (index / Math.max(1, series.length - 1)) * 424;
-    const y = 190 - ((point.value - min) / range) * 145;
-    return `${x},${y}`;
-  }).join(" ");
 
   return (
-    <svg viewBox="0 0 460 220" className="dataset-auto-chart" role="img" aria-label="Automatic chart preview">
-      {[48, 94, 140, 186].map((y) => <line key={y} x1="18" x2="442" y1={y} y2={y} stroke="var(--border-subtle)" />)}
-      {type === "bar" ? series.slice(0, 12).map((point, index) => {
-        const height = Math.max(8, ((point.value - min) / range) * 138 + 8);
-        return <rect key={`${point.label}-${index}`} x={28 + index * 34} y={194 - height} width="18" height={height} rx="6" fill="var(--green)" opacity={0.86} />;
-      }) : (
-        <>
-          <polyline points={`18,198 ${points} 442,198`} fill="var(--green)" opacity="0.10" />
-          <polyline points={points} fill="none" stroke="var(--green)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-          <circle cx="442" cy={190 - ((series[series.length - 1].value - min) / range) * 145} r="5" fill="var(--green)" />
-        </>
+    <div className="dataset-auto-chart" style={{ display: 'flex', alignItems: 'flex-end', padding: '24px', background: 'var(--surface-base)', borderRadius: '16px', height: '220px', gap: '8px', position: 'relative', overflow: 'hidden', border: '1px solid var(--border-subtle)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+      {/* Background Grid Lines */}
+      <div style={{ position: 'absolute', top: '25%', left: 0, right: 0, height: '1px', background: 'var(--border-subtle)' }} />
+      <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1px', background: 'var(--border-subtle)' }} />
+      <div style={{ position: 'absolute', top: '75%', left: 0, right: 0, height: '1px', background: 'var(--border-subtle)' }} />
+
+      {type === "bar" ? (
+        series.slice(0, 12).map((point, index) => {
+          const heightPct = Math.max(10, ((point.value - min) / range) * 100);
+          return (
+            <div key={`${point.label}-${index}`} className="info-bar-container" style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', zIndex: 1, cursor: 'pointer' }}>
+              <div className="info-bar-track" style={{ 
+                width: '100%', 
+                maxWidth: '32px',
+                height: `${heightPct}%`, 
+                background: 'var(--green-pale)', 
+                borderRadius: '6px 6px 0 0', 
+                position: 'relative',
+                overflow: 'hidden',
+                transition: 'all 0.3s ease'
+              }}>
+                <div className="info-bar-fill" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to top, #10B981, var(--green))', opacity: 0.85, transition: 'all 0.3s ease' }} />
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'flex-end', gap: '4px', zIndex: 1 }}>
+          {series.slice(0, 20).map((point, index) => {
+            const heightPct = Math.max(10, ((point.value - min) / range) * 100);
+            return (
+              <div key={`${point.label}-${index}`} className="info-bar-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%', cursor: 'pointer' }}>
+                <div className="info-bar-track" style={{ 
+                  width: '100%', 
+                  height: `${heightPct}%`, 
+                  background: `linear-gradient(to top, transparent, var(--green))`, 
+                  opacity: 0.2,
+                  borderRadius: '3px 3px 0 0',
+                  transition: 'all 0.3s ease'
+                }} />
+                <div className="info-bar-fill" style={{ 
+                  width: '100%', 
+                  height: '4px', 
+                  background: 'var(--green)', 
+                  borderRadius: '2px',
+                  marginTop: '-4px',
+                  transition: 'all 0.3s ease'
+                }} />
+              </div>
+            );
+          })}
+        </div>
       )}
-    </svg>
+      <style>{`
+        .info-bar-container:hover .info-bar-track { transform: translateY(-4px); }
+        .info-bar-container:hover .info-bar-fill { opacity: 1; filter: brightness(1.1); }
+      `}</style>
+    </div>
   );
 }
 
@@ -571,6 +611,19 @@ export default function DatasetDetailPage() {
   useEffect(() => {
     if (dataset) {
       trackDatasetView(dataset);
+      try {
+        const recent = JSON.parse(localStorage.getItem('gdh_recently_viewed') || '[]');
+        const entry = {
+          id: dataset.id, 
+          title: dataset.title,
+          file_type: dataset.file_type, 
+          updated_at: dataset.updated_at
+        };
+        const updated = [entry, ...recent.filter(r => r.id !== dataset.id)].slice(0, 10);
+        localStorage.setItem('gdh_recently_viewed', JSON.stringify(updated));
+      } catch (e) {
+        console.error("Failed to track recently viewed", e);
+      }
     }
   }, [dataset]);
 

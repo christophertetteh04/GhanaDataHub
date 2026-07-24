@@ -303,17 +303,6 @@ function CataloguePreviewVisual({ dataset, display, colour }) {
       ? "bar"
       : "line";
 
-  if (type === "map") {
-    return (
-      <svg className="catalogue-intel-visual" viewBox="0 0 220 112" role="img" aria-label="Ghana map preview">
-        <path d="M100 11 148 20 187 49 174 91 125 105 75 97 38 72 52 31Z" fill="rgba(0,163,92,0.12)" stroke={colour} strokeWidth="3" />
-        <path d="M100 11 103 54 52 31Z" fill={colour} opacity="0.55" />
-        <path d="M103 54 148 20 187 49 134 66Z" fill={colour} opacity="0.28" />
-        <path d="M103 54 134 66 125 105 75 97Z" fill={colour} opacity="0.76" />
-      </svg>
-    );
-  }
-
   const fallbackValues = [18, 24, 21, 35, 42, 48, 54, 63, 70, 76, 82, 88];
   const values = Array.isArray(dataset.preview_data)
     ? dataset.preview_data.slice(0, 12).map((value) => Number(value)).filter((value) => !Number.isNaN(value))
@@ -322,26 +311,73 @@ function CataloguePreviewVisual({ dataset, display, colour }) {
   const max = Math.max(...safeValues);
   const min = Math.min(...safeValues);
   const range = max - min || 1;
-  const points = safeValues.map((value, index) => {
-    const x = 10 + (index / (safeValues.length - 1)) * 196;
-    const y = 90 - ((value - min) / range) * 62;
-    return `${x},${y}`;
-  }).join(" ");
+
+  if (type === "map") {
+    return (
+      <div className="catalogue-intel-visual" style={{ display: 'flex', flexDirection: 'column', padding: '12px', background: 'var(--surface-base)', borderRadius: '8px', height: '112px', justifyContent: 'center', alignItems: 'center', gap: '8px', overflow: 'hidden', position: 'relative' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', width: '100%', height: '100%', opacity: 0.8 }}>
+          {[...Array(12)].map((_, i) => (
+            <div key={i} style={{ 
+              background: colour, 
+              borderRadius: '4px', 
+              opacity: [0.1, 0.3, 0.6, 0.9, 0.4, 0.2, 0.8, 0.5, 0.7, 0.1, 0.3, 0.5][i] 
+            }} />
+          ))}
+        </div>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%)' }} />
+      </div>
+    );
+  }
 
   return (
-    <svg className="catalogue-intel-visual" viewBox="0 0 220 112" role="img" aria-label="Chart preview">
-      {[28, 56, 84].map((y) => <line key={y} x1="10" x2="210" y1={y} y2={y} stroke="var(--border-subtle)" />)}
-      {type === "bar" ? safeValues.slice(0, 8).map((value, index) => {
-        const height = Math.max(8, ((value - min) / range) * 64 + 8);
-        return <rect key={`${value}-${index}`} x={18 + index * 24} y={92 - height} width="13" height={height} rx="5" fill={colour} opacity={0.82} />;
-      }) : (
-        <>
-          <polyline points={`10,96 ${points} 210,96`} fill={colour} opacity="0.12" />
-          <polyline points={points} fill="none" stroke={colour} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-          <circle cx="158" cy="42" r="5" fill={colour} />
-        </>
+    <div className="catalogue-intel-visual" style={{ display: 'flex', alignItems: 'flex-end', padding: '12px', background: 'var(--surface-base)', borderRadius: '8px', height: '112px', gap: '6px', position: 'relative', overflow: 'hidden' }}>
+      {/* Background Grid Lines */}
+      <div style={{ position: 'absolute', top: '25%', left: 0, right: 0, height: '1px', background: 'var(--border-subtle)' }} />
+      <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1px', background: 'var(--border-subtle)' }} />
+      <div style={{ position: 'absolute', top: '75%', left: 0, right: 0, height: '1px', background: 'var(--border-subtle)' }} />
+
+      {type === "bar" ? (
+        safeValues.slice(0, 8).map((value, index) => {
+          const heightPct = Math.max(10, ((value - min) / range) * 100);
+          return (
+            <div key={index} style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'flex-end', zIndex: 1 }}>
+              <div style={{ 
+                width: '100%', 
+                height: `${heightPct}%`, 
+                background: colour, 
+                borderRadius: '4px 4px 0 0', 
+                opacity: 0.85,
+                transition: 'height 0.3s ease'
+              }} />
+            </div>
+          );
+        })
+      ) : (
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'flex-end', gap: '2px', zIndex: 1 }}>
+          {safeValues.slice(0, 12).map((value, index) => {
+            const heightPct = Math.max(10, ((value - min) / range) * 100);
+            return (
+              <div key={index} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}>
+                <div style={{ 
+                  width: '100%', 
+                  height: `${heightPct}%`, 
+                  background: `linear-gradient(to top, transparent, ${colour})`, 
+                  opacity: 0.2,
+                  borderRadius: '2px 2px 0 0'
+                }} />
+                <div style={{ 
+                  width: '100%', 
+                  height: '3px', 
+                  background: colour, 
+                  borderRadius: '2px',
+                  marginTop: '-3px'
+                }} />
+              </div>
+            );
+          })}
+        </div>
       )}
-    </svg>
+    </div>
   );
 }
 
